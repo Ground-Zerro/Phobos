@@ -1,0 +1,300 @@
+#!/bin/sh
+set -e
+
+CLIENT_NAME="{{CLIENT_NAME}}"
+PHOBOS_DIR="/opt/etc/Phobos"
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+check_dependencies() {
+  local missing=""
+
+  for cmd in grep cut date tee tar; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing="$missing $cmd"
+    fi
+  done
+
+  if [ -n "$missing" ]; then
+    log "ВНИМАНИЕ: Отсутствуют необходимые утилиты:$missing"
+    log "Устанавливаю недостающие пакеты через opkg..."
+
+    if command -v opkg >/dev/null 2>&1; then
+      if ! opkg update; then
+        log "ОШИБКА: Не удалось обновить список пакетов opkg"
+        return 1
+      fi
+
+      for cmd in $missing; do
+        log "Установка $cmd..."
+        if ! opkg install "$cmd" 2>/dev/null; then
+          log "ПРЕДУПРЕЖДЕНИЕ: Не удалось установить $cmd через opkg"
+        fi
+      done
+    else
+      log "ОШИБКА: opkg не найден. Невозможно установить зависимости."
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+detect_arch() {
+  local arch=$(uname -m)
+  case "$arch" in
+    mips)
+      if [ "$(echo -n I | hexdump -o 2>/dev/null | awk 'NR==1{print $2}')" = "000111" ]; then
+        echo "mipsel"
+      else
+        echo "mips"
+      fi
+      ;;
+    aarch64|arm64)
+      echo "aarch64"
+      ;;
+    armv7l|armv6l)
+      echo "aarch64"
+      ;;
+    x86_64)
+      echo "x86_64"
+      ;;
+    *)
+      echo "unknown"
+      ;;
+  esac
+}
+
+check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Этот скрипт требует root привилегии. Запустите: su -c '$0'"
+    exit 1
+  fi
+}
+
+install_obfuscator() {
+  local arch=$1
+
+  log "Установка wg-obfuscator для архитектуры $arch..."
+
+  local binary_name="wg-obfuscator-$arch"
+
+  if [ ! -f "bin/$binary_name" ]; then
+    log "Ошибка: бинарник $binary_name не найден в архиве"
+    log "Доступные бинарники:"
+    ls -1 bin/
+    exit 1
+  fi
+
+  cp "bin/$binary_name" /opt/bin/wg-obfuscator
+  chmod +x /opt/bin/wg-obfuscator
+
+  log "Бинарник wg-obfuscator установлен в /opt/bin/wg-obfuscator"
+}
+
+setup_configs() {
+  log "Настройка конфигураций..."
+
+  mkdir -p "$PHOBOS_DIR"
+
+  cp wg-obfuscator.conf "$PHOBOS_DIR/wg-obfuscator.conf"
+  chmod 600 "$PHOBOS_DIR/wg-obfuscator.conf"
+
+  cp "${CLIENT_NAME}.conf" "$PHOBOS_DIR/${CLIENT_NAME}.conf"
+  chmod 600 "$PHOBOS_DIR/${CLIENT_NAME}.conf"
+
+  log "Конфигурации установлены:"
+  log "  - Obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
+  log "  - WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
+}
+
+deploy_health_check() {
+  log "Развертывание скрипта проверки состояния роутера..."
+
+  if [ -f "router-health-check.sh" ]; then
+    cp "router-health-check.sh" "$PHOBOS_DIR/router-health-check.sh"
+    chmod +x "$PHOBOS_DIR/router-health-check.sh"
+    log "Скрипт проверки состояния установлен: $PHOBOS_DIR/router-health-check.sh"
+  else
+    log "ПРЕДУПРЕЖДЕНИЕ: router-health-check.sh не найден в архиве"
+  fi
+}
+
+create_init_script() {
+  log "Создание init-скрипта для obfuscator..."
+
+  cat > /opt/etc/init.d/S49wg-obfuscator <<'EOF'
+#!/bin/sh
+
+ENABLED=yes
+PROCS=wg-obfuscator
+ARGS="--config /opt/etc/Phobos/wg-obfuscator.conf"
+PREARGS=""
+DESC=$PROCS
+PATH=/opt/sbin:/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+. /opt/etc/init.d/rc.func
+EOF
+
+  chmod +x /opt/etc/init.d/S49wg-obfuscator
+
+  log "Init-скрипт создан: /opt/etc/init.d/S49wg-obfuscator"
+}
+
+start_obfuscator() {
+  log "Запуск wg-obfuscator..."
+
+  /opt/etc/init.d/S49wg-obfuscator start
+
+  sleep 2
+
+  if ps | grep -v grep | grep -q wg-obfuscator; then
+    log "✓ wg-obfuscator успешно запущен"
+  else
+    log "✗ wg-obfuscator не запущен. Проверьте логи."
+  fi
+}
+
+extract_wireguard_params() {
+  log "Извлечение параметров WireGuard из конфигурации..."
+
+  local config_file="$PHOBOS_DIR/${CLIENT_NAME}.conf"
+
+  WG_PRIVATE_KEY=$(grep '^PrivateKey' "$config_file" | cut -d'=' -f2- | tr -d ' \t\n\r')
+  WG_ADDRESS=$(grep '^Address' "$config_file" | cut -d'=' -f2- | tr -d ' \t\n\r')
+  WG_SERVER_PUBKEY=$(grep '^PublicKey' "$config_file" | cut -d'=' -f2- | tr -d ' \t\n\r')
+
+  CLIENT_IP=$(echo "$WG_ADDRESS" | cut -d',' -f1)
+  CLIENT_IPV6=$(echo "$WG_ADDRESS" | cut -d',' -f2)
+
+  if [ -z "$CLIENT_IPV6" ]; then
+    CLIENT_IPV6=$(grep -A 10 '\[Interface\]' "$config_file" | grep '^Address' | grep -o 'fd[0-9a-f:]*')
+  fi
+
+  log "  Private Key: ${WG_PRIVATE_KEY:0:20}..."
+  log "  IPv4: $CLIENT_IP"
+  log "  IPv6: $CLIENT_IPV6"
+  log "  Server PubKey: ${WG_SERVER_PUBKEY:0:20}..."
+}
+
+configure_wireguard_rci() {
+  log ""
+  log "==> Автоматическая настройка WireGuard через RCI API..."
+
+  extract_wireguard_params
+
+  if [ ! -f "./router-configure-wireguard.sh" ]; then
+    log "⚠ Скрипт router-configure-wireguard.sh не найден"
+    log "   Используйте ручной импорт (см. инструкции ниже)"
+    return 1
+  fi
+
+  chmod +x ./router-configure-wireguard.sh
+
+  if ./router-configure-wireguard.sh \
+      --client-name "$CLIENT_NAME" \
+      --client-private-key "$WG_PRIVATE_KEY" \
+      --client-ip "$CLIENT_IP" \
+      --client-ipv6 "$CLIENT_IPV6" \
+      --server-public-key "$WG_SERVER_PUBKEY" \
+      --keepalive 25 \
+      --mtu 1420 \
+      --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf"; then
+
+    return 0
+  else
+    return 1
+  fi
+}
+
+show_manual_instructions() {
+  log ""
+  log "╔════════════════════════════════════════════════════════════╗"
+  log "║  Требуется ручной импорт WireGuard конфигурации            ║"
+  log "╚════════════════════════════════════════════════════════════╝"
+  log ""
+  log "Выполните следующие шаги:"
+  log ""
+  log "1. Откройте веб-панель администрирования роутера Keenetic"
+  log "   (http://192.168.1.1 или http://my.keenetic.net)"
+  log ""
+  log "2. Перейдите в раздел: Интернет → Другие подключения"
+  log ""
+  log "3. Выберите 'Загрузить конфигурацию из файла' в разделе 'WireGuard'"
+  log ""
+  log "4. Укажите путь к файлу:"
+  log "   $PHOBOS_DIR/${CLIENT_NAME}.conf"
+  log ""
+  log "5. Активируйте подключение"
+  log ""
+}
+
+show_final_info() {
+  log ""
+  log "╔════════════════════════════════════════════════════════════╗"
+  log "║  Информация об установке                                   ║"
+  log "╚════════════════════════════════════════════════════════════╝"
+  log ""
+  log "Файлы установки:"
+  log "  Бинарник: /opt/bin/wg-obfuscator"
+  log "  Конфиг obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
+  log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
+  log "  Init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
+  log "  Phobos Router Health Check: $PHOBOS_DIR/router-health-check.sh"
+  log ""
+  log "Проверка состояния:"
+  log "  /opt/etc/init.d/S49wg-obfuscator status    # Проверить что obfuscator запущен"
+  log "  $PHOBOS_DIR/router-health-check.sh         # Проверить состояние роутера"
+  log ""
+}
+
+main() {
+  mkdir -p "$PHOBOS_DIR"
+  log "==> Начало установки Phobos на роутер Keenetic"
+  log "==> Клиент: $CLIENT_NAME"
+
+  check_root
+
+  if ! check_dependencies; then
+    log "ОШИБКА: Не удалось установить зависимости"
+    exit 1
+  fi
+
+  ARCH=$(detect_arch)
+  log "Определена архитектура: $ARCH"
+
+  if [ "$ARCH" = "unknown" ]; then
+    log "Ошибка: неподдерживаемая архитектура"
+    log "Вывод uname -m: $(uname -m)"
+    exit 1
+  fi
+
+  install_obfuscator "$ARCH"
+  setup_configs
+  deploy_health_check
+  create_init_script
+  start_obfuscator
+
+  if configure_wireguard_rci; then
+    log ""
+    log "╔════════════════════════════════════════════════════════════╗"
+    log "║  ✓ Установка завершена успешно!                            ║"
+    log "║  ✓ WireGuard настроен автоматически                        ║"
+    log "╚════════════════════════════════════════════════════════════╝"
+    show_final_info
+  else
+    log ""
+    log "╔════════════════════════════════════════════════════════════╗"
+    log "║  ✓ Obfuscator установлен успешно                           ║"
+    log "║  ⚠ WireGuard требует ручной настройки                     ║"
+    log "╚════════════════════════════════════════════════════════════╝"
+    show_manual_instructions
+    show_final_info
+  fi
+
+  log "==> Установка завершена."
+}
+
+main "$@"

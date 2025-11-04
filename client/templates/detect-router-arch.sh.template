@@ -1,0 +1,142 @@
+#!/opt/bin/sh
+
+echo "=========================================="
+echo "  Phobos Router Architecture Detector"
+echo "=========================================="
+echo ""
+
+ARCH=$(uname -m)
+KEENETIC_MODEL="Unknown"
+CPU_INFO=""
+
+echo "==> Базовая информация"
+echo "  Архитектура: ${ARCH}"
+echo "  Ядро: $(uname -s) $(uname -r)"
+
+if command -v ndm-client &>/dev/null; then
+  KEENETIC_MODEL=$(ndm-client show system | grep "model:" | awk '{print $2}' | tr -d '"' || echo "Unknown")
+  echo "  Модель Keenetic: ${KEENETIC_MODEL}"
+fi
+
+echo ""
+echo "==> Детальная информация о процессоре"
+
+if [[ -f /proc/cpuinfo ]]; then
+  if grep -q "MIPS" /proc/cpuinfo; then
+    CPU_MODEL=$(grep "cpu model" /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)
+    CPU_VENDOR=$(grep "system type" /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)
+
+    echo "  Тип: MIPS"
+    echo "  Модель: ${CPU_MODEL}"
+    echo "  Система: ${CPU_VENDOR}"
+
+    if echo "${ARCH}" | grep -q "mipsel"; then
+      echo "  Порядок байт: Little Endian"
+      RECOMMENDED_BINARY="wg-obfuscator-mipsel"
+    elif echo "${ARCH}" | grep -q "mips"; then
+      echo "  Порядок байт: Big Endian"
+      RECOMMENDED_BINARY="wg-obfuscator-mips"
+    fi
+
+  elif grep -q "aarch64\|ARM" /proc/cpuinfo; then
+    CPU_MODEL=$(grep "model name\|Processor" /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)
+
+    echo "  Тип: ARM"
+    echo "  Модель: ${CPU_MODEL}"
+    RECOMMENDED_BINARY="wg-obfuscator-aarch64"
+  fi
+fi
+
+echo ""
+echo "==> Рекомендация по бинарнику"
+
+if [[ -n "${RECOMMENDED_BINARY:-}" ]]; then
+  echo "  Рекомендуемый бинарник: ${RECOMMENDED_BINARY}"
+  echo "  ✓ Для вашего роутера следует использовать: ${RECOMMENDED_BINARY}"
+else
+  echo "  ⚠ Не удалось автоматически определить архитектуру"
+  echo "  Попробуйте вручную:"
+  echo "    - mipsel (MIPS Little Endian) - наиболее распространенный"
+  echo "    - mips (MIPS Big Endian)"
+  echo "    - aarch64 (ARM 64-bit)"
+fi
+
+echo ""
+echo "==> Проверка установленных компонентов Entware"
+
+if command -v opkg &>/dev/null; then
+  echo "  ✓ Entware установлен"
+  ENTWARE_ARCH=$(opkg print-architecture | grep "arch" | tail -1 | awk '{print $2}')
+  echo "  Архитектура Entware: ${ENTWARE_ARCH}"
+else
+  echo "  ✗ Entware не установлен"
+  echo "  Установите Entware перед использованием Phobos"
+fi
+
+echo ""
+echo "==> Известные модели Keenetic и их архитектуры"
+echo ""
+echo "  MIPSEL (Little Endian) - наиболее распространенные модели:"
+echo "    - Keenetic Giga (KN-1010/1011)"
+echo "    - Keenetic Ultra (KN-1810)"
+echo "    - Keenetic Viva (KN-1910/1912)"
+echo "    - Keenetic Extra (KN-1710/1711/1712)"
+echo "    - Keenetic City (KN-1510/1511)"
+echo "    - Keenetic Start (KN-1110)"
+echo "    - Keenetic Lite (KN-1310/1311)"
+echo "    - Keenetic 4G (KN-1210/1211)"
+echo "    - Keenetic Omni (KN-1410)"
+echo "    - Keenetic Air (KN-1610)"
+echo "    - Keenetic Air Primo (KN-1611)"
+echo "    - Keenetic Mirand (KN-2010)"
+echo "    - Keenetic Zyx (KN-2110)"
+echo "    - Keenetic Musubi (KN-2210)"
+echo "    - Keenetic Grid (KN-2410)"
+echo "    - Keenetic Wave (KN-2510)"
+echo "    - Keenetic Sky (KN-2610)"
+echo "    - Keenetic Pro (KN-2810)"
+echo "    - Keenetic Combo (KN-2910)"
+echo "    - Keenetic Spiner (KN-3010)"
+echo "    - Keenetic Doble (KN-3111)"
+echo "    - Keenetic Doble Plus (KN-3112)"
+echo "    - Keenetic Station (KN-3210) - первые версии"
+echo "    - Keenetic Cloud (KN-3510) - первые версии"
+echo "    - Keenetic Hurricane (KN-4010) - первые версии"
+echo "    - Keenetic Tornado (KN-4110) - первые версии"
+echo ""
+echo "  ARM64 (aarch64) - современные мощные модели:"
+echo "    - Keenetic Peak (KN-2710)"
+echo "    - Keenetic Titan (KN-1920/1921)"
+echo "    - Keenetic Hero 4G (KN-2310)"
+echo "    - Keenetic Hopper (KN-3810)"
+echo "    - Keenetic Play (KN-3110)"
+echo "    - Keenetic Station (KN-3210) - более поздние версии"
+echo "    - Keenetic Omnia (KN-3310)"
+echo "    - Keenetic Giant (KN-3410)"
+echo "    - Keenetic Cloud (KN-3510) - более поздние версии"
+echo "    - Keenetic Link (KN-3610)"
+echo "    - Keenetic Anchor (KN-3710)"
+echo "    - Keenetic Arrow (KN-3910)"
+echo "    - Keenetic Hurricane (KN-4010) - более поздние версии"
+echo "    - Keenetic Tornado (KN-4110) - более поздние версии"
+echo "    - Keenetic Hurricane II (KN-4210)"
+echo "    - Keenetic Tornado II (KN-4310)"
+echo "    - Keenetic Hurricane III (KN-4410)"
+echo "    - Keenetic Tornado III (KN-4510)"
+echo "    - Keenetic Magic (KN-4610)"
+echo "    - Keenetic Switch (KN-1420)"
+echo "    - Keenetic Switch 16 (KN-1421)"
+echo "    - Keenetic XXL (KN-4710)"
+echo "    - Keenetic Grand (KN-4810)"
+echo "    - Keenetic Zyxel (KN-4910)"
+echo "    - Keenetic Park (KN-5010)"
+echo "    - Keenetic Lette (KN-5110)"
+echo ""
+echo "  MIPS (Big Endian) - редкие старые модели:"
+echo "    - Некоторые ранние версии моделей (до 2015 года)"
+echo "    - Отдельные экземпляры старых моделей с отличающейся архитектурой"
+echo ""
+echo "=========================================="
+echo "  Определение завершено"
+echo "=========================================="
+echo ""
