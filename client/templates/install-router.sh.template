@@ -88,6 +88,9 @@ install_obfuscator() {
     exit 1
   fi
 
+  if [ -f /opt/bin/wg-obfuscator ]; then
+    rm /opt/bin/wg-obfuscator
+  fi
   cp "bin/$binary_name" /opt/bin/wg-obfuscator
   chmod +x /opt/bin/wg-obfuscator
 
