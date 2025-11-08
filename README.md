@@ -81,6 +81,12 @@ sudo /opt/Phobos/repo/server/scripts/vps-uninstall.sh
 sudo /opt/Phobos/repo/server/scripts/vps-uninstall.sh --keep-data
 ```
 
+## Совместимость и рекомендации по установке
+
+Протестированно и рекомендуется к использованию на **Ubuntu 20.04** и **Ubuntu 22.04**.  
+Желательна установка на **чистый VPS** без предварительно установленных сервисов или конфигураций.
+> Совместимость с другими дистрибутивами Linux и сторонними сервисами **не проверялась**.
+
 ## License
 
 This project is licensed under GPL-3.0.
