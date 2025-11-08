@@ -73,16 +73,8 @@ phobos
 
 ## License
 
-This project is licensed under a **Proprietary License**.  
+This project is licensed under GPL-3.0.  
 See the [LICENSE](./LICENSE) file for full terms.
-
-## External dependency: wg-obfuscator (GPL-3.0)
-
-This repository provides a wrapper that automates configuration or invocation of `wg-obfuscator`.  
-This project does NOT include, distribute, or modify `wg-obfuscator` source or binaries.
-
-/* RU — для внутренней справки */
-Этот проект содержит только обвязку. Бинарники/исходники `wg-obfuscator` не включены и не распространяются здесь.
 
 ## Благодарности
 
