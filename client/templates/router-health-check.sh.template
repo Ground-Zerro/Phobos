@@ -48,13 +48,44 @@ check_obfuscator_listening() {
 }
 
 check_wireguard_keenetic() {
-  local wg_count=$(ndmc -c "show interface" | grep -c "type: Wireguard" 2>/dev/null || echo "0")
+  if ! command -v jq >/dev/null 2>&1; then
+    print_status "WARN" "jq не установлен, пропускаем проверку WireGuard"
+    return 1
+  fi
+
+  local interfaces=$(curl -s "http://127.0.0.1:79/rci/show/interface" 2>/dev/null || echo "")
+
+  if [ -z "$interfaces" ] || ! echo "$interfaces" | jq -e . >/dev/null 2>&1; then
+    print_status "WARN" "Не удалось получить список интерфейсов через RCI API"
+    return 1
+  fi
+
+  local wg_count=$(echo "$interfaces" | jq '[.[] | select(.type == "Wireguard")] | length' 2>/dev/null || echo "0")
 
   if [ ${wg_count} -gt 0 ]; then
     print_status "OK" "WireGuard интерфейсов в Keenetic: ${wg_count}"
 
     echo "  └─ Детали интерфейсов:"
-    ndmc -c "show interface" | grep -A15 "type: Wireguard" 2>/dev/null | grep -e "id:" -e "description:" -e "state:" || true
+
+    echo "$interfaces" | jq -r '.[] | select(.type == "Wireguard") | "\(.id)|\(.description // "no description")|\(.state)"' 2>/dev/null | while IFS='|' read -r if_id if_desc if_state; do
+      printf "    %s: %s - %s" "$if_id" "$if_desc" "$if_state"
+
+      if [ "$if_state" = "up" ]; then
+        local sys_if=$(echo "$if_id" | sed 's/Wireguard/nwg/')
+
+        if [ -n "$sys_if" ]; then
+          local external_ip=$(curl --max-time 5 --interface "$sys_if" -s https://api.ipify.org 2>/dev/null || echo "")
+
+          if [ -n "$external_ip" ]; then
+            printf " (IP: %s)" "$external_ip"
+          else
+            printf " (IP: недоступен)"
+          fi
+        fi
+      fi
+
+      printf "\n"
+    done
 
     return 0
   else

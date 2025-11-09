@@ -1,0 +1,148 @@
+#!/bin/sh
+set -e
+
+PHOBOS_DIR="/opt/etc/Phobos"
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+check_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Этот скрипт требует root привилегии. Запустите: su -c '$0'"
+    exit 1
+  fi
+}
+
+stop_obfuscator() {
+  log "Остановка wg-obfuscator..."
+
+  if [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+    /opt/etc/init.d/S49wg-obfuscator stop >/dev/null 2>&1 || true
+    log "✓ wg-obfuscator остановлен"
+  else
+    log "  Init-скрипт не найден"
+  fi
+
+  if ps | grep -v grep | grep -q wg-obfuscator; then
+    log "  Принудительное завершение процесса..."
+    killall wg-obfuscator >/dev/null 2>&1 || true
+  fi
+}
+
+remove_wireguard_interfaces() {
+  log "Удаление WireGuard интерфейсов Phobos..."
+
+  if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+    log "  curl или jq не установлен, пропускаем удаление интерфейсов"
+    return 0
+  fi
+
+  local interfaces=$(curl -s "http://127.0.0.1:79/rci/show/interface" 2>/dev/null || echo "")
+
+  if [ -z "$interfaces" ] || ! echo "$interfaces" | jq -e . >/dev/null 2>&1; then
+    log "  RCI API недоступен или вернул некорректный JSON"
+    return 0
+  fi
+
+  local removed_count=0
+
+  local phobos_interfaces=$(echo "$interfaces" | jq -r 'to_entries[] | select(.value.description? // "" | startswith("Phobos-")) | .key' 2>/dev/null)
+
+  if [ -z "$phobos_interfaces" ]; then
+    log "  Интерфейсы Phobos не найдены в системе"
+    return 0
+  fi
+
+  echo "$phobos_interfaces" | while read -r interface_id; do
+    if [ -z "$interface_id" ]; then
+      continue
+    fi
+
+    local interface_desc=$(echo "$interfaces" | jq -r --arg id "$interface_id" '.[$id].description // "unknown"' 2>/dev/null)
+
+    log "  Удаление интерфейса: $interface_id ($interface_desc)"
+
+    local delete_json=$(cat <<EOF
+{
+  "interface": {
+    "$interface_id": {
+      "no": true
+    }
+  }
+}
+EOF
+)
+
+    local result=$(echo "$delete_json" | curl -s -X POST \
+      -H "Content-Type: application/json" \
+      -d @- \
+      "http://127.0.0.1:79/rci/" 2>/dev/null)
+
+    if echo "$result" | jq -e '.status == "error"' >/dev/null 2>&1; then
+      local error_msg=$(echo "$result" | jq -r '.message // "Unknown error"' 2>/dev/null)
+      log "  ОШИБКА при удалении $interface_id: $error_msg"
+    else
+      log "  ✓ Интерфейс $interface_id удален"
+      removed_count=$((removed_count + 1))
+    fi
+  done
+
+  local save_result=$(curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"system":{"configuration":{"save":{}}}}' \
+    "http://127.0.0.1:79/rci/" 2>/dev/null)
+
+  if [ $removed_count -gt 0 ]; then
+    log "✓ Удалено интерфейсов: $removed_count"
+    log "✓ Конфигурация сохранена"
+  fi
+}
+
+remove_files() {
+  log "Удаление файлов Phobos..."
+
+  if [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+    rm -f /opt/etc/init.d/S49wg-obfuscator
+    log "  ✓ Удален init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
+  fi
+
+  if [ -f /opt/bin/wg-obfuscator ]; then
+    rm -f /opt/bin/wg-obfuscator
+    log "  ✓ Удален бинарник: /opt/bin/wg-obfuscator"
+  fi
+
+  if [ -d "$PHOBOS_DIR" ]; then
+    rm -rf "$PHOBOS_DIR"
+    log "  ✓ Удалена директория: $PHOBOS_DIR"
+  fi
+}
+
+show_final_info() {
+  log ""
+  log "╔════════════════════════════════════════════════════════════╗"
+  log "║  Phobos успешно удален с роутера                           ║"
+  log "╚════════════════════════════════════════════════════════════╝"
+  log ""
+  log "Удалены компоненты:"
+  log "  - wg-obfuscator (процесс, init-скрипт, бинарник)"
+  log "  - WireGuard интерфейсы Phobos"
+  log "  - Конфигурационные файлы"
+  log ""
+}
+
+main() {
+  log "==> Начало удаления Phobos с роутера Keenetic"
+
+  check_root
+
+  stop_obfuscator
+  remove_wireguard_interfaces
+  remove_files
+
+  show_final_info
+
+  log "==> Удаление завершено."
+}
+
+main "$@"

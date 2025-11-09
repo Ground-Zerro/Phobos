@@ -11,7 +11,7 @@ log() {
 check_dependencies() {
   local missing=""
 
-  for cmd in grep cut date tee tar; do
+  for cmd in grep cut date tee tar jq; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
       missing="$missing $cmd"
     fi
@@ -79,6 +79,11 @@ install_obfuscator() {
 
   log "Установка wg-obfuscator для архитектуры $arch..."
 
+  if [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+    log "Остановка текущего процесса wg-obfuscator..."
+    /opt/etc/init.d/S49wg-obfuscator stop >/dev/null 2>&1 || true
+  fi
+
   local binary_name="wg-obfuscator-$arch"
 
   if [ ! -f "bin/$binary_name" ]; then
@@ -122,6 +127,18 @@ deploy_health_check() {
     log "Скрипт проверки состояния установлен: $PHOBOS_DIR/router-health-check.sh"
   else
     log "ПРЕДУПРЕЖДЕНИЕ: router-health-check.sh не найден в архиве"
+  fi
+}
+
+deploy_uninstall_script() {
+  log "Развертывание скрипта удаления Phobos..."
+
+  if [ -f "router-uninstall.sh" ]; then
+    cp "router-uninstall.sh" "$PHOBOS_DIR/router-uninstall.sh"
+    chmod +x "$PHOBOS_DIR/router-uninstall.sh"
+    log "Скрипт удаления установлен: $PHOBOS_DIR/router-uninstall.sh"
+  else
+    log "ПРЕДУПРЕЖДЕНИЕ: router-uninstall.sh не найден в архиве"
   fi
 }
 
@@ -245,11 +262,13 @@ show_final_info() {
   log "  Конфиг obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
   log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
   log "  Init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
-  log "  Phobos Router Health Check: $PHOBOS_DIR/router-health-check.sh"
+  log "  Health Check: $PHOBOS_DIR/router-health-check.sh"
+  log "  Uninstall: $PHOBOS_DIR/router-uninstall.sh"
   log ""
-  log "Проверка состояния:"
+  log "Управление:"
   log "  /opt/etc/init.d/S49wg-obfuscator status    # Проверить что obfuscator запущен"
   log "  $PHOBOS_DIR/router-health-check.sh         # Проверить состояние роутера"
+  log "  $PHOBOS_DIR/router-uninstall.sh            # Удалить Phobos с роутера"
   log ""
 }
 
@@ -277,6 +296,7 @@ main() {
   install_obfuscator "$ARCH"
   setup_configs
   deploy_health_check
+  deploy_uninstall_script
   create_init_script
   start_obfuscator
 

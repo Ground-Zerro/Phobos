@@ -7,7 +7,7 @@ MAX_INTERFACE_NUM=9
 check_dependencies() {
     local missing=""
 
-    for cmd in curl grep cut date tee; do
+    for cmd in curl jq date; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing="$missing $cmd"
         fi
@@ -130,8 +130,8 @@ find_phobos_interface() {
     for i in 0 1 2 3 4 5 6 7 8 9; do
         local interface_json=$(curl -s "${RCI_URL}show/rc/interface/Wireguard${i}" 2>/dev/null)
 
-        if echo "${interface_json}" | grep -q '"description"'; then
-            local desc=$(echo "${interface_json}" | grep '"description"' | head -1 | cut -d'"' -f4)
+        if [ -n "${interface_json}" ] && echo "${interface_json}" | jq -e . >/dev/null 2>&1; then
+            local desc=$(echo "${interface_json}" | jq -r '.description // empty' 2>/dev/null)
             if [ "${desc}" = "${target_desc}" ]; then
                 log "Найден существующий интерфейс: Wireguard${i}" >&2
                 echo "Wireguard${i}"
@@ -152,7 +152,7 @@ find_free_wireguard_interface() {
     for i in 0 1 2 3 4 5 6 7 8 9; do
         local interface_json=$(curl -s "${RCI_URL}show/interface/Wireguard${i}" 2>/dev/null)
 
-        if ! echo "${interface_json}" | grep -q '"id"'; then
+        if [ -z "${interface_json}" ] || ! echo "${interface_json}" | jq -e '.id' >/dev/null 2>&1; then
             log "Найден свободный интерфейс: Wireguard${i}" >&2
             echo "Wireguard${i}"
             return 0
@@ -242,8 +242,8 @@ EOF
         -d @- \
         "${RCI_URL}" 2>/dev/null)
 
-    if echo "${result}" | grep -q '"status":"error"'; then
-        local error_msg=$(echo "${result}" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4)
+    if echo "${result}" | jq -e '.status == "error"' >/dev/null 2>&1; then
+        local error_msg=$(echo "${result}" | jq -r '.message // "Unknown error"' 2>/dev/null)
         error "RCI API отклонил конфигурацию: ${error_msg}"
         log "JSON запрос:"
         log "${config_json}"
@@ -276,30 +276,33 @@ save_configuration() {
     fi
 }
 
-verify_wireguard_connection() {
-    local interface_name="$1"
-    local max_wait=30
-    local elapsed=0
+verify_interface_created() {
+    local client_name="$1"
+    local interface_description="Phobos-${client_name}"
 
-    local sys_interface=$(echo "${interface_name}" | sed 's/Wireguard/nwg/')
+    log "Проверка создания интерфейса WireGuard..."
 
-    log "Проверка подключения через ${sys_interface} (ожидание до ${max_wait} секунд)..."
+    local interfaces=$(curl -s "http://127.0.0.1:79/rci/show/interface" 2>/dev/null || echo "")
 
-    while [ ${elapsed} -lt ${max_wait} ]; do
-        if ping -I "${sys_interface}" -c 1 -W 1 9.9.9.9 >/dev/null 2>&1; then
-            echo ""
-            log "Подключение через ${sys_interface} успешно! ✓"
-            return 0
-        fi
+    if [ -z "$interfaces" ]; then
+        error "Не удалось получить список интерфейсов через RCI API"
+        return 1
+    fi
 
-        sleep 1
-        elapsed=$((elapsed + 1))
-        printf "."
-    done
+    if ! echo "$interfaces" | jq -e . >/dev/null 2>&1; then
+        error "Некорректный JSON ответ от RCI API"
+        return 1
+    fi
 
-    echo ""
-    error "Не удалось установить подключение через ${sys_interface} за ${max_wait} секунд"
-    return 1
+    local found=$(echo "$interfaces" | jq -r "to_entries[] | select(.value.description == \"$interface_description\") | .key" 2>/dev/null)
+
+    if [ -n "$found" ]; then
+        log "✓ Интерфейс $found (Phobos-${client_name}) успешно создан"
+        return 0
+    else
+        error "Интерфейс с description '$interface_description' не найден"
+        return 1
+    fi
 }
 
 show_fallback_instructions() {
@@ -378,28 +381,22 @@ main() {
     fi
 
     log ""
-    log "Проверка подключения..."
-    sleep 3
+    log "Ожидание применения конфигурации..."
+    sleep 5
 
-    if verify_wireguard_connection "${INTERFACE_NAME}"; then
+    if verify_interface_created "${CLIENT_NAME}"; then
         log ""
         log "╔════════════════════════════════════════════════════════════╗"
-        log "║  WireGuard успешно настроен и подключен!                  ║"
+        log "║  WireGuard успешно настроен!                              ║"
         log "╚════════════════════════════════════════════════════════════╝"
         log ""
         exit 0
     else
         log ""
-        log "⚠ WireGuard настроен, но handshake не установлен"
+        log "⚠ Не удалось подтвердить создание интерфейса WireGuard"
         log ""
-        log "Возможные причины:"
-        log "1. Obfuscator на роутере не запущен"
-        log "2. Obfuscator на VPS недоступен"
-        log "3. Неправильный ключ обфускации"
-        log ""
-        log "Проверьте:"
-        log "  ps | grep wg-obfuscator"
-        log "  netstat -ulnp | grep 13255"
+        log "Проверьте вручную в веб-панели Keenetic:"
+        log "  Интернет → WireGuard"
         log ""
         exit 1
     fi
