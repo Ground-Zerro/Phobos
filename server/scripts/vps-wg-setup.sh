@@ -16,6 +16,9 @@ if [[ $(id -u) -ne 0 ]]; then
   exit 1
 fi
 
+echo "==> Остановка текущего WireGuard (если запущен)..."
+systemctl stop wg-quick@wg0 >/dev/null 2>&1 || true
+
 echo "==> Установка WireGuard..."
 apt update
 apt install -y wireguard wireguard-tools
@@ -35,14 +38,96 @@ fi
 echo "Публичный IPv4 адрес: $SERVER_PUBLIC_IP"
 
 echo "==> Определение публичного IPv6 адреса (опционально)..."
-SERVER_PUBLIC_IP_V6=$(curl -6 -s --max-time 3 ifconfig.me 2>/dev/null || curl -6 -s --max-time 3 icanhazip.com 2>/dev/null || echo "")
-if [[ ! "$SERVER_PUBLIC_IP_V6" =~ ^[0-9a-fA-F:]+$ ]] || [[ "$SERVER_PUBLIC_IP_V6" =~ [^0-9a-fA-F:] ]] || [[ ! "$SERVER_PUBLIC_IP_V6" =~ : ]]; then
-  SERVER_PUBLIC_IP_V6=""
-fi
-if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
-  echo "Публичный IPv6 адрес: $SERVER_PUBLIC_IP_V6"
+SERVER_PUBLIC_IP_V6=""
+
+detect_ipv6_method1() {
+  if ! ip -6 addr show scope global 2>/dev/null | grep -q "inet6"; then
+    return 1
+  fi
+
+  if ! ping6 -c 1 -W 2 2001:4860:4860::8888 >/dev/null 2>&1; then
+    return 1
+  fi
+
+  for service in "api64.ipify.org" "ifconfig.co" "icanhazip.com"; do
+    ipv6_result=$(curl -6 -s --connect-timeout 2 --max-time 2 "https://$service" 2>/dev/null | tr -d '[:space:]')
+
+    if [[ "$ipv6_result" =~ ^([0-9a-fA-F]{0,4}:){7}[0-9a-fA-F]{0,4}$ ]] || \
+       [[ "$ipv6_result" =~ ^([0-9a-fA-F]{1,4}:){1,7}:$ ]] || \
+       [[ "$ipv6_result" =~ ^:(:([0-9a-fA-F]{1,4})){1,7}$ ]] || \
+       [[ "$ipv6_result" =~ ^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$ ]]; then
+      echo "$ipv6_result"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+detect_ipv6_method2() {
+  if ! ip -6 addr show scope global 2>/dev/null | grep -q "inet6"; then
+    return 1
+  fi
+
+  for service in "ident.me" "ipv6.icanhazip.com" "v6.ident.me"; do
+    ipv6_result=$(curl -6 -s --connect-timeout 2 --max-time 2 "https://$service" 2>/dev/null | tr -d '[:space:]')
+
+    if [[ "$ipv6_result" =~ ^([0-9a-fA-F]{0,4}:){7}[0-9a-fA-F]{0,4}$ ]] || \
+       [[ "$ipv6_result" =~ ^([0-9a-fA-F]{1,4}:){1,7}:$ ]] || \
+       [[ "$ipv6_result" =~ ^:(:([0-9a-fA-F]{1,4})){1,7}$ ]] || \
+       [[ "$ipv6_result" =~ ^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$ ]]; then
+      echo "$ipv6_result"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if ip -6 addr show scope global 2>/dev/null | grep -q "inet6"; then
+  echo "Локальный IPv6 интерфейс обнаружен, определение публичного адреса..."
+
+  ipv6_method1=$(timeout 8 bash -c "$(declare -f detect_ipv6_method1); detect_ipv6_method1" 2>/dev/null || echo "")
+
+  if [[ -n "$ipv6_method1" ]] && [[ "$ipv6_method1" =~ ^[0-9a-fA-F:]+$ ]]; then
+    echo "Основной метод: $ipv6_method1"
+
+    ipv6_method2=$(timeout 8 bash -c "$(declare -f detect_ipv6_method2); detect_ipv6_method2" 2>/dev/null || echo "")
+
+    if [[ -n "$ipv6_method2" ]] && [[ "$ipv6_method2" =~ ^[0-9a-fA-F:]+$ ]]; then
+      echo "Резервный метод: $ipv6_method2"
+
+      if [[ "$ipv6_method1" == "$ipv6_method2" ]]; then
+        echo "IPv6 адрес достоверно определен: $ipv6_method1"
+        SERVER_PUBLIC_IP_V6="$ipv6_method1"
+      else
+        echo "ВНИМАНИЕ: результаты методов различаются!"
+        echo "Не удалось достоверно определить IPv6, используется $ipv6_method1"
+        SERVER_PUBLIC_IP_V6="$ipv6_method1"
+      fi
+    else
+      echo "Резервный метод не дал результата, используется: $ipv6_method1"
+      SERVER_PUBLIC_IP_V6="$ipv6_method1"
+    fi
+  else
+    echo "Основной метод не дал результата, пробуем резервный..."
+
+    ipv6_method2=$(timeout 8 bash -c "$(declare -f detect_ipv6_method2); detect_ipv6_method2" 2>/dev/null || echo "")
+
+    if [[ -n "$ipv6_method2" ]] && [[ "$ipv6_method2" =~ ^[0-9a-fA-F:]+$ ]]; then
+      echo "IPv6 адрес определен резервным методом: $ipv6_method2"
+      SERVER_PUBLIC_IP_V6="$ipv6_method2"
+    else
+      echo "Оба метода не смогли определить публичный IPv6"
+      SERVER_PUBLIC_IP_V6=""
+    fi
+  fi
 else
-  echo "IPv6 адрес не обнаружен (не критично)"
+  echo "IPv6 интерфейс не обнаружен на сервере"
+fi
+
+if [[ -z "$SERVER_PUBLIC_IP_V6" ]]; then
+  echo "Публичный IPv6 недоступен (работа только через IPv4)"
 fi
 
 mkdir -p "$PHOBOS_DIR/server"
@@ -62,12 +147,12 @@ if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
   WG_ADDRESS="$SERVER_TUNNEL_IP/24, $SERVER_TUNNEL_IP_V6/64"
   POSTUP_RULES="iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
   POSTDOWN_RULES="iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
-  echo "Dual-stack режим: IPv4 + IPv6"
+  echo "Режим: Dual-stack (IPv4 + IPv6)"
 else
   WG_ADDRESS="$SERVER_TUNNEL_IP/24"
   POSTUP_RULES="iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
   POSTDOWN_RULES="iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
-  echo "IPv4 режим"
+  echo "Режим: IPv4 only"
 fi
 
 cat > "$WG_CONFIG_DIR/wg0.conf" <<EOF

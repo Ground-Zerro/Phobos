@@ -3,15 +3,100 @@ set -euo pipefail
 IFS=$'\n\t'
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 PHOBOS_DIR="/opt/Phobos"
 WWW_DIR="${PHOBOS_DIR}/www"
 SERVER_ENV="${PHOBOS_DIR}/server/server.env"
 
-HTTP_PORT="${HTTP_PORT:-8080}"
+HTTP_PORT="${HTTP_PORT:-}"
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "Этот скрипт требует root привилегии. Запустите: sudo $0"
   exit 1
+fi
+
+echo "==> Остановка текущего HTTP сервера (если запущен)..."
+systemctl stop phobos-http >/dev/null 2>&1 || true
+
+generate_safe_port() {
+  local exclude_port="${1:-}"
+  local IANA_RESERVED_PORTS=(
+    7 9 11 13 17 19 20 21 22 23 25 37 42 43 49 53 67 68
+    69 70 79 80 88 101 102 110 111 113 119 123 135 137 138
+    139 143 161 162 177 179 194 201 389 443 445 465 512 513
+    514 515 520 587 631 636 873 902 989 990 992 993 995
+  )
+  local COMMONLY_USED_PORTS=(
+    81 82 83 88 90 99 443 591 593 808 888 880 888 981 982 999
+    989 990 991 992 993 994 995 222 2222
+    23 25 26 465 587
+    800 801 802 808 809 880 888 890 899
+    330 336 433 543 544 545 550 554 558 591 636 800 808 873 989 990
+    111 135 137 138 139 445 500 535 548 631 902 903
+  )
+
+  local attempts=0
+  local max_attempts=1000
+
+  while [[ $attempts -lt $max_attempts ]]; do
+    local port=$((100 + RANDOM % 601))
+
+    local is_reserved=0
+    for reserved in "${IANA_RESERVED_PORTS[@]}"; do
+      if [[ $port -eq $reserved ]]; then
+        is_reserved=1
+        break
+      fi
+    done
+
+    if [[ $is_reserved -eq 1 ]]; then
+      ((attempts++))
+      continue
+    fi
+
+    for commonly_used in "${COMMONLY_USED_PORTS[@]}"; do
+      if [[ $port -eq $commonly_used ]]; then
+        is_reserved=1
+        break
+      fi
+    done
+
+    if [[ $is_reserved -eq 1 ]]; then
+      ((attempts++))
+      continue
+    fi
+
+    if [[ -n "$exclude_port" ]] && [[ $port -eq $exclude_port ]]; then
+      ((attempts++))
+      continue
+    fi
+
+    if ss -tlnp 2>/dev/null | grep -q ":$port " || ss -ulnp 2>/dev/null | grep -q ":$port "; then
+      ((attempts++))
+      continue
+    fi
+
+    echo "$port"
+    return 0
+  done
+
+  echo "Ошибка: не удалось найти свободный порт после $max_attempts попыток" >&2
+  return 1
+}
+
+if [[ -z "$HTTP_PORT" ]]; then
+  OBFUSCATOR_PORT=""
+  if [[ -f "$SERVER_ENV" ]]; then
+    source "$SERVER_ENV"
+    OBFUSCATOR_PORT="${OBFUSCATOR_PORT:-}"
+  fi
+
+  echo "==> Генерация случайного TCP порта для HTTP сервера (диапазон 100-700)..."
+  HTTP_PORT=$(generate_safe_port "$OBFUSCATOR_PORT")
+  if [[ $? -ne 0 ]]; then
+    echo "Ошибка генерации порта HTTP сервера"
+    exit 1
+  fi
 fi
 
 echo "=========================================="
@@ -28,6 +113,22 @@ fi
 echo "==> Создание структуры директорий"
 mkdir -p "${WWW_DIR}"/{packages,init}
 mkdir -p "${PHOBOS_DIR}/tokens"
+
+echo "==> Установка безопасного HTTP сервера"
+HTTP_SERVER_SCRIPT="${PHOBOS_DIR}/server/phobos-http-server.py"
+
+if [[ -f "$SCRIPT_DIR/phobos-http-server.py" ]]; then
+  cp "$SCRIPT_DIR/phobos-http-server.py" "$HTTP_SERVER_SCRIPT"
+  chmod +x "$HTTP_SERVER_SCRIPT"
+  echo "✓ HTTP сервер скрипт установлен: $HTTP_SERVER_SCRIPT"
+elif [[ -f "$REPO_ROOT/server/scripts/phobos-http-server.py" ]]; then
+  cp "$REPO_ROOT/server/scripts/phobos-http-server.py" "$HTTP_SERVER_SCRIPT"
+  chmod +x "$HTTP_SERVER_SCRIPT"
+  echo "✓ HTTP сервер скрипт установлен: $HTTP_SERVER_SCRIPT"
+else
+  echo "ОШИБКА: phobos-http-server.py не найден"
+  exit 1
+fi
 
 echo "==> Создание index.html для корневой страницы"
 cat > "${WWW_DIR}/index.html" <<'EOF'
@@ -64,7 +165,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=${WWW_DIR}
-ExecStart=/usr/bin/python3 -m http.server ${HTTP_PORT} --bind 0.0.0.0
+ExecStart=/usr/bin/python3 ${HTTP_SERVER_SCRIPT} ${HTTP_PORT} ${WWW_DIR}
 Restart=on-failure
 RestartSec=10
 

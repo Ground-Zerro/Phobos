@@ -13,6 +13,72 @@ if [[ $(id -u) -ne 0 ]]; then
   exit 1
 fi
 
+generate_safe_port() {
+  local exclude_port="${1:-}"
+  local IANA_RESERVED_PORTS=(
+    7 9 11 13 17 19 20 21 22 23 25 37 42 43 49 53 67 68
+    69 70 79 80 88 101 102 110 111 113 119 123 135 137 138
+    139 143 161 162 177 179 194 201 389 443 445 465 512 513
+    514 515 520 587 631 636 873 902 989 990 992 993 995
+  )
+  local COMMONLY_USED_PORTS=(
+    81 82 83 88 90 99 443 591 593 808 888 880 888 981 982 999
+    989 990 991 992 993 994 995 222 2222
+    23 25 26 465 587
+    800 801 802 808 809 880 888 890 899
+    330 336 433 543 544 545 550 554 558 591 636 800 808 873 989 990
+    111 135 137 138 139 445 500 535 548 631 902 903
+  )
+
+  local attempts=0
+  local max_attempts=1000
+
+  while [[ $attempts -lt $max_attempts ]]; do
+    local port=$((100 + RANDOM % 601))
+
+    local is_reserved=0
+    for reserved in "${IANA_RESERVED_PORTS[@]}"; do
+      if [[ $port -eq $reserved ]]; then
+        is_reserved=1
+        break
+      fi
+    done
+
+    if [[ $is_reserved -eq 1 ]]; then
+      ((attempts++))
+      continue
+    fi
+
+    for commonly_used in "${COMMONLY_USED_PORTS[@]}"; do
+      if [[ $port -eq $commonly_used ]]; then
+        is_reserved=1
+        break
+      fi
+    done
+
+    if [[ $is_reserved -eq 1 ]]; then
+      ((attempts++))
+      continue
+    fi
+
+    if [[ -n "$exclude_port" ]] && [[ $port -eq $exclude_port ]]; then
+      ((attempts++))
+      continue
+    fi
+
+    if ss -tlnp 2>/dev/null | grep -q ":$port " || ss -ulnp 2>/dev/null | grep -q ":$port "; then
+      ((attempts++))
+      continue
+    fi
+
+    echo "$port"
+    return 0
+  done
+
+  echo "Ошибка: не удалось найти свободный порт после $max_attempts попыток" >&2
+  return 1
+}
+
 NEW_PORT=""
 NEW_IP=""
 NEW_KEY=""
@@ -74,22 +140,26 @@ change_port() {
   echo ""
   echo "Текущий порт: $CURRENT_PORT"
   echo ""
-  read -p "Введите новый порт (1024-65535) или 'r' для случайного: " port_input
+  read -p "Введите новый порт (1-65535) или 'r' для случайного (100-700): " port_input
 
   if [[ "$port_input" == "r" ]]; then
-    NEW_PORT=$(shuf -i 10000-60000 -n 1)
+    NEW_PORT=$(generate_safe_port)
+    if [[ $? -ne 0 ]]; then
+      echo "Ошибка генерации случайного порта"
+      sleep 2
+      return
+    fi
     echo "Сгенерирован случайный порт: $NEW_PORT"
   else
-    if [[ ! "$port_input" =~ ^[0-9]+$ ]] || [[ "$port_input" -lt 1024 ]] || [[ "$port_input" -gt 65535 ]]; then
-      echo "Ошибка: порт должен быть в диапазоне 1024-65535"
+    if [[ ! "$port_input" =~ ^[0-9]+$ ]] || [[ "$port_input" -lt 1 ]] || [[ "$port_input" -gt 65535 ]]; then
+      echo "Ошибка: порт должен быть числом в диапазоне 1-65535"
       sleep 2
       return
     fi
 
-    if ss -ulpn | grep -q ":$port_input "; then
-      echo "Ошибка: порт $port_input уже занят"
-      sleep 2
-      return
+    if ss -ulpn | grep -q ":$port_input " || ss -tlnp | grep -q ":$port_input "; then
+      echo "ПРЕДУПРЕЖДЕНИЕ: порт $port_input уже занят другим процессом"
+      echo "Продолжение может привести к конфликту портов"
     fi
 
     NEW_PORT="$port_input"
@@ -479,7 +549,7 @@ reset_to_defaults() {
   echo "==> Сброс к настройкам по умолчанию"
   echo ""
   echo "Будут установлены следующие значения:"
-  echo "  Порт:          случайный (10000-60000)"
+  echo "  Порт:          случайный (100-700)"
   echo "  IP:            0.0.0.0"
   echo "  Ключ:          новый 3-символьный"
   echo "  Логирование:   INFO"
@@ -495,7 +565,12 @@ reset_to_defaults() {
     return
   fi
 
-  NEW_PORT=$(shuf -i 10000-60000 -n 1)
+  NEW_PORT=$(generate_safe_port)
+  if [[ $? -ne 0 ]]; then
+    echo "Ошибка генерации случайного порта"
+    sleep 2
+    return
+  fi
   NEW_IP="0.0.0.0"
   NEW_KEY=$(openssl rand -base64 3 | tr -d '+/=' | head -c 3)
   NEW_LOG_LEVEL="INFO"

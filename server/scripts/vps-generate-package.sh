@@ -151,6 +151,28 @@ if [[ "$DETECT_ARCH_FOUND" == "false" ]]; then
   echo "Предупреждение: шаблон detect-router-arch.sh не найден (не критично)"
 fi
 
+echo "==> Копирование скрипта удаления Phobos..."
+
+UNINSTALL_FOUND=false
+
+for UNINSTALL_PATH in \
+  "$REPO_ROOT/client/templates/router-uninstall.sh.template" \
+  "/opt/Phobos/templates/router-uninstall.sh.template" \
+  "/root/client/templates/router-uninstall.sh.template" \
+  "$(dirname "$SCRIPT_DIR")/client/templates/router-uninstall.sh.template"; do
+
+  if [[ -f "$UNINSTALL_PATH" ]]; then
+    cp "$UNINSTALL_PATH" "$PACKAGE_DIR/router-uninstall.sh"
+    chmod +x "$PACKAGE_DIR/router-uninstall.sh"
+    UNINSTALL_FOUND=true
+    break
+  fi
+done
+
+if [[ "$UNINSTALL_FOUND" == "false" ]]; then
+  echo "Предупреждение: шаблон router-uninstall.sh не найден (не критично)"
+fi
+
 echo "==> Создание README..."
 
 if [[ ! -f "$PHOBOS_DIR/server/server.env" ]]; then
@@ -260,6 +282,7 @@ fi)
   - install-router.sh              - Скрипт установки (obfuscator + WireGuard RCI)
   - router-configure-wireguard.sh  - Скрипт автоматической настройки WireGuard через RCI API
   - router-health-check.sh         - Скрипт проверки состояния роутера
+  - router-uninstall.sh            - Скрипт удаления Phobos с роутера
   - detect-router-arch.sh          - Скрипт определения архитектуры роутера
   - bin/wg-obfuscator-*            - Бинарники для разных архитектур
     - wg-obfuscator-mipsel           (MIPS Little Endian)
@@ -283,6 +306,19 @@ fi)
   - Obfuscator управляется через init-скрипт
   - Endpoint в конфиге указывает на локальный obfuscator (127.0.0.1:13255)
   - При обновлении конфигурации существующий интерфейс обновится автоматически
+
+УДАЛЕНИЕ PHOBOS:
+
+  Для удаления Phobos с роутера выполните:
+  1. cd /tmp/phobos-$CLIENT_ID
+  2. chmod +x router-uninstall.sh
+  3. ./router-uninstall.sh
+
+  Скрипт автоматически:
+  ✓ Остановит wg-obfuscator
+  ✓ Удалит все WireGuard интерфейсы Phobos
+  ✓ Удалит бинарник и конфигурационные файлы
+  ✓ Удалит init-скрипт
 
 ОТЛАДКА:
 

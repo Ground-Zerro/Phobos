@@ -17,11 +17,6 @@ apt-get update
 
 echo "==> Установка основных зависимостей"
 apt-get install -y \
-  build-essential \
-  git \
-  make \
-  gcc \
-  g++ \
   wget \
   curl \
   jq \
@@ -38,9 +33,7 @@ echo "  Зависимости успешно установлены!"
 echo "=========================================="
 echo ""
 echo "Установленные пакеты:"
-echo "  - build-essential (компиляция)"
-echo "  - git (контроль версий)"
-echo "  - wget, curl (загрузка файлов)"
+echo "  - wget, curl (загрузка файлов, определение IP)"
 echo "  - jq (обработка JSON)"
 echo "  - python3 (HTTP сервер)"
 echo "  - openssl (генерация ключей)"
