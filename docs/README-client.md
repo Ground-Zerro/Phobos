@@ -18,9 +18,11 @@
 
 ### Что будет установлено
 
+- jq - утилита для парсинга JSON (автоматически через opkg)
 - wg-obfuscator - программа для обфускации WireGuard трафика
 - Автозапуск obfuscator через init-скрипт
 - Конфигурационные файлы в /opt/etc/Phobos/
+- Скрипты обслуживания (health-check, uninstall)
 
 **Важно:** WireGuard уже встроен в прошивку Keenetic и не требует установки!
 
@@ -80,12 +82,14 @@ curl -sL http://<server_ip>:8080/init/<token>.sh | sh
 ```
 
 Выполните команду на роутере через SSH. Скрипт автоматически:
-1. Загрузит установочный пакет
-2. Определит архитектуру роутера
-3. Установит правильный бинарник wg-obfuscator
-4. Настроит автозапуск obfuscator
-5. Настроит WireGuard через RCI API
-6. Активирует подключение и проверит handshake
+1. Установит jq (если отсутствует)
+2. Загрузит установочный пакет
+3. Определит архитектуру роутера
+4. Установит правильный бинарник wg-obfuscator
+5. Настроит автозапуск obfuscator
+6. Настроит WireGuard через RCI API (с использованием jq для парсинга JSON)
+7. Активирует подключение и проверит создание интерфейса
+8. Развернет скрипты health-check и uninstall
 
 ### Метод 2: Ручная установка
 
@@ -193,8 +197,18 @@ cat /opt/etc/Phobos/<client_name>.conf
 Скрипт проверит:
 - Статус wg-obfuscator
 - Конфигурационные файлы
-- WireGuard в Keenetic
+- WireGuard интерфейсы в Keenetic (с использованием jq)
+- Внешний IP для всех активных WireGuard туннелей
 - Сетевое подключение
+
+**Пример вывода для активных туннелей:**
+```
+==> Проверка WireGuard в Keenetic
+✓ WireGuard интерфейсов в Keenetic: 2
+  └─ Детали интерфейсов:
+    Wireguard0: Phobos-client1 - up (IP: 94.183.235.179)
+    Wireguard1: Another-VPN - down
+```
 
 ### Ручная проверка
 
@@ -263,6 +277,21 @@ scp new-wg-obfuscator.conf root@<router_ip>:/opt/etc/Phobos/wg-obfuscator.conf
 
 ### Удаление
 
+Используйте автоматический скрипт удаления:
+
+```bash
+/opt/etc/Phobos/router-uninstall.sh
+```
+
+Скрипт автоматически:
+- Остановит wg-obfuscator
+- Найдет и удалит все WireGuard интерфейсы Phobos через RCI API (с использованием jq)
+- Удалит бинарник (/opt/bin/wg-obfuscator)
+- Удалит init-скрипт (/opt/etc/init.d/S49wg-obfuscator)
+- Удалит конфигурационные файлы (/opt/etc/Phobos)
+- Сохранит конфигурацию роутера
+
+**Ручное удаление (если скрипт недоступен):**
 ```bash
 /opt/etc/init.d/S49wg-obfuscator stop
 rm -f /opt/bin/wg-obfuscator
@@ -270,7 +299,7 @@ rm -f /opt/etc/init.d/S49wg-obfuscator
 rm -rf /opt/etc/Phobos
 ```
 
-Затем удалите WireGuard подключение через веб-панель Keenetic.
+Затем удалите WireGuard подключения вручную через веб-панель Keenetic.
 
 ## Решение проблем
 
@@ -327,7 +356,9 @@ ls -la /opt/etc/init.d/S49wg-obfuscator
 /opt/bin/wg-obfuscator                      - Бинарник obfuscator
 /opt/etc/Phobos/
 ├── <client_name>.conf                      - Конфиг WireGuard (fallback для ручного импорта)
-└── wg-obfuscator.conf                      - Конфиг obfuscator
+├── wg-obfuscator.conf                      - Конфиг obfuscator
+├── router-health-check.sh                  - Скрипт проверки состояния системы
+└── router-uninstall.sh                     - Скрипт удаления Phobos с роутера
 /opt/etc/init.d/S49wg-obfuscator            - Init-скрипт автозапуска obfuscator
 ```
 

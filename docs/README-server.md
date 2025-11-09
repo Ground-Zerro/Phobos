@@ -51,9 +51,11 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/main
 ```
 
 Скрипт автоматически:
-- Установит необходимые зависимости
+- Установит необходимые зависимости (wget, curl, jq, python3, openssl, wireguard)
 - Клонирует репозиторий в /opt/Phobos/repo
 - Скопирует готовые бинарники wg-obfuscator
+- Определит IPv6 адрес (если доступен) с двойной проверкой
+- Сгенерирует безопасные порты (100-700) для obfuscator и HTTP сервера
 - Настроит WireGuard и obfuscator
 - Создаст первого клиента
 - Запустит HTTP сервер для раздачи пакетов
@@ -273,12 +275,18 @@ ping 10.8.0.2
 ### /opt/Phobos/server/server.env
 
 ```bash
-OBFUSCATOR_PORT=<random 10000-60000>
+OBFUSCATOR_PORT=<random 100-700, исключая зарезервированные>
 OBFUSCATOR_KEY=<random 3 char>
-SERVER_PUBLIC_IP=<auto-detected>
+SERVER_PUBLIC_IP=<auto-detected IPv4>
+SERVER_PUBLIC_IP_V6=<auto-detected IPv6 if available>
 WG_LOCAL_ENDPOINT=127.0.0.1:51820
-HTTP_PORT=8080
+HTTP_PORT=<random 100-700, исключая OBFUSCATOR_PORT>
 ```
+
+**Примечания:**
+- Порты генерируются в диапазоне 100-700 с исключением IANA зарезервированных портов
+- IPv6 определяется с двойной проверкой через несколько сервисов для надежности
+- HTTP_PORT исключает конфликт с OBFUSCATOR_PORT
 
 ### /etc/wireguard/wg0.conf
 
