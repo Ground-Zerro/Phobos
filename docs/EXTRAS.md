@@ -50,7 +50,8 @@ Phobos/
 │       ├── wg-obfuscator_x86_64                      # Готовый бинарник для VPS (x86_64)
 │       ├── wg-obfuscator-mipsel                      # Готовый бинарник для MIPS Little Endian
 │       ├── wg-obfuscator-mips                        # Готовый бинарник для MIPS Big Endian
-│       └── wg-obfuscator-aarch64                     # Готовый бинарник для ARM64
+│       ├── wg-obfuscator-aarch64                     # Готовый бинарник для ARM64
+│       └── wg-obfuscator-armv7                       # Готовый бинарник для ARMv7
 ├── docs/
 │   ├── README-server.md                     # Руководство администратора
 │   ├── README-client.md                     # Руководство пользователя
@@ -91,7 +92,8 @@ Phobos/
 │   ├── wg-obfuscator                    # Нативный для VPS (x86_64)
 │   ├── wg-obfuscator-mipsel             # MIPS Little Endian
 │   ├── wg-obfuscator-mips               # MIPS Big Endian
-│   └── wg-obfuscator-aarch64            # ARM64
+│   ├── wg-obfuscator-aarch64            # ARM64
+│   └── wg-obfuscator-armv7              # ARMv7
 └── logs/
     ├── phobos.log
     ├── cleanup.log                      # Логи очистки токенов
