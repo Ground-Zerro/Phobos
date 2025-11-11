@@ -34,7 +34,8 @@ fi
 
 if [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-mipsel" ]] || \
    [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-mips" ]] || \
-   [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-aarch64" ]]; then
+   [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-aarch64" ]] || \
+   [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-armv7" ]]; then
   echo "Ошибка: бинарники wg-obfuscator для роутеров не найдены."
   echo "Сначала запустите vps-build-obfuscator.sh"
   exit 1
@@ -58,6 +59,7 @@ echo "==> Копирование бинарников для роутеров...
 cp "$PHOBOS_DIR/bin/wg-obfuscator-mipsel" "$PACKAGE_DIR/bin/"
 cp "$PHOBOS_DIR/bin/wg-obfuscator-mips" "$PACKAGE_DIR/bin/"
 cp "$PHOBOS_DIR/bin/wg-obfuscator-aarch64" "$PACKAGE_DIR/bin/"
+cp "$PHOBOS_DIR/bin/wg-obfuscator-armv7" "$PACKAGE_DIR/bin/"
 
 echo "==> Копирование скрипта установки..."
 
@@ -85,7 +87,7 @@ fi
 sed -i "s|{{CLIENT_NAME}}|${CLIENT_ID}|g" "$PACKAGE_DIR/install-router.sh"
 chmod +x "$PACKAGE_DIR/install-router.sh"
 
-echo "==> Копирование скрипта настройки WireGuard через RCI API..."
+echo "==> Копирование скрипта настройки WireGuard через RCI API (Keenetic)..."
 
 WG_CONFIG_FOUND=false
 
@@ -104,7 +106,29 @@ for WG_CONFIG_PATH in \
 done
 
 if [[ "$WG_CONFIG_FOUND" == "false" ]]; then
-  echo "Предупреждение: router-configure-wireguard.sh не найден - автоматическая настройка WireGuard будет недоступна"
+  echo "Предупреждение: router-configure-wireguard.sh не найден - автоматическая настройка WireGuard на Keenetic будет недоступна"
+fi
+
+echo "==> Копирование скрипта настройки WireGuard через UCI (OpenWRT)..."
+
+WG_CONFIG_OPENWRT_FOUND=false
+
+for WG_CONFIG_OPENWRT_PATH in \
+  "$REPO_ROOT/client/templates/router-configure-wireguard-openwrt.sh.template" \
+  "/opt/Phobos/templates/router-configure-wireguard-openwrt.sh.template" \
+  "/root/client/templates/router-configure-wireguard-openwrt.sh.template" \
+  "$(dirname "$SCRIPT_DIR")/client/templates/router-configure-wireguard-openwrt.sh.template"; do
+
+  if [[ -f "$WG_CONFIG_OPENWRT_PATH" ]]; then
+    cp "$WG_CONFIG_OPENWRT_PATH" "$PACKAGE_DIR/router-configure-wireguard-openwrt.sh"
+    chmod +x "$PACKAGE_DIR/router-configure-wireguard-openwrt.sh"
+    WG_CONFIG_OPENWRT_FOUND=true
+    break
+  fi
+done
+
+if [[ "$WG_CONFIG_OPENWRT_FOUND" == "false" ]]; then
+  echo "Предупреждение: router-configure-wireguard-openwrt.sh не найден - автоматическая настройка WireGuard на OpenWRT будет недоступна"
 fi
 
 echo "==> Копирование скрипта проверки здоровья роутера..."
@@ -194,13 +218,14 @@ fi
 
 cat > "$PACKAGE_DIR/README.txt" <<EOF
 ====================================================
-  Установочный пакет Phobos для Keenetic
+  Установочный пакет Phobos
   Клиент: $CLIENT_ID
   Дата: $(date)
 ====================================================
 
-ЦЕЛЕВАЯ ПЛАТФОРМА:
-  Роутер Keenetic с установленным Entware
+ЦЕЛЕВЫЕ ПЛАТФОРМЫ:
+  - Роутер Keenetic с установленным Entware
+  - Роутер OpenWRT (любая версия)
 
 ИНСТРУКЦИЯ ПО УСТАНОВКЕ:
 
@@ -226,10 +251,19 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
   chmod +x install-router.sh
   ./install-router.sh
 
-  Скрипт автоматически:
+  Скрипт автоматически определит платформу и:
+
+  ДЛЯ KEENETIC:
   ✓ Установит wg-obfuscator (WireGuard встроен в прошивку!)
   ✓ Настроит WireGuard через RCI API (автоматически!)
   ✓ Создаст интерфейс с именем "Phobos-$CLIENT_ID"
+  ✓ Активирует подключение
+
+  ДЛЯ OPENWRT:
+  ✓ Установит пакеты WireGuard (kmod-wireguard, wireguard-tools, luci-app-wireguard)
+  ✓ Установит wg-obfuscator
+  ✓ Настроит WireGuard через UCI (автоматически!)
+  ✓ Создаст интерфейс "phobos_wg" и файрволл зону "phobos"
   ✓ Активирует подключение
 
 Шаг 4. Проверка результата
@@ -239,7 +273,7 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
     ✓ Handshake установлен
     ✓ Готово к использованию!
 
-  Если RCI API недоступен (старая версия Keenetic OS):
+  KEENETIC - Если RCI API недоступен (старая версия):
     ⚠ Требуется ручной импорт WireGuard конфигурации:
 
     1. Откройте веб-панель Keenetic (http://192.168.1.1 или http://my.keenetic.net)
@@ -249,8 +283,17 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
     5. Укажите файл: /opt/etc/Phobos/$CLIENT_ID.conf
     6. Активируйте подключение
 
+  OPENWRT - Если UCI недоступен:
+    ⚠ Требуется ручная настройка через LuCI:
+
+    1. Откройте веб-интерфейс LuCI (http://192.168.1.1)
+    2. Перейдите: Network → Interfaces
+    3. Создайте новый интерфейс с протоколом WireGuard
+    4. Используйте параметры из файла: /etc/Phobos/$CLIENT_ID.conf
+    5. Настройте файрволл зону для интерфейса
+
     Просмотр содержимого конфига:
-      cat /opt/etc/Phobos/$CLIENT_ID.conf
+      cat /etc/Phobos/$CLIENT_ID.conf
 
 Шаг 5. Проверка соединения
 ---------------------------------------
@@ -277,35 +320,56 @@ fi)
 
 СОДЕРЖИМОЕ АРХИВА:
 
-  - $CLIENT_ID.conf                - Конфиг WireGuard (dual-stack если IPv6 доступен)
-  - wg-obfuscator.conf             - Конфиг obfuscator (только IPv4)
-  - install-router.sh              - Скрипт установки (obfuscator + WireGuard RCI)
-  - router-configure-wireguard.sh  - Скрипт автоматической настройки WireGuard через RCI API
-  - router-health-check.sh         - Скрипт проверки состояния роутера
-  - router-uninstall.sh            - Скрипт удаления Phobos с роутера
-  - detect-router-arch.sh          - Скрипт определения архитектуры роутера
-  - bin/wg-obfuscator-*            - Бинарники для разных архитектур
-    - wg-obfuscator-mipsel           (MIPS Little Endian)
-    - wg-obfuscator-mips             (MIPS Big Endian)
-    - wg-obfuscator-aarch64          (ARM64)
-  - README.txt                     - Этот файл
+  - $CLIENT_ID.conf                      - Конфиг WireGuard (dual-stack если IPv6 доступен)
+  - wg-obfuscator.conf                   - Конфиг obfuscator (только IPv4)
+  - install-router.sh                    - Скрипт установки (универсальный, определяет платформу)
+  - router-configure-wireguard.sh        - Скрипт автоматической настройки WireGuard через RCI API (Keenetic)
+  - router-configure-wireguard-openwrt.sh - Скрипт автоматической настройки WireGuard через UCI (OpenWRT)
+  - router-health-check.sh               - Скрипт проверки состояния роутера (универсальный)
+  - router-uninstall.sh                  - Скрипт удаления Phobos с роутера (универсальный)
+  - detect-router-arch.sh                - Скрипт определения архитектуры роутера
+  - bin/wg-obfuscator-*                  - Бинарники для разных архитектур
+    - wg-obfuscator-mipsel                 (MIPS Little Endian)
+    - wg-obfuscator-mips                   (MIPS Big Endian)
+    - wg-obfuscator-aarch64                (ARM64)
+    - wg-obfuscator-armv7                  (ARMv7)
+  - README.txt                           - Этот файл
 
 УСТАНОВЛЕННЫЕ ФАЙЛЫ НА РОУТЕРЕ:
 
+  KEENETIC:
   /opt/bin/wg-obfuscator                      - Бинарник obfuscator
   /opt/etc/Phobos/wg-obfuscator.conf          - Конфиг obfuscator
-  /opt/etc/Phobos/$CLIENT_ID.conf             - Конфиг WireGuard (fallback)
-  /opt/etc/init.d/S49wg-obfuscator            - Init-скрипт obfuscator
+  /opt/etc/Phobos/$CLIENT_ID.conf             - Конфиг WireGuard
+  /opt/etc/init.d/S49wg-obfuscator            - Init-скрипт obfuscator (Entware)
+
+  OPENWRT:
+  /usr/bin/wg-obfuscator                      - Бинарник obfuscator
+  /etc/Phobos/wg-obfuscator.conf              - Конфиг obfuscator
+  /etc/Phobos/$CLIENT_ID.conf                 - Конфиг WireGuard
+  /etc/init.d/phobos-obfuscator               - Procd init-скрипт
 
 ВАЖНЫЕ ЗАМЕЧАНИЯ:
 
+  KEENETIC:
   - WireGuard встроен в прошивку Keenetic - установка не требуется
-  - НОВОЕ: WireGuard настраивается АВТОМАТИЧЕСКИ через RCI API (Keenetic OS 4.0+)
+  - WireGuard настраивается АВТОМАТИЧЕСКИ через RCI API (Keenetic OS 4.0+)
   - Создаётся интерфейс с description="Phobos-$CLIENT_ID" для идентификации
   - Fallback конфиг сохраняется для ручного импорта при необходимости
-  - Obfuscator управляется через init-скрипт
-  - Endpoint в конфиге указывает на локальный obfuscator (127.0.0.1:13255)
   - При обновлении конфигурации существующий интерфейс обновится автоматически
+
+  OPENWRT:
+  - Устанавливаются пакеты: kmod-wireguard, wireguard-tools, luci-app-wireguard
+  - WireGuard настраивается АВТОМАТИЧЕСКИ через UCI
+  - Создаётся интерфейс "phobos_wg" и файрволл зона "phobos"
+  - Зона "phobos" НЕ форвардит трафик автоматически - настройте маршрутизацию вручную
+  - Файлы размещаются в корневой ФС: /usr/bin/, /etc/Phobos/
+  - Init-скрипт: procd (/etc/init.d/phobos-obfuscator)
+
+  ОБЩЕЕ:
+  - Obfuscator управляется через init-скрипт (Entware или procd)
+  - Endpoint в конфиге указывает на локальный obfuscator (127.0.0.1:13255)
+  - Поддержка dual-stack IPv4/IPv6 на обеих платформах
 
 УДАЛЕНИЕ PHOBOS:
 
@@ -333,6 +397,10 @@ fi)
 
 ====================================================
 EOF
+
+echo "==> Конвертация окончаний строк (CRLF -> LF)..."
+
+find "$PACKAGE_DIR" -type f \( -name "*.sh" -o -name "*.conf" -o -name "*.template" \) -exec sed -i 's/\r$//' {} \;
 
 echo "==> Упаковка архива..."
 
