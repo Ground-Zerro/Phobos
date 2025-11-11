@@ -1,10 +1,39 @@
 #!/bin/sh
 set -e
 
-PHOBOS_DIR="/opt/etc/Phobos"
+PHOBOS_DIR=""
+ROUTER_PLATFORM=""
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+detect_router_platform() {
+  local uname_output=$(uname -a)
+
+  if echo "$uname_output" | grep -qi "Keenetic"; then
+    echo "keenetic"
+  elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE"; then
+    echo "openwrt"
+  else
+    echo "unknown"
+  fi
+}
+
+detect_phobos_dir() {
+  local platform="$1"
+
+  if [ "$platform" = "keenetic" ]; then
+    echo "/opt/etc/Phobos"
+  elif [ "$platform" = "openwrt" ]; then
+    echo "/etc/Phobos"
+  else
+    if [ -d "/opt/etc/Phobos" ]; then
+      echo "/opt/etc/Phobos"
+    else
+      echo "/etc/Phobos"
+    fi
+  fi
 }
 
 check_root() {
@@ -19,7 +48,11 @@ stop_obfuscator() {
 
   if [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
     /opt/etc/init.d/S49wg-obfuscator stop >/dev/null 2>&1 || true
-    log "✓ wg-obfuscator остановлен"
+    log "✓ wg-obfuscator остановлен (Entware)"
+  elif [ -f /etc/init.d/phobos-obfuscator ]; then
+    /etc/init.d/phobos-obfuscator stop >/dev/null 2>&1 || true
+    /etc/init.d/phobos-obfuscator disable >/dev/null 2>&1 || true
+    log "✓ wg-obfuscator остановлен (procd)"
   else
     log "  Init-скрипт не найден"
   fi
@@ -30,8 +63,8 @@ stop_obfuscator() {
   fi
 }
 
-remove_wireguard_interfaces() {
-  log "Удаление WireGuard интерфейсов Phobos..."
+remove_wireguard_interfaces_keenetic() {
+  log "Удаление WireGuard интерфейсов Phobos (Keenetic)..."
 
   if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
     log "  curl или jq не установлен, пропускаем удаление интерфейсов"
@@ -99,6 +132,60 @@ EOF
   fi
 }
 
+remove_wireguard_interfaces_openwrt() {
+  log "Удаление WireGuard интерфейсов Phobos (OpenWRT)..."
+
+  if ! command -v uci >/dev/null 2>&1; then
+    log "  uci не установлен, пропускаем удаление интерфейсов"
+    return 0
+  fi
+
+  local interface_name="phobos_wg"
+
+  if uci -q get network.${interface_name} >/dev/null 2>&1; then
+    log "  Удаление интерфейса: ${interface_name}"
+
+    ifdown ${interface_name} >/dev/null 2>&1 || true
+
+    uci -q delete network.${interface_name} || true
+
+    local peers=$(uci show network 2>/dev/null | grep "wireguard_${interface_name}" | cut -d'.' -f2 | cut -d'=' -f1 | sort -u)
+    for peer in $peers; do
+      uci -q delete network.$peer || true
+    done
+
+    uci commit network
+
+    log "  ✓ Интерфейс ${interface_name} удален"
+  else
+    log "  Интерфейс ${interface_name} не найден"
+  fi
+
+  /etc/init.d/network reload >/dev/null 2>&1 || true
+}
+
+remove_firewall_zone_openwrt() {
+  log "Удаление файрволл зоны Phobos (OpenWRT)..."
+
+  if ! command -v uci >/dev/null 2>&1; then
+    log "  uci не установлен, пропускаем удаление зоны"
+    return 0
+  fi
+
+  local zone_name="phobos"
+
+  if uci -q get firewall.${zone_name} >/dev/null 2>&1; then
+    log "  Удаление зоны: ${zone_name}"
+    uci -q delete firewall.${zone_name} || true
+    uci commit firewall
+    log "  ✓ Зона ${zone_name} удалена"
+
+    /etc/init.d/firewall reload >/dev/null 2>&1 || true
+  else
+    log "  Зона ${zone_name} не найдена"
+  fi
+}
+
 remove_files() {
   log "Удаление файлов Phobos..."
 
@@ -107,9 +194,19 @@ remove_files() {
     log "  ✓ Удален init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
   fi
 
+  if [ -f /etc/init.d/phobos-obfuscator ]; then
+    rm -f /etc/init.d/phobos-obfuscator
+    log "  ✓ Удален procd init-скрипт: /etc/init.d/phobos-obfuscator"
+  fi
+
   if [ -f /opt/bin/wg-obfuscator ]; then
     rm -f /opt/bin/wg-obfuscator
     log "  ✓ Удален бинарник: /opt/bin/wg-obfuscator"
+  fi
+
+  if [ -f /usr/bin/wg-obfuscator ]; then
+    rm -f /usr/bin/wg-obfuscator
+    log "  ✓ Удален бинарник: /usr/bin/wg-obfuscator"
   fi
 
   if [ -d "$PHOBOS_DIR" ]; then
@@ -132,12 +229,25 @@ show_final_info() {
 }
 
 main() {
-  log "==> Начало удаления Phobos с роутера Keenetic"
+  ROUTER_PLATFORM=$(detect_router_platform)
+  PHOBOS_DIR=$(detect_phobos_dir "$ROUTER_PLATFORM")
+
+  log "==> Начало удаления Phobos с роутера $ROUTER_PLATFORM"
+  log "==> Директория: $PHOBOS_DIR"
 
   check_root
 
   stop_obfuscator
-  remove_wireguard_interfaces
+
+  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
+    remove_wireguard_interfaces_keenetic
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    remove_wireguard_interfaces_openwrt
+    remove_firewall_zone_openwrt
+  else
+    log "ПРЕДУПРЕЖДЕНИЕ: Неизвестная платформа, пропускаем удаление WireGuard интерфейсов"
+  fi
+
   remove_files
 
   show_final_info

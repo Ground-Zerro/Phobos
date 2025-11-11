@@ -2,16 +2,54 @@
 set -e
 
 CLIENT_NAME="{{CLIENT_NAME}}"
-PHOBOS_DIR="/opt/etc/Phobos"
+PHOBOS_DIR=""
+ROUTER_PLATFORM=""
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
-check_dependencies() {
-  local missing=""
+detect_router_platform() {
+  local uname_output=$(uname -a)
 
-  for cmd in grep cut date tee tar jq; do
+  if echo "$uname_output" | grep -qi "Keenetic"; then
+    echo "keenetic"
+  elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE"; then
+    echo "openwrt"
+  else
+    echo "unknown"
+  fi
+}
+
+detect_phobos_dir() {
+  local platform="$1"
+
+  if [ "$platform" = "keenetic" ]; then
+    echo "/opt/etc/Phobos"
+  elif [ "$platform" = "openwrt" ]; then
+    echo "/etc/Phobos"
+  else
+    if [ -d "/opt" ] && [ -d "/opt/etc" ]; then
+      echo "/opt/etc/Phobos"
+    else
+      echo "/etc/Phobos"
+    fi
+  fi
+}
+
+check_dependencies() {
+  local platform="$1"
+  local missing=""
+  local base_deps="grep cut date tee tar"
+  local platform_deps=""
+
+  if [ "$platform" = "keenetic" ]; then
+    platform_deps="jq"
+  elif [ "$platform" = "openwrt" ]; then
+    platform_deps="uci"
+  fi
+
+  for cmd in $base_deps $platform_deps; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
       missing="$missing $cmd"
     fi
@@ -56,7 +94,7 @@ detect_arch() {
       echo "aarch64"
       ;;
     armv7l|armv6l)
-      echo "aarch64"
+      echo "armv7"
       ;;
     x86_64)
       echo "x86_64"
@@ -84,6 +122,11 @@ install_obfuscator() {
     /opt/etc/init.d/S49wg-obfuscator stop >/dev/null 2>&1 || true
   fi
 
+  if [ -f /etc/init.d/phobos-obfuscator ]; then
+    log "Остановка текущего процесса wg-obfuscator..."
+    /etc/init.d/phobos-obfuscator stop >/dev/null 2>&1 || true
+  fi
+
   local binary_name="wg-obfuscator-$arch"
 
   if [ ! -f "bin/$binary_name" ]; then
@@ -93,13 +136,25 @@ install_obfuscator() {
     exit 1
   fi
 
-  if [ -f /opt/bin/wg-obfuscator ]; then
-    rm /opt/bin/wg-obfuscator
+  local target_path="/opt/bin/wg-obfuscator"
+  if [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    target_path="/usr/bin/wg-obfuscator"
   fi
-  cp "bin/$binary_name" /opt/bin/wg-obfuscator
-  chmod +x /opt/bin/wg-obfuscator
 
-  log "Бинарник wg-obfuscator установлен в /opt/bin/wg-obfuscator"
+  if [ -f "$target_path" ]; then
+    rm "$target_path"
+  fi
+
+  if [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    mkdir -p /usr/bin
+  else
+    mkdir -p /opt/bin
+  fi
+
+  cp "bin/$binary_name" "$target_path"
+  chmod +x "$target_path"
+
+  log "Бинарник wg-obfuscator установлен в $target_path"
 }
 
 setup_configs() {
@@ -166,14 +221,130 @@ EOF
 start_obfuscator() {
   log "Запуск wg-obfuscator..."
 
-  /opt/etc/init.d/S49wg-obfuscator start
+  if [ "$ROUTER_PLATFORM" = "keenetic" ] || [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+    /opt/etc/init.d/S49wg-obfuscator start
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/phobos-obfuscator ]; then
+    /etc/init.d/phobos-obfuscator start
+    /etc/init.d/phobos-obfuscator enable
+  fi
 
   sleep 2
 
-  if ps | grep -v grep | grep -q wg-obfuscator; then
+  local process_found=0
+
+  if command -v pidof >/dev/null 2>&1 && pidof wg-obfuscator >/dev/null 2>&1; then
+    process_found=1
+  elif command -v pgrep >/dev/null 2>&1 && pgrep -f wg-obfuscator >/dev/null 2>&1; then
+    process_found=1
+  elif ps w 2>/dev/null | grep -v grep | grep -q "wg-obfuscator\|/opt/bin/wg-obfuscator\|/usr/bin/wg-obfuscator"; then
+    process_found=1
+  elif ps 2>/dev/null | grep -v grep | grep -q "wg-obfuscator"; then
+    process_found=1
+  fi
+
+  if [ $process_found -eq 0 ]; then
+    if [ "$ROUTER_PLATFORM" = "keenetic" ] && [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+      local status_output=$(/opt/etc/init.d/S49wg-obfuscator status 2>&1 || echo "")
+      if echo "$status_output" | grep -q "alive"; then
+        process_found=1
+      fi
+    elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/phobos-obfuscator ]; then
+      if /etc/init.d/phobos-obfuscator status >/dev/null 2>&1; then
+        process_found=1
+      fi
+    fi
+  fi
+
+  if [ $process_found -eq 1 ]; then
     log "✓ wg-obfuscator успешно запущен"
   else
     log "✗ wg-obfuscator не запущен. Проверьте логи."
+  fi
+}
+
+create_procd_init_script() {
+  log "Создание procd init-скрипта для obfuscator..."
+
+  cat > /etc/init.d/phobos-obfuscator <<'EOF'
+#!/bin/sh /etc/rc.common
+
+START=49
+STOP=51
+
+USE_PROCD=1
+
+PROG=/usr/bin/wg-obfuscator
+CONFIG_FILE=/etc/Phobos/wg-obfuscator.conf
+
+start_service() {
+  if [ ! -f "$PROG" ]; then
+    echo "Error: wg-obfuscator not found at $PROG"
+    return 1
+  fi
+
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: config not found at $CONFIG_FILE"
+    return 1
+  fi
+
+  procd_open_instance
+  procd_set_param command $PROG --config $CONFIG_FILE
+  procd_set_param respawn
+  procd_set_param stdout 1
+  procd_set_param stderr 1
+  procd_close_instance
+}
+EOF
+
+  chmod +x /etc/init.d/phobos-obfuscator
+
+  log "Procd init-скрипт создан: /etc/init.d/phobos-obfuscator"
+}
+
+install_wireguard_openwrt() {
+  log "Установка пакетов WireGuard для OpenWRT..."
+
+  if ! command -v wg >/dev/null 2>&1; then
+    log "Установка kmod-wireguard и wireguard-tools..."
+    opkg update
+    opkg install kmod-wireguard wireguard-tools luci-proto-wireguard
+  else
+    log "WireGuard уже установлен"
+  fi
+
+  log "Установка luci-app-wireguard для веб-интерфейса..."
+  opkg install luci-app-wireguard >/dev/null 2>&1 || log "ПРЕДУПРЕЖДЕНИЕ: luci-app-wireguard не удалось установить"
+
+  log "✓ Пакеты WireGuard установлены"
+}
+
+configure_wireguard_openwrt() {
+  log ""
+  log "==> Автоматическая настройка WireGuard через UCI..."
+
+  extract_wireguard_params
+
+  if [ ! -f "./router-configure-wireguard-openwrt.sh" ]; then
+    log "⚠ Скрипт router-configure-wireguard-openwrt.sh не найден"
+    log "   Используйте ручную настройку через LuCI или UCI"
+    return 1
+  fi
+
+  chmod +x ./router-configure-wireguard-openwrt.sh
+
+  if ./router-configure-wireguard-openwrt.sh \
+      --client-name "$CLIENT_NAME" \
+      --client-private-key "$WG_PRIVATE_KEY" \
+      --client-ip "$CLIENT_IP" \
+      --client-ipv6 "$CLIENT_IPV6" \
+      --server-public-key "$WG_SERVER_PUBKEY" \
+      --keepalive 25 \
+      --mtu 1420 \
+      --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf"; then
+
+    return 0
+  else
+    return 1
   fi
 }
 
@@ -186,11 +357,15 @@ extract_wireguard_params() {
   WG_ADDRESS=$(grep '^Address' "$config_file" | cut -d'=' -f2- | tr -d ' \t\n\r')
   WG_SERVER_PUBKEY=$(grep '^PublicKey' "$config_file" | cut -d'=' -f2- | tr -d ' \t\n\r')
 
-  CLIENT_IP=$(echo "$WG_ADDRESS" | cut -d',' -f1)
-  CLIENT_IPV6=$(echo "$WG_ADDRESS" | cut -d',' -f2)
+  CLIENT_IP=$(echo "$WG_ADDRESS" | cut -d',' -f1 | tr -d ' ')
+  CLIENT_IPV6=$(echo "$WG_ADDRESS" | cut -d',' -f2 | tr -d ' ')
+
+  if [ -z "$CLIENT_IPV6" ] || [ "$CLIENT_IPV6" = "$CLIENT_IP" ]; then
+    CLIENT_IPV6=$(grep -A 10 '\[Interface\]' "$config_file" | grep '^Address' | grep -o 'fd[0-9a-f:\/]*' | head -1)
+  fi
 
   if [ -z "$CLIENT_IPV6" ]; then
-    CLIENT_IPV6=$(grep -A 10 '\[Interface\]' "$config_file" | grep '^Address' | grep -o 'fd[0-9a-f:]*')
+    CLIENT_IPV6="none"
   fi
 
   log "  Private Key: ${WG_PRIVATE_KEY:0:20}..."
@@ -237,17 +412,33 @@ show_manual_instructions() {
   log ""
   log "Выполните следующие шаги:"
   log ""
-  log "1. Откройте веб-панель администрирования роутера Keenetic"
-  log "   (http://192.168.1.1 или http://my.keenetic.net)"
-  log ""
-  log "2. Перейдите в раздел: Интернет → Другие подключения"
-  log ""
-  log "3. Выберите 'Загрузить конфигурацию из файла' в разделе 'WireGuard'"
-  log ""
-  log "4. Укажите путь к файлу:"
-  log "   $PHOBOS_DIR/${CLIENT_NAME}.conf"
-  log ""
-  log "5. Активируйте подключение"
+
+  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
+    log "1. Откройте веб-панель администрирования роутера Keenetic"
+    log "   (http://192.168.1.1 или http://my.keenetic.net)"
+    log ""
+    log "2. Перейдите в раздел: Интернет → Другие подключения"
+    log ""
+    log "3. Выберите 'Загрузить конфигурацию из файла' в разделе 'WireGuard'"
+    log ""
+    log "4. Укажите путь к файлу:"
+    log "   $PHOBOS_DIR/${CLIENT_NAME}.conf"
+    log ""
+    log "5. Активируйте подключение"
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    log "1. Откройте веб-интерфейс LuCI роутера OpenWRT"
+    log "   (обычно http://192.168.1.1)"
+    log ""
+    log "2. Перейдите в: Network → Interfaces"
+    log ""
+    log "3. Создайте новый интерфейс с протоколом WireGuard"
+    log ""
+    log "4. Используйте параметры из файла:"
+    log "   $PHOBOS_DIR/${CLIENT_NAME}.conf"
+    log ""
+    log "5. Настройте файрволл зону для интерфейса"
+  fi
+
   log ""
 }
 
@@ -258,28 +449,62 @@ show_final_info() {
   log "╚════════════════════════════════════════════════════════════╝"
   log ""
   log "Файлы установки:"
-  log "  Бинарник: /opt/bin/wg-obfuscator"
+
+  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
+    log "  Бинарник: /opt/bin/wg-obfuscator"
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    log "  Бинарник: /usr/bin/wg-obfuscator"
+  fi
+
   log "  Конфиг obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
   log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
-  log "  Init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
+
+  if [ "$ROUTER_PLATFORM" = "keenetic" ] || [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+    log "  Init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/phobos-obfuscator ]; then
+    log "  Init-скрипт: /etc/init.d/phobos-obfuscator"
+  fi
+
   log "  Health Check: $PHOBOS_DIR/router-health-check.sh"
   log "  Uninstall: $PHOBOS_DIR/router-uninstall.sh"
   log ""
   log "Управление:"
-  log "  /opt/etc/init.d/S49wg-obfuscator status    # Проверить что obfuscator запущен"
+
+  if [ "$ROUTER_PLATFORM" = "keenetic" ] || [ -f /opt/etc/init.d/S49wg-obfuscator ]; then
+    log "  /opt/etc/init.d/S49wg-obfuscator status    # Проверить что obfuscator запущен"
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/phobos-obfuscator ]; then
+    log "  /etc/init.d/phobos-obfuscator status       # Проверить что obfuscator запущен"
+  fi
+
   log "  $PHOBOS_DIR/router-health-check.sh         # Проверить состояние роутера"
   log "  $PHOBOS_DIR/router-uninstall.sh            # Удалить Phobos с роутера"
   log ""
 }
 
 main() {
+  ROUTER_PLATFORM=$(detect_router_platform)
+  PHOBOS_DIR=$(detect_phobos_dir "$ROUTER_PLATFORM")
+
+  log "==> Определена платформа: $ROUTER_PLATFORM"
+  log "==> Директория Phobos: $PHOBOS_DIR"
+
+  if [ "$ROUTER_PLATFORM" = "unknown" ]; then
+    log "ОШИБКА: Неподдерживаемая платформа роутера"
+    log "Вывод uname -a: $(uname -a)"
+    log ""
+    log "Поддерживаемые платформы:"
+    log "  - Keenetic (определяется по 'Keenetic' в uname)"
+    log "  - OpenWRT (определяется по 'OpenWrt' или 'LEDE' в uname)"
+    exit 1
+  fi
+
   mkdir -p "$PHOBOS_DIR"
-  log "==> Начало установки Phobos на роутер Keenetic"
+  log "==> Начало установки Phobos на роутер $ROUTER_PLATFORM"
   log "==> Клиент: $CLIENT_NAME"
 
   check_root
 
-  if ! check_dependencies; then
+  if ! check_dependencies "$ROUTER_PLATFORM"; then
     log "ОШИБКА: Не удалось установить зависимости"
     exit 1
   fi
@@ -297,24 +522,55 @@ main() {
   setup_configs
   deploy_health_check
   deploy_uninstall_script
-  create_init_script
-  start_obfuscator
 
-  if configure_wireguard_rci; then
-    log ""
-    log "╔════════════════════════════════════════════════════════════╗"
-    log "║  ✓ Установка завершена успешно!                            ║"
-    log "║  ✓ WireGuard настроен автоматически                        ║"
-    log "╚════════════════════════════════════════════════════════════╝"
-    show_final_info
-  else
-    log ""
-    log "╔════════════════════════════════════════════════════════════╗"
-    log "║  ✓ Obfuscator установлен успешно                           ║"
-    log "║  ⚠ WireGuard требует ручной настройки                     ║"
-    log "╚════════════════════════════════════════════════════════════╝"
-    show_manual_instructions
-    show_final_info
+  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
+    create_init_script
+    start_obfuscator
+
+    if configure_wireguard_rci; then
+      log ""
+      log "╔════════════════════════════════════════════════════════════╗"
+      log "║  ✓ Установка завершена успешно!                            ║"
+      log "║  ✓ WireGuard настроен автоматически через RCI API          ║"
+      log "╚════════════════════════════════════════════════════════════╝"
+      show_final_info
+    else
+      log ""
+      log "╔════════════════════════════════════════════════════════════╗"
+      log "║  ✓ Obfuscator установлен успешно                           ║"
+      log "║  ⚠ WireGuard требует ручной настройки                     ║"
+      log "╚════════════════════════════════════════════════════════════╝"
+      show_manual_instructions
+      show_final_info
+    fi
+
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    install_wireguard_openwrt
+
+    if [ -d "/opt/etc" ]; then
+      create_init_script
+    else
+      create_procd_init_script
+    fi
+
+    start_obfuscator
+
+    if configure_wireguard_openwrt; then
+      log ""
+      log "╔════════════════════════════════════════════════════════════╗"
+      log "║  ✓ Установка завершена успешно!                            ║"
+      log "║  ✓ WireGuard настроен автоматически через UCI              ║"
+      log "╚════════════════════════════════════════════════════════════╝"
+      show_final_info
+    else
+      log ""
+      log "╔════════════════════════════════════════════════════════════╗"
+      log "║  ✓ Obfuscator установлен успешно                           ║"
+      log "║  ⚠ WireGuard требует ручной настройки                     ║"
+      log "╚════════════════════════════════════════════════════════════╝"
+      show_manual_instructions
+      show_final_info
+    fi
   fi
 
   log "==> Установка завершена."

@@ -43,7 +43,16 @@ if [[ -f /proc/cpuinfo ]]; then
 
     echo "  Тип: ARM"
     echo "  Модель: ${CPU_MODEL}"
-    RECOMMENDED_BINARY="wg-obfuscator-aarch64"
+
+    if echo "${ARCH}" | grep -q "aarch64\|arm64"; then
+      echo "  Битность: 64-bit"
+      RECOMMENDED_BINARY="wg-obfuscator-aarch64"
+    elif echo "${ARCH}" | grep -q "armv7\|armv6"; then
+      echo "  Битность: 32-bit"
+      RECOMMENDED_BINARY="wg-obfuscator-armv7"
+    else
+      RECOMMENDED_BINARY="wg-obfuscator-aarch64"
+    fi
   fi
 fi
 
@@ -59,6 +68,7 @@ else
   echo "    - mipsel (MIPS Little Endian) - наиболее распространенный"
   echo "    - mips (MIPS Big Endian)"
   echo "    - aarch64 (ARM 64-bit)"
+  echo "    - armv7 (ARM 32-bit)"
 fi
 
 echo ""
