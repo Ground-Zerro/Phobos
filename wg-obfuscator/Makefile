@@ -23,9 +23,19 @@ EXEDIR = .
 
 EXTRA_CFLAGS ?=
 
-UNAME_M := $(shell uname -m 2>/dev/null || echo unknown)
+ifneq ($(findstring mips-linux-gnu-,$(CC)),)
+  ARCH := mips
+else ifneq ($(findstring mipsel-linux-gnu-,$(CC)),)
+  ARCH := mipsel
+else ifneq ($(findstring aarch64-linux-gnu-,$(CC)),)
+  ARCH := aarch64
+else ifneq ($(findstring arm-linux-gnueabihf-,$(CC)),)
+  ARCH := armv7
+else
+  ARCH := $(shell uname -m 2>/dev/null || echo unknown)
+endif
 
-ifeq ($(UNAME_M),mips)
+ifeq ($(ARCH),mips)
   EXTRA_CFLAGS += -march=mips32r2 -mtune=24kc
   EXTRA_CFLAGS += -fno-strict-aliasing -fweb -frename-registers
   EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=4
@@ -35,7 +45,7 @@ ifeq ($(UNAME_M),mips)
   endif
 endif
 
-ifeq ($(UNAME_M),mipsel)
+ifeq ($(ARCH),mipsel)
   EXTRA_CFLAGS += -march=mips32r2 -mtune=24kc -EL
   EXTRA_CFLAGS += -fno-strict-aliasing -fweb -frename-registers
   EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=4
@@ -45,8 +55,40 @@ ifeq ($(UNAME_M),mipsel)
   endif
 endif
 
-ifeq ($(UNAME_M),aarch64)
-  EXTRA_CFLAGS += -march=armv8-a+crc -mtune=cortex-a53
+ifeq ($(ARCH),aarch64)
+  EXTRA_CFLAGS += -march=armv8-a+crc+simd -mtune=cortex-a53
+  EXTRA_CFLAGS += -fomit-frame-pointer -fweb
+  EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=8
+  ifndef DEBUG
+    EXTRA_CFLAGS += -ffunction-sections -fdata-sections
+    LDFLAGS += -Wl,--gc-sections
+  endif
+endif
+
+ifeq ($(ARCH),x86_64)
+  EXTRA_CFLAGS += -march=x86-64 -mtune=generic
+  EXTRA_CFLAGS += -msse2 -mavx2
+  EXTRA_CFLAGS += -fomit-frame-pointer -fweb
+  EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=8
+  ifndef DEBUG
+    EXTRA_CFLAGS += -ffunction-sections -fdata-sections
+    LDFLAGS += -Wl,--gc-sections
+  endif
+endif
+
+ifneq ($(filter i386 i686,$(ARCH)),)
+  EXTRA_CFLAGS += -march=i686 -mtune=generic
+  EXTRA_CFLAGS += -msse2
+  EXTRA_CFLAGS += -fomit-frame-pointer -fweb
+  EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=8
+  ifndef DEBUG
+    EXTRA_CFLAGS += -ffunction-sections -fdata-sections
+    LDFLAGS += -Wl,--gc-sections
+  endif
+endif
+
+ifeq ($(ARCH),armv7)
+  EXTRA_CFLAGS += -march=armv7-a -mtune=cortex-a9 -mfpu=neon
   EXTRA_CFLAGS += -fomit-frame-pointer -fweb
   EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=8
   ifndef DEBUG

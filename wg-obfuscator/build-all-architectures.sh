@@ -50,21 +50,24 @@ install_cross_compilers() {
             gcc-mips-linux-gnu \
             gcc-mipsel-linux-gnu \
             gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf \
             binutils-mips-linux-gnu \
             binutils-mipsel-linux-gnu \
             binutils-aarch64-linux-gnu \
+            binutils-arm-linux-gnueabihf \
             libc6-dev-mips-cross \
             libc6-dev-mipsel-cross \
-            libc6-dev-arm64-cross
+            libc6-dev-arm64-cross \
+            libc6-dev-armhf-cross
         log_success "Cross-compilers and dependencies installed"
     elif [ -f /etc/redhat-release ]; then
         log_info "Detected RedHat/CentOS/Fedora system"
-        sudo yum install -y gcc gcc-mips64-linux-gnu gcc-aarch64-linux-gnu glibc-static || \
-        sudo dnf install -y gcc gcc-mips64-linux-gnu gcc-aarch64-linux-gnu glibc-static
+        sudo yum install -y gcc gcc-mips64-linux-gnu gcc-aarch64-linux-gnu gcc-arm-linux-gnu glibc-static || \
+        sudo dnf install -y gcc gcc-mips64-linux-gnu gcc-aarch64-linux-gnu gcc-arm-linux-gnu glibc-static
         log_success "Cross-compilers and dependencies installed"
     elif [ -f /etc/arch-release ]; then
         log_info "Detected Arch Linux system"
-        sudo pacman -S --needed gcc mips-linux-gnu-gcc aarch64-linux-gnu-gcc
+        sudo pacman -S --needed gcc mips-linux-gnu-gcc aarch64-linux-gnu-gcc arm-linux-gnueabihf-gcc
         log_success "Cross-compilers and dependencies installed"
     else
         log_error "Unsupported distribution. Please install cross-compilers manually."
@@ -178,15 +181,18 @@ main() {
     local has_mips=false
     local has_mipsel=false
     local has_aarch64=false
+    local has_i686=false
+    local has_arm=false
 
     check_compiler "gcc" && has_gcc=true
     check_compiler "mips-linux-gnu-gcc" && has_mips=true
     check_compiler "mipsel-linux-gnu-gcc" && has_mipsel=true
     check_compiler "aarch64-linux-gnu-gcc" && has_aarch64=true
+    check_compiler "arm-linux-gnueabihf-gcc" && has_arm=true
 
     echo
 
-    if ! $has_gcc || ! $has_mips || ! $has_mipsel || ! $has_aarch64; then
+    if ! $has_gcc || ! $has_mips || ! $has_mipsel || ! $has_aarch64 || ! $has_arm; then
         log_warn "Some cross-compilers are missing"
         read -p "Do you want to install missing compilers? (y/n): " -n 1 -r
         echo
@@ -196,6 +202,7 @@ main() {
             check_compiler "mips-linux-gnu-gcc" && has_mips=true
             check_compiler "mipsel-linux-gnu-gcc" && has_mipsel=true
             check_compiler "aarch64-linux-gnu-gcc" && has_aarch64=true
+            check_compiler "arm-linux-gnueabihf-gcc" && has_arm=true
         else
             log_warn "Proceeding with available compilers only"
         fi
@@ -216,8 +223,7 @@ main() {
 
     if $has_mips || check_compiler "mips-linux-gnu-gcc"; then
         log_info "=== Building for MIPS ==="
-        local mips_flags="-march=mips32r2 -mtune=24kc -fno-strict-aliasing -fweb -frename-registers"
-        if build_for_arch "mips" "mips-linux-gnu-gcc" "${mips_flags}" "wg-obfuscator-mips" "static"; then
+        if build_for_arch "mips" "mips-linux-gnu-gcc" "" "wg-obfuscator-mips" "static"; then
             success_count=$((success_count + 1))
         fi
         build_count=$((build_count + 1))
@@ -226,8 +232,7 @@ main() {
 
     if $has_mipsel || check_compiler "mipsel-linux-gnu-gcc"; then
         log_info "=== Building for MIPSEL ==="
-        local mipsel_flags="-march=mips32r2 -mtune=24kc -EL -fno-strict-aliasing -fweb -frename-registers"
-        if build_for_arch "mipsel" "mipsel-linux-gnu-gcc" "${mipsel_flags}" "wg-obfuscator-mipsel" "static"; then
+        if build_for_arch "mipsel" "mipsel-linux-gnu-gcc" "" "wg-obfuscator-mipsel" "static"; then
             success_count=$((success_count + 1))
         fi
         build_count=$((build_count + 1))
@@ -236,8 +241,16 @@ main() {
 
     if $has_aarch64 || check_compiler "aarch64-linux-gnu-gcc"; then
         log_info "=== Building for AARCH64 ==="
-        local aarch64_flags="-march=armv8-a+crc -mtune=cortex-a53 -fomit-frame-pointer -fweb"
-        if build_for_arch "aarch64" "aarch64-linux-gnu-gcc" "${aarch64_flags}" "wg-obfuscator-aarch64" "static"; then
+        if build_for_arch "aarch64" "aarch64-linux-gnu-gcc" "" "wg-obfuscator-aarch64" "static"; then
+            success_count=$((success_count + 1))
+        fi
+        build_count=$((build_count + 1))
+        echo
+    fi
+
+    if $has_arm || check_compiler "arm-linux-gnueabihf-gcc"; then
+        log_info "=== Building for ARMv7 ==="
+        if build_for_arch "armv7" "arm-linux-gnueabihf-gcc" "" "wg-obfuscator-armv7" "static"; then
             success_count=$((success_count + 1))
         fi
         build_count=$((build_count + 1))

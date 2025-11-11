@@ -3,8 +3,17 @@
 
 #include <stdint.h>
 
-#ifdef __aarch64__
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
+#include <immintrin.h>
+#include <cpuid.h>
+#define ARCH_X86
+#endif
+
+#if defined(__aarch64__) || defined(__arm__) || defined(_M_ARM64) || defined(_M_ARM)
+#if defined(__ARM_NEON) || defined(__aarch64__)
 #include <arm_neon.h>
+#define ARCH_ARM_NEON
+#endif
 #endif
 
 #define OBFUSCATION_VERSION     1
@@ -22,6 +31,20 @@
 static uint8_t crc8_table[256];
 static volatile int crc8_table_initialized = 0;
 
+#ifdef ARCH_X86
+static volatile int cpu_features_detected = 0;
+static volatile int cpu_has_avx2 = 0;
+
+static inline void detect_cpu_features(void) {
+    if (cpu_features_detected) return;
+    unsigned int eax, ebx, ecx, edx;
+    if (__get_cpuid(7, &eax, &ebx, &ecx, &edx)) {
+        cpu_has_avx2 = (ebx & (1 << 5)) != 0;
+    }
+    cpu_features_detected = 1;
+}
+#endif
+
 static inline void init_crc8_table(void) {
     if (crc8_table_initialized) return;
     for (int i = 0; i < 256; i++) {
@@ -38,6 +61,9 @@ static inline void init_crc8_table(void) {
         crc8_table[i] = crc;
     }
     crc8_table_initialized = 1;
+#ifdef ARCH_X86
+    detect_cpu_features();
+#endif
 }
 
 static inline uint8_t is_obfuscated(uint8_t *data) {
@@ -45,27 +71,25 @@ static inline uint8_t is_obfuscated(uint8_t *data) {
     return !(packet_type >= 1 && packet_type <= 4);
 }
 
-#ifdef __aarch64__
-static inline void xor_data_neon(uint8_t *buffer, int length, char *key, int key_length) {
-    if (!crc8_table_initialized) init_crc8_table();
+#ifdef ARCH_X86
 
+static inline void xor_data_avx2(uint8_t *buffer, int length, char *key, int key_length) {
     uint8_t crc = 0;
     int i = 0;
+    const int step = 32;
 
-    if (length >= 16 && key_length >= 4) {
-        const int step = 16;
-
-        for (; i + step <= length; i += step) {
-            uint8_t inbytes[16];
-            for (int j = 0; j < 16; j++) {
-                inbytes[j] = key[(i + j) % key_length] + length + key_length;
-            }
-
-            for (int j = 0; j < 16; j++) {
-                crc = crc8_table[crc ^ inbytes[j]];
-                buffer[i + j] ^= crc;
-            }
+    for (; i + step <= length; i += step) {
+        uint8_t crcs[32];
+        for (int j = 0; j < 32; j++) {
+            uint8_t inbyte = key[(i + j) % key_length] + length + key_length;
+            crc = crc8_table[crc ^ inbyte];
+            crcs[j] = crc;
         }
+
+        __m256i buf_vec = _mm256_loadu_si256((__m256i*)(buffer + i));
+        __m256i crc_vec = _mm256_loadu_si256((__m256i*)crcs);
+        buf_vec = _mm256_xor_si256(buf_vec, crc_vec);
+        _mm256_storeu_si256((__m256i*)(buffer + i), buf_vec);
     }
 
     for (; i < length; i++) {
@@ -74,16 +98,68 @@ static inline void xor_data_neon(uint8_t *buffer, int length, char *key, int key
         buffer[i] ^= crc;
     }
 }
+
+static inline void xor_data_sse2(uint8_t *buffer, int length, char *key, int key_length) {
+    uint8_t crc = 0;
+    int i = 0;
+    const int step = 16;
+
+    for (; i + step <= length; i += step) {
+        uint8_t crcs[16];
+        for (int j = 0; j < 16; j++) {
+            uint8_t inbyte = key[(i + j) % key_length] + length + key_length;
+            crc = crc8_table[crc ^ inbyte];
+            crcs[j] = crc;
+        }
+
+        __m128i buf_vec = _mm_loadu_si128((__m128i*)(buffer + i));
+        __m128i crc_vec = _mm_loadu_si128((__m128i*)crcs);
+        buf_vec = _mm_xor_si128(buf_vec, crc_vec);
+        _mm_storeu_si128((__m128i*)(buffer + i), buf_vec);
+    }
+
+    for (; i < length; i++) {
+        uint8_t inbyte = key[i % key_length] + length + key_length;
+        crc = crc8_table[crc ^ inbyte];
+        buffer[i] ^= crc;
+    }
+}
+
 #endif
 
-static inline void xor_data(uint8_t *buffer, int length, char *key, int key_length) {
-#ifdef __aarch64__
-    xor_data_neon(buffer, length, key, key_length);
-#else
-    if (!crc8_table_initialized) init_crc8_table();
+#ifdef ARCH_ARM_NEON
 
+static inline void xor_data_neon(uint8_t *buffer, int length, char *key, int key_length) {
     uint8_t crc = 0;
-    const int unroll = 4;
+    int i = 0;
+    const int step = 16;
+
+    for (; i + step <= length; i += step) {
+        uint8_t crcs[16];
+        for (int j = 0; j < 16; j++) {
+            uint8_t inbyte = key[(i + j) % key_length] + length + key_length;
+            crc = crc8_table[crc ^ inbyte];
+            crcs[j] = crc;
+        }
+
+        uint8x16_t buf_vec = vld1q_u8(buffer + i);
+        uint8x16_t crc_vec = vld1q_u8(crcs);
+        buf_vec = veorq_u8(buf_vec, crc_vec);
+        vst1q_u8(buffer + i, buf_vec);
+    }
+
+    for (; i < length; i++) {
+        uint8_t inbyte = key[i % key_length] + length + key_length;
+        crc = crc8_table[crc ^ inbyte];
+        buffer[i] ^= crc;
+    }
+}
+
+#endif
+
+static inline void xor_data_scalar(uint8_t *buffer, int length, char *key, int key_length) {
+    uint8_t crc = 0;
+    const int unroll = 8;
     int i;
 
     for (i = 0; i + unroll <= length; i += unroll) {
@@ -102,6 +178,22 @@ static inline void xor_data(uint8_t *buffer, int length, char *key, int key_leng
         uint8_t inbyte3 = key[(i + 3) % key_length] + length + key_length;
         crc = crc8_table[crc ^ inbyte3];
         buffer[i + 3] ^= crc;
+
+        uint8_t inbyte4 = key[(i + 4) % key_length] + length + key_length;
+        crc = crc8_table[crc ^ inbyte4];
+        buffer[i + 4] ^= crc;
+
+        uint8_t inbyte5 = key[(i + 5) % key_length] + length + key_length;
+        crc = crc8_table[crc ^ inbyte5];
+        buffer[i + 5] ^= crc;
+
+        uint8_t inbyte6 = key[(i + 6) % key_length] + length + key_length;
+        crc = crc8_table[crc ^ inbyte6];
+        buffer[i + 6] ^= crc;
+
+        uint8_t inbyte7 = key[(i + 7) % key_length] + length + key_length;
+        crc = crc8_table[crc ^ inbyte7];
+        buffer[i + 7] ^= crc;
     }
 
     for (; i < length; i++) {
@@ -109,6 +201,27 @@ static inline void xor_data(uint8_t *buffer, int length, char *key, int key_leng
         crc = crc8_table[crc ^ inbyte];
         buffer[i] ^= crc;
     }
+}
+
+static inline void xor_data(uint8_t *buffer, int length, char *key, int key_length) {
+    if (!crc8_table_initialized) init_crc8_table();
+
+#ifdef ARCH_X86
+    if (cpu_has_avx2 && length >= 32) {
+        xor_data_avx2(buffer, length, key, key_length);
+    } else if (length >= 16) {
+        xor_data_sse2(buffer, length, key, key_length);
+    } else {
+        xor_data_scalar(buffer, length, key, key_length);
+    }
+#elif defined(ARCH_ARM_NEON)
+    if (length >= 16) {
+        xor_data_neon(buffer, length, key, key_length);
+    } else {
+        xor_data_scalar(buffer, length, key, key_length);
+    }
+#else
+    xor_data_scalar(buffer, length, key, key_length);
 #endif
 }
 
