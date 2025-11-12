@@ -37,8 +37,8 @@ Options:
 Example:
   $0 --client-name home \\
      --client-private-key "ABCD..." \\
-     --client-ip 10.8.0.4/32 \\
-     --client-ipv6 fd00:10:8::4/128 \\
+     --client-ip 10.25.0.4/32 \\
+     --client-ipv6 fd00:10:25::4/128 \\
      --server-public-key "EFGH..." \\
      --fallback-config /opt/etc/Phobos/home.conf
 

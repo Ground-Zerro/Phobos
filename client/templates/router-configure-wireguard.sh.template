@@ -58,8 +58,8 @@ Options:
 Example:
   $0 --client-name Pegacomp \\
      --client-private-key "ABCD..." \\
-     --client-ip 10.8.0.4 \\
-     --client-ipv6 fd00:10:8::4 \\
+     --client-ip 10.25.0.4 \\
+     --client-ipv6 fd00:10:25::4 \\
      --server-public-key "EFGH..." \\
      --fallback-config /opt/etc/Phobos/Pegacomp.conf
 
@@ -163,6 +163,41 @@ find_free_wireguard_interface() {
     return 1
 }
 
+clear_wireguard_peers() {
+    local interface_name="$1"
+
+    log "Очистка существующих peer'ов в ${interface_name}..."
+
+    local clear_json=$(cat <<EOF
+{
+  "interface": {
+    "${interface_name}": {
+      "wireguard": {
+        "peer": {
+          "no": true
+        }
+      }
+    }
+  }
+}
+EOF
+)
+
+    local result=$(echo "${clear_json}" | curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -d @- \
+        "${RCI_URL}" 2>/dev/null)
+
+    if echo "${result}" | jq -e '.status == "error"' >/dev/null 2>&1; then
+        local error_msg=$(echo "${result}" | jq -r '.message // "Unknown error"' 2>/dev/null)
+        log "Предупреждение: не удалось очистить peer'ы: ${error_msg}"
+        return 1
+    fi
+
+    log "Peer'ы очищены ✓"
+    return 0
+}
+
 configure_wireguard_interface() {
     local interface_name="$1"
     local is_update="$2"
@@ -170,6 +205,10 @@ configure_wireguard_interface() {
     local description="Phobos-${CLIENT_NAME}"
     local client_ip_addr=$(echo "${CLIENT_IP}" | cut -d'/' -f1)
     local client_ipv6_block="${CLIENT_IPV6}"
+
+    if [ "${is_update}" = "yes" ]; then
+        clear_wireguard_peers "${interface_name}" || true
+    fi
 
     log "Настройка интерфейса ${interface_name}..."
 
@@ -187,9 +226,9 @@ configure_wireguard_interface() {
           "mask": "255.255.255.255"
         },
         "mtu": ${MTU},
-        "global": {
-          "priority": 8191
-        },
+        "global": true,
+        "defaultgw": false,
+        "priority": 26622,
         "tcp": {
           "adjust-mss": {
             "pmtu": true
