@@ -71,5 +71,3 @@ echo "   $SCRIPT_DIR/vps-client-add.sh <client_name>"
 echo ""
 echo "Параметры сервера сохранены в: /opt/Phobos/server/server.env"
 echo ""
-cat /opt/Phobos/server/server.env
-echo ""

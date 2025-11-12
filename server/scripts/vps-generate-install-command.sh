@@ -10,8 +10,6 @@ TOKENS_DIR="${PHOBOS_DIR}/tokens"
 TOKENS_FILE="${TOKENS_DIR}/tokens.json"
 SERVER_ENV="${PHOBOS_DIR}/server/server.env"
 
-TOKEN_TTL="${TOKEN_TTL:-86400}"
-
 if [[ $(id -u) -ne 0 ]]; then
   echo "Этот скрипт требует root привилегии. Запустите: sudo $0"
   exit 1
@@ -29,7 +27,7 @@ if [[ $# -lt 1 ]]; then
   echo ""
   echo "Аргументы:"
   echo "  client_name    - имя клиента (должен существовать)"
-  echo "  ttl_seconds    - время жизни токена в секундах (по умолчанию: 86400 = 24 часа)"
+  echo "  ttl_seconds    - время жизни токена в секундах (по умолчанию: 3600 = 1 час)"
   echo ""
   echo "Пример:"
   echo "  $0 client1"
@@ -65,6 +63,8 @@ if [[ ! -f "${SERVER_ENV}" ]]; then
 fi
 
 source "${SERVER_ENV}"
+
+TOKEN_TTL="${TOKEN_TTL:-3600}"
 
 if [[ -z "${HTTP_PORT:-}" ]]; then
   echo "Ошибка: HTTP_PORT не указан в ${SERVER_ENV}"
@@ -238,10 +238,6 @@ echo ""
 echo "Отправьте клиенту следующую команду для установки:"
 echo ""
 echo "wget -O - http://${SERVER_PUBLIC_IP}:${HTTP_PORT}/init/${TOKEN}.sh | sh"
-echo ""
-echo "Или альтернативный вариант (curl):"
-echo ""
-echo "curl -sL http://${SERVER_PUBLIC_IP}:${HTTP_PORT}/init/${TOKEN}.sh | sh"
 echo ""
 echo "ВАЖНО: Токен действителен до ${EXPIRES_AT_HUMAN}"
 echo ""

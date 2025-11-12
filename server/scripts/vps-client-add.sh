@@ -29,6 +29,8 @@ fi
 
 source "$SERVER_ENV"
 
+TOKEN_TTL="${TOKEN_TTL:-3600}"
+
 if [[ ! -f "$PHOBOS_DIR/server/server_public.key" ]]; then
   echo "Ошибка: публичный ключ сервера не найден."
   echo "Сначала запустите vps-wg-setup.sh"
@@ -50,19 +52,32 @@ mkdir -p "$CLIENT_DIR"
 if [[ -z "$CLIENT_IP" ]]; then
   echo "==> Автоматическое назначение IP адреса клиенту..."
 
-  LAST_IP=$(grep -oP 'AllowedIPs\s*=\s*10\.8\.0\.\K\d+' "$WG_CONFIG" 2>/dev/null | sort -n | tail -1 || echo "1")
-  NEXT_IP=$((LAST_IP + 1))
+  LAST_IP=$(grep -oP 'AllowedIPs\s*=\s*10\.25\.\K\d+\.\d+' "$WG_CONFIG" 2>/dev/null | sort -t. -k1,1n -k2,2n | tail -1 || echo "0.1")
 
-  if [[ $NEXT_IP -gt 254 ]]; then
-    echo "Ошибка: закончились IP адреса в подсети 10.8.0.0/24"
+  THIRD_OCTET=$(echo "$LAST_IP" | cut -d. -f1)
+  FOURTH_OCTET=$(echo "$LAST_IP" | cut -d. -f2)
+
+  FOURTH_OCTET=$((FOURTH_OCTET + 1))
+
+  if [[ $FOURTH_OCTET -gt 254 ]]; then
+    FOURTH_OCTET=2
+    THIRD_OCTET=$((THIRD_OCTET + 1))
+  fi
+
+  if [[ $THIRD_OCTET -gt 255 ]]; then
+    echo "Ошибка: закончились IP адреса в подсети 10.25.0.0/16"
     exit 1
   fi
 
-  CLIENT_IP="10.8.0.$NEXT_IP"
+  CLIENT_IP="10.25.$THIRD_OCTET.$FOURTH_OCTET"
 fi
 
 CLIENT_IP_V4="$CLIENT_IP"
-CLIENT_IP_V6="fd00:10:8::$NEXT_IP"
+
+THIRD_OCTET=$(echo "$CLIENT_IP" | cut -d. -f3)
+FOURTH_OCTET=$(echo "$CLIENT_IP" | cut -d. -f4)
+IPV6_HEX=$(printf "%x:%x" "$THIRD_OCTET" "$FOURTH_OCTET")
+CLIENT_IP_V6="fd00:10:25::$IPV6_HEX"
 
 echo "IP адрес клиента (IPv4): $CLIENT_IP_V4/32"
 if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
@@ -151,29 +166,40 @@ else
 fi
 
 awk '
+  BEGIN { in_peer = 0; empty_lines = 0 }
   /^\[Peer\]$/ {
-    peer_block = ""
-    in_peer = 1
-    next
-  }
-  in_peer && /^$/ {
-    if (peer_block ~ /PublicKey/) {
+    if (in_peer && peer_block != "") {
       print "[Peer]"
       print peer_block
       print ""
     }
-    in_peer = 0
+    in_peer = 1
     peer_block = ""
+    empty_lines = 0
+    next
+  }
+  /^$/ {
+    empty_lines++
+    if (!in_peer && empty_lines <= 1) {
+      print
+    }
+    next
+  }
+  /^#/ {
     next
   }
   in_peer {
+    empty_lines = 0
     if (peer_block != "") peer_block = peer_block "\n"
     peer_block = peer_block $0
     next
   }
-  { print }
+  {
+    empty_lines = 0
+    print
+  }
   END {
-    if (in_peer && peer_block ~ /PublicKey/) {
+    if (in_peer && peer_block != "") {
       print "[Peer]"
       print peer_block
       print ""
@@ -182,7 +208,6 @@ awk '
 ' "$WG_CONFIG" > "$WG_CONFIG.tmp" && mv "$WG_CONFIG.tmp" "$WG_CONFIG"
 
 cat >> "$WG_CONFIG" <<EOF
-
 [Peer]
 PublicKey = $CLIENT_PUBLIC_KEY
 AllowedIPs = $PEER_ALLOWED_IPS

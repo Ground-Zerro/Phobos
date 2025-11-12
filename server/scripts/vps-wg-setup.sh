@@ -4,10 +4,10 @@ IFS=$'\n\t'
 
 SERVER_PUBLIC_IP="${SERVER_PUBLIC_IP:-}"
 WG_PORT="${WG_PORT:-51820}"
-TUNNEL_NETWORK="${TUNNEL_NETWORK:-10.8.0.0/24}"
-TUNNEL_NETWORK_V6="${TUNNEL_NETWORK_V6:-fd00:10:8::/64}"
-SERVER_TUNNEL_IP="10.8.0.1"
-SERVER_TUNNEL_IP_V6="fd00:10:8::1"
+TUNNEL_NETWORK="${TUNNEL_NETWORK:-10.25.0.0/16}"
+TUNNEL_NETWORK_V6="${TUNNEL_NETWORK_V6:-fd00:10:25::/48}"
+SERVER_TUNNEL_IP="10.25.0.1"
+SERVER_TUNNEL_IP_V6="fd00:10:25::1"
 PHOBOS_DIR="/opt/Phobos"
 WG_CONFIG_DIR="/etc/wireguard"
 
@@ -144,14 +144,14 @@ SERVER_PUBLIC_KEY=$(cat "$PHOBOS_DIR/server/server_public.key")
 echo "==> Создание конфигурации WireGuard сервера..."
 
 if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
-  WG_ADDRESS="$SERVER_TUNNEL_IP/24, $SERVER_TUNNEL_IP_V6/64"
-  POSTUP_RULES="iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
-  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+  WG_ADDRESS="$SERVER_TUNNEL_IP/16, $SERVER_TUNNEL_IP_V6/48"
+  POSTUP_RULES="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -o wg0 -j DROP; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
+  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -o wg0 -j DROP; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
   echo "Режим: Dual-stack (IPv4 + IPv6)"
 else
-  WG_ADDRESS="$SERVER_TUNNEL_IP/24"
-  POSTUP_RULES="iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
-  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+  WG_ADDRESS="$SERVER_TUNNEL_IP/16"
+  POSTUP_RULES="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
+  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
   echo "Режим: IPv4 only"
 fi
 
