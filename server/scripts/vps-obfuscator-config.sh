@@ -2,11 +2,13 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+cd /tmp 2>/dev/null || cd / 2>/dev/null || true
+
 PHOBOS_DIR="/opt/Phobos"
 SERVER_ENV="$PHOBOS_DIR/server/server.env"
 OBF_CONFIG="$PHOBOS_DIR/server/wg-obfuscator.conf"
 BACKUP_DIR="$PHOBOS_DIR/backups/obfuscator"
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "Требуются root привилегии. Запустите: sudo $0"

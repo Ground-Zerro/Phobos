@@ -2,6 +2,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+cd /tmp 2>/dev/null || cd / 2>/dev/null || true
+
 PHOBOS_DIR="/opt/Phobos"
 WWW_DIR="${PHOBOS_DIR}/www"
 TOKENS_DIR="${PHOBOS_DIR}/tokens"

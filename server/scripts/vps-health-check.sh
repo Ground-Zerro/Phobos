@@ -2,6 +2,8 @@
 set -uo pipefail
 IFS=$'\n\t'
 
+cd /tmp 2>/dev/null || cd / 2>/dev/null || true
+
 PHOBOS_DIR="/opt/Phobos"
 SERVER_ENV="${PHOBOS_DIR}/server/server.env"
 LOG_FILE="${PHOBOS_DIR}/logs/health-check.log"
