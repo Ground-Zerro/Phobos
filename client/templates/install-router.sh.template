@@ -40,12 +40,10 @@ detect_phobos_dir() {
 check_dependencies() {
   local platform="$1"
   local missing=""
-  local base_deps="grep cut date tee tar"
+  local base_deps="grep cut date tee tar curl jq"
   local platform_deps=""
 
-  if [ "$platform" = "keenetic" ]; then
-    platform_deps="jq"
-  elif [ "$platform" = "openwrt" ]; then
+  if [ "$platform" = "openwrt" ]; then
     platform_deps="uci"
   fi
 
