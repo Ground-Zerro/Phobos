@@ -55,6 +55,7 @@ install_cross_compilers() {
             binutils-mipsel-linux-gnu \
             binutils-aarch64-linux-gnu \
             binutils-arm-linux-gnueabihf \
+            libc6-dev \
             libc6-dev-mips-cross \
             libc6-dev-mipsel-cross \
             libc6-dev-arm64-cross \
@@ -193,19 +194,13 @@ main() {
     echo
 
     if ! $has_gcc || ! $has_mips || ! $has_mipsel || ! $has_aarch64 || ! $has_arm; then
-        log_warn "Some cross-compilers are missing"
-        read -p "Do you want to install missing compilers? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            install_cross_compilers
-            check_compiler "gcc" && has_gcc=true
-            check_compiler "mips-linux-gnu-gcc" && has_mips=true
-            check_compiler "mipsel-linux-gnu-gcc" && has_mipsel=true
-            check_compiler "aarch64-linux-gnu-gcc" && has_aarch64=true
-            check_compiler "arm-linux-gnueabihf-gcc" && has_arm=true
-        else
-            log_warn "Proceeding with available compilers only"
-        fi
+        log_warn "Some cross-compilers are missing, installing automatically..."
+        install_cross_compilers
+        check_compiler "gcc" && has_gcc=true
+        check_compiler "mips-linux-gnu-gcc" && has_mips=true
+        check_compiler "mipsel-linux-gnu-gcc" && has_mipsel=true
+        check_compiler "aarch64-linux-gnu-gcc" && has_aarch64=true
+        check_compiler "arm-linux-gnueabihf-gcc" && has_arm=true
         echo
     fi
 
@@ -214,7 +209,7 @@ main() {
 
     if $has_gcc || check_compiler "gcc"; then
         log_info "=== Building for x86_64 ==="
-        if build_for_arch "x86_64" "gcc" "" "wg-obfuscator_x86_64" ""; then
+        if build_for_arch "x86_64" "gcc" "" "wg-obfuscator_x86_64" "static"; then
             success_count=$((success_count + 1))
         fi
         build_count=$((build_count + 1))

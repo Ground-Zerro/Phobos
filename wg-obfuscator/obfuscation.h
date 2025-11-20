@@ -73,6 +73,7 @@ static inline uint8_t is_obfuscated(uint8_t *data) {
 
 #ifdef ARCH_X86
 
+__attribute__((target("avx2")))
 static inline void xor_data_avx2(uint8_t *buffer, int length, char *key, int key_length) {
     uint8_t crc = 0;
     int i = 0;

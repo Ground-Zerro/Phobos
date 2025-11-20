@@ -16,7 +16,7 @@ else
 endif
 
 ifdef STATIC
-  LDFLAGS += -static
+  LDFLAGS += -static -static-libgcc
 endif
 OBJS = wg-obfuscator.o config.o masking.o masking_stun.o
 EXEDIR = .
@@ -67,7 +67,7 @@ endif
 
 ifeq ($(ARCH),x86_64)
   EXTRA_CFLAGS += -march=x86-64 -mtune=generic
-  EXTRA_CFLAGS += -msse2 -mavx2
+  EXTRA_CFLAGS += -msse2
   EXTRA_CFLAGS += -fomit-frame-pointer -fweb
   EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=8
   ifndef DEBUG
