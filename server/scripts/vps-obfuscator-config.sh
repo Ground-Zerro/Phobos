@@ -718,10 +718,11 @@ check_health() {
 
   echo ""
   echo "==> Проверка WireGuard..."
-  if ss -ulpn | grep -q "127.0.0.1:51820"; then
-    echo "  ✓ WireGuard отвечает на 127.0.0.1:51820"
+  if systemctl is-active --quiet wg-quick@wg0; then
+    local wg0_peers=$(wg show wg0 peers 2>/dev/null | wc -l)
+    echo "  ✓ WireGuard интерфейс wg0 запущен (пиров: $wg0_peers)"
   else
-    echo "  ✗ WireGuard не отвечает на 127.0.0.1:51820"
+    echo "  ✗ WireGuard интерфейс wg0 не запущен"
     status_ok=false
   fi
 

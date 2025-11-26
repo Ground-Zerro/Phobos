@@ -143,15 +143,41 @@ SERVER_PUBLIC_KEY=$(cat "$PHOBOS_DIR/server/server_public.key")
 
 echo "==> Создание конфигурации WireGuard сервера..."
 
+echo "==> Определение основного сетевого интерфейса..."
+
+# Function to detect main network interface
+get_main_interface() {
+  # Try to get the interface from the default route
+  local iface=$(ip route | grep default | head -1 | awk '{print $5}' | head -c -1)
+  if [[ -n "$iface" ]]; then
+    echo "$iface"
+    return 0
+  fi
+
+  # Fallback: try common interface names
+  for ifname in eth0 ens3 enp1s0 wlp2s0 eno1 enp0s3; do
+    if ip link show "$ifname" >/dev/null 2>&1; then
+      echo "$ifname"
+      return 0
+    fi
+  done
+
+  # If we still can't find it, default to eth0
+  echo "eth0"
+}
+
+MAIN_INTERFACE=$(get_main_interface)
+echo "  Основной сетевой интерфейс: $MAIN_INTERFACE"
+
 if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
   WG_ADDRESS="$SERVER_TUNNEL_IP/16, $SERVER_TUNNEL_IP_V6/48"
-  POSTUP_RULES="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -o wg0 -j DROP; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
-  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -o wg0 -j DROP; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+  POSTUP_RULES="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE; ip6tables -A FORWARD -i wg0 -o wg0 -j DROP; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE"
+  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE; ip6tables -D FORWARD -i wg0 -o wg0 -j DROP; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE"
   echo "Режим: Dual-stack (IPv4 + IPv6)"
 else
   WG_ADDRESS="$SERVER_TUNNEL_IP/16"
-  POSTUP_RULES="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
-  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+  POSTUP_RULES="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE"
+  POSTDOWN_RULES="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE"
   echo "Режим: IPv4 only"
 fi
 
@@ -174,6 +200,98 @@ net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 EOF
 sysctl -p /etc/sysctl.d/99-wireguard.conf
+
+echo "==> Проверка и установка MASQUERADE правил..."
+
+# Function to check if iptables rule exists
+check_iptables_rule() {
+  local table=$1
+  local chain=$2
+  local rule=$3
+
+  if iptables -t "$table" -C "$chain" "$rule" 2>/dev/null; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to check if ip6tables rule exists
+check_ip6tables_rule() {
+  local table=$1
+  local chain=$2
+  local rule=$3
+
+  if ip6tables -t "$table" -C "$chain" "$rule" 2>/dev/null; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Check and add IPv4 MASQUERADE rule
+if ! check_iptables_rule "nat" "POSTROUTING" "-o $MAIN_INTERFACE -j MASQUERADE"; then
+  iptables -t nat -A POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE
+  echo "  Добавлено правило IPv4 MASQUERADE"
+else
+  echo "  Правило IPv4 MASQUERADE уже существует"
+fi
+
+# Check and add IPv4 FORWARD rules
+if ! check_iptables_rule "filter" "FORWARD" "-i wg0 -j ACCEPT"; then
+  iptables -A FORWARD -i wg0 -j ACCEPT
+  echo "  Добавлено правило IPv4 FORWARD для wg0"
+else
+  echo "  Правило IPv4 FORWARD для wg0 уже существует"
+fi
+
+if ! check_iptables_rule "filter" "FORWARD" "-i wg0 -o wg0 -j DROP"; then
+  iptables -A FORWARD -i wg0 -o wg0 -j DROP
+  echo "  Добавлено правило IPv4 FORWARD DROP для wg0->wg0"
+else
+  echo "  Правило IPv4 FORWARD DROP для wg0->wg0 уже существует"
+fi
+
+# Check and add IPv6 MASQUERADE rule if IPv6 is available
+if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
+  if ! check_ip6tables_rule "nat" "POSTROUTING" "-o $MAIN_INTERFACE -j MASQUERADE"; then
+    ip6tables -t nat -A POSTROUTING -o $MAIN_INTERFACE -j MASQUERADE
+    echo "  Добавлено правило IPv6 MASQUERADE"
+  else
+    echo "  Правило IPv6 MASQUERADE уже существует"
+  fi
+
+  # Check and add IPv6 FORWARD rules
+  if ! check_ip6tables_rule "filter" "FORWARD" "-i wg0 -j ACCEPT"; then
+    ip6tables -A FORWARD -i wg0 -j ACCEPT
+    echo "  Добавлено правило IPv6 FORWARD для wg0"
+  else
+    echo "  Правило IPv6 FORWARD для wg0 уже существует"
+  fi
+
+  if ! check_ip6tables_rule "filter" "FORWARD" "-i wg0 -o wg0 -j DROP"; then
+    ip6tables -A FORWARD -i wg0 -o wg0 -j DROP
+    echo "  Добавлено правило IPv6 FORWARD DROP для wg0->wg0"
+  else
+    echo "  Правило IPv6 FORWARD DROP для wg0->wg0 уже существует"
+  fi
+fi
+
+# Attempt to save iptables rules to make them persistent across reboots
+if command -v iptables-persistent >/dev/null 2>&1; then
+  echo "  Сохранение правил iptables..."
+  netfilter-persistent save
+elif command -v iptables-save >/dev/null 2>&1; then
+  # Create iptables rules file if it doesn't exist
+  if [[ ! -d /etc/iptables ]]; then
+    mkdir -p /etc/iptables
+  fi
+  iptables-save > /etc/iptables/rules.v4
+  if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
+    ip6tables-save > /etc/iptables/rules.v6
+  fi
+  echo "  Правила iptables сохранены"
+fi
 
 echo "==> Запуск WireGuard..."
 systemctl enable wg-quick@wg0
