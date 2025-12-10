@@ -119,7 +119,7 @@ sudo /opt/Phobos/repo/server/scripts/vps-uninstall.sh --keep-data
 Для полного удаления Phobos с роутера Keenetic:
 
 ```bash
-/opt/etc/Phobos/router-uninstall.sh
+/opt/etc/Phobos/phobos-uninstall.sh
 ```
 
 <details>
@@ -138,7 +138,7 @@ sudo /opt/Phobos/repo/server/scripts/vps-uninstall.sh --keep-data
 Для полного удаления Phobos с роутера OpenWrt:
 
 ```bash
-/etc/Phobos/router-uninstall.sh
+/etc/Phobos/phobos-uninstall.sh
 ```
 
 <details>

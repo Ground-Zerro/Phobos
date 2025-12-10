@@ -304,6 +304,15 @@ SERVER_PUBLIC_IP_V6=$SERVER_PUBLIC_IP_V6
 EOF
 chmod 600 "$PHOBOS_DIR/server/ip_addresses.env"
 
+echo "==> Настройка UFW firewall..."
+if command -v ufw &>/dev/null; then
+  ufw allow ${WG_PORT}/udp comment "Phobos WireGuard" 2>/dev/null || true
+  ufw allow 22/tcp comment "SSH" 2>/dev/null || true
+  echo "  Порт ${WG_PORT}/udp добавлен в исключения UFW"
+else
+  echo "  UFW не установлен, пропуск настройки"
+fi
+
 echo ""
 echo "==> WireGuard сервер успешно установлен и запущен!"
 echo ""

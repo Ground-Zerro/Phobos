@@ -43,11 +43,12 @@ Phobos/
 │   └── templates/
 │       ├── install-router.sh.template                # Установка на роутер
 │       ├── router-configure-wireguard.sh.template    # Автонастройка WireGuard через RCI
-│       ├── router-health-check.sh.template           # Health check роутера
+│       ├── health-check.sh.template                  # Health check
+│       ├── phobos-uninstall.sh.template              # Удаление Phobos
 │       └── detect-router-arch.sh.template            # Определение архитектуры
 ├── wg-obfuscator/
 │   └── bin/
-│       ├── wg-obfuscator_x86_64                      # Готовый бинарник для VPS (x86_64)
+│       ├── wg-obfuscator-x86_64                      # Готовый бинарник для VPS (x86_64)
 │       ├── wg-obfuscator-mipsel                      # Готовый бинарник для MIPS Little Endian
 │       ├── wg-obfuscator-mips                        # Готовый бинарник для MIPS Big Endian
 │       ├── wg-obfuscator-aarch64                     # Готовый бинарник для ARM64
@@ -107,7 +108,8 @@ Phobos/
 /opt/bin/wg-obfuscator                     # Бинарник obfuscator
 /opt/etc/init.d/S49wg-obfuscator           # Init-скрипт
 /opt/etc/Phobos/
-├── router-health-check.sh                 # Диагностика роутера
+├── health-check.sh                        # Диагностика
+├── phobos-uninstall.sh                    # Удаление Phobos
 ├── wg-obfuscator.conf                     # Конфиг obfuscator
 └── <client_name>.conf                     # Конфиг WireGuard (fallback для ручного импорта)
 ```
@@ -140,9 +142,10 @@ sudo /opt/Phobos/repo/server/scripts/vps-health-check.sh      # Полная п�
 sudo /opt/Phobos/repo/server/scripts/vps-monitor-clients.sh   # Мониторинг клиентов
 ```
 
-**На роутере Keenetic:**
+**На клиенте:**
 ```bash
-/opt/etc/Phobos/router-health-check.sh         # Диагностика роутера
+/opt/etc/Phobos/health-check.sh         # Диагностика (Keenetic)
+/opt/Phobos/health-check.sh             # Диагностика (Linux)
 ```
 
 ### Ручная диагностика

@@ -268,12 +268,17 @@ cat /opt/etc/Phobos/<client_name>.conf
 
 **Для Keenetic:**
 ```bash
-/opt/etc/Phobos/router-health-check.sh
+/opt/etc/Phobos/health-check.sh
 ```
 
 **Для OpenWrt:**
 ```bash
-/etc/Phobos/router-health-check.sh
+/etc/Phobos/health-check.sh
+```
+
+**Для Linux:**
+```bash
+/opt/Phobos/health-check.sh
 ```
 
 Скрипт проверит:
@@ -326,6 +331,41 @@ ping -c 3 10.25.0.1
 - Должно быть "Connected" с зеленым индикатором
 - Или через командную строку: `ifconfig phobos_wg`
 
+**Для Linux (systemd):**
+```bash
+systemctl status wg-quick@phobos
+wg show phobos
+ip addr show phobos
+```
+
+VPN настроен как запасной интерфейс и не перехватывает системный трафик автоматически.
+
+Для направления трафика через VPN используйте одну из опций:
+
+**Опция 1: Временно направить весь трафик через VPN**
+```bash
+ip route add default dev phobos metric 100
+```
+Для отмены:
+```bash
+ip route del default dev phobos metric 100
+```
+
+**Опция 2: Направить трафик конкретного приложения через VPN**
+```bash
+ip netns add vpn
+ip netns exec vpn ip link set lo up
+ip link set phobos netns vpn
+ip netns exec vpn wg-quick up phobos
+ip netns exec vpn firefox
+```
+
+**Опция 3: Постоянно направлять весь трафик через VPN**
+Отредактируйте `/etc/wireguard/phobos.conf`, удалите строку `Table = off` и перезапустите:
+```bash
+systemctl restart wg-quick@phobos
+```
+
 ## Обслуживание
 
 ### Перезапуск obfuscator
@@ -340,6 +380,12 @@ ping -c 3 10.25.0.1
 /etc/init.d/wg-obfuscator restart
 ```
 
+**Для Linux:**
+```bash
+systemctl restart phobos-obfuscator
+systemctl restart wg-quick@phobos
+```
+
 ### Остановка obfuscator
 
 **Для Keenetic:**
@@ -350,6 +396,12 @@ ping -c 3 10.25.0.1
 **Для OpenWrt:**
 ```bash
 /etc/init.d/wg-obfuscator stop
+```
+
+**Для Linux:**
+```bash
+systemctl stop phobos-obfuscator
+systemctl stop wg-quick@phobos
 ```
 
 ### Запуск obfuscator
@@ -364,6 +416,12 @@ ping -c 3 10.25.0.1
 /etc/init.d/wg-obfuscator start
 ```
 
+**Для Linux:**
+```bash
+systemctl start phobos-obfuscator
+systemctl start wg-quick@phobos
+```
+
 ### Проверка статуса
 
 **Для Keenetic:**
@@ -374,6 +432,13 @@ ping -c 3 10.25.0.1
 **Для OpenWrt:**
 ```bash
 /etc/init.d/wg-obfuscator status
+```
+
+**Для Linux:**
+```bash
+systemctl status phobos-obfuscator
+systemctl status wg-quick@phobos
+journalctl -u phobos-obfuscator -f
 ```
 
 ### Обновление конфигурации
@@ -398,7 +463,7 @@ scp new-wg-obfuscator.conf root@<router_ip>:/etc/Phobos/wg-obfuscator.conf
 
 Используйте автоматический скрипт удаления:
 ```bash
-/opt/etc/Phobos/router-uninstall.sh
+/opt/etc/Phobos/phobos-uninstall.sh
 ```
 
 Скрипт автоматически:
@@ -422,7 +487,14 @@ rm -rf /opt/etc/Phobos
 
 Используйте автоматический скрипт удаления:
 ```bash
-/etc/Phobos/router-uninstall.sh
+/etc/Phobos/phobos-uninstall.sh
+```
+
+**Для Linux:**
+
+Используйте автоматический скрипт удаления:
+```bash
+/opt/Phobos/phobos-uninstall.sh
 ```
 
 Скрипт автоматически:
@@ -519,8 +591,8 @@ ls -la /etc/init.d/wg-obfuscator
 /opt/etc/Phobos/
 ├── <client_name>.conf                      - Конфиг WireGuard (fallback для ручного импорта)
 ├── wg-obfuscator.conf                      - Конфиг obfuscator
-├── router-health-check.sh                  - Скрипт проверки состояния системы
-└── router-uninstall.sh                     - Скрипт удаления Phobos с роутера
+├── health-check.sh                         - Скрипт проверки состояния системы
+└── phobos-uninstall.sh                     - Скрипт удаления Phobos
 /opt/etc/init.d/S49wg-obfuscator            - Init-скрипт автозапуска obfuscator
 ```
 
@@ -530,9 +602,21 @@ ls -la /etc/init.d/wg-obfuscator
 /etc/Phobos/
 ├── <client_name>.conf                      - Конфиг WireGuard (fallback для ручной настройки)
 ├── wg-obfuscator.conf                      - Конфиг obfuscator
-├── router-health-check.sh                  - Скрипт проверки состояния системы
-└── router-uninstall.sh                     - Скрипт удаления Phobos с роутера
+├── health-check.sh                         - Скрипт проверки состояния системы
+└── phobos-uninstall.sh                     - Скрипт удаления Phobos
 /etc/init.d/wg-obfuscator                   - Init-скрипт автозапуска obfuscator
+```
+
+**Для Linux:**
+```
+/usr/local/bin/wg-obfuscator                - Бинарник obfuscator
+/opt/Phobos/
+├── <client_name>.conf                      - Исходный конфиг WireGuard
+├── wg-obfuscator.conf                      - Конфиг obfuscator
+├── health-check.sh                         - Скрипт проверки состояния системы
+└── phobos-uninstall.sh                     - Скрипт удаления Phobos
+/etc/wireguard/phobos.conf                  - Конфиг WireGuard для systemd (интерфейс: phobos)
+/etc/systemd/system/phobos-obfuscator.service - Systemd service obfuscator
 ```
 
 ## Полезные команды

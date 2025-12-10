@@ -35,8 +35,9 @@ fi
 if [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-mipsel" ]] || \
    [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-mips" ]] || \
    [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-aarch64" ]] || \
-   [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-armv7" ]]; then
-  echo "Ошибка: бинарники wg-obfuscator для роутеров не найдены."
+   [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-armv7" ]] || \
+   [[ ! -f "$PHOBOS_DIR/bin/wg-obfuscator-x86_64" ]]; then
+  echo "Ошибка: бинарники wg-obfuscator не найдены."
   echo "Сначала запустите vps-build-obfuscator.sh"
   exit 1
 fi
@@ -54,12 +55,13 @@ echo "==> Копирование файлов конфигурации..."
 cp "$CLIENT_DIR/${CLIENT_ID}.conf" "$PACKAGE_DIR/${CLIENT_ID}.conf"
 cp "$CLIENT_DIR/wg-obfuscator.conf" "$PACKAGE_DIR/wg-obfuscator.conf"
 
-echo "==> Копирование бинарников для роутеров..."
+echo "==> Копирование бинарников для роутеров и клиентов..."
 
 cp "$PHOBOS_DIR/bin/wg-obfuscator-mipsel" "$PACKAGE_DIR/bin/"
 cp "$PHOBOS_DIR/bin/wg-obfuscator-mips" "$PACKAGE_DIR/bin/"
 cp "$PHOBOS_DIR/bin/wg-obfuscator-aarch64" "$PACKAGE_DIR/bin/"
 cp "$PHOBOS_DIR/bin/wg-obfuscator-armv7" "$PACKAGE_DIR/bin/"
+cp "$PHOBOS_DIR/bin/wg-obfuscator-x86_64" "$PACKAGE_DIR/bin/"
 
 echo "==> Копирование скрипта установки..."
 
@@ -136,21 +138,21 @@ echo "==> Копирование скрипта проверки здоровь�
 HEALTH_CHECK_FOUND=false
 
 for HEALTH_CHECK_PATH in \
-  "$REPO_ROOT/client/templates/router-health-check.sh.template" \
-  "/opt/Phobos/templates/router-health-check.sh.template" \
-  "/root/client/templates/router-health-check.sh.template" \
-  "$(dirname "$SCRIPT_DIR")/client/templates/router-health-check.sh.template"; do
+  "$REPO_ROOT/client/templates/health-check.sh.template" \
+  "/opt/Phobos/templates/health-check.sh.template" \
+  "/root/client/templates/health-check.sh.template" \
+  "$(dirname "$SCRIPT_DIR")/client/templates/health-check.sh.template"; do
 
   if [[ -f "$HEALTH_CHECK_PATH" ]]; then
-    cp "$HEALTH_CHECK_PATH" "$PACKAGE_DIR/router-health-check.sh"
-    chmod +x "$PACKAGE_DIR/router-health-check.sh"
+    cp "$HEALTH_CHECK_PATH" "$PACKAGE_DIR/health-check.sh"
+    chmod +x "$PACKAGE_DIR/health-check.sh"
     HEALTH_CHECK_FOUND=true
     break
   fi
 done
 
 if [[ "$HEALTH_CHECK_FOUND" == "false" ]]; then
-  echo "Предупреждение: шаблон router-health-check.sh не найден (не критично)"
+  echo "Предупреждение: шаблон health-check.sh не найден (не критично)"
 fi
 
 echo "==> Копирование скрипта определения архитектуры..."
@@ -180,21 +182,21 @@ echo "==> Копирование скрипта удаления Phobos..."
 UNINSTALL_FOUND=false
 
 for UNINSTALL_PATH in \
-  "$REPO_ROOT/client/templates/router-uninstall.sh.template" \
-  "/opt/Phobos/templates/router-uninstall.sh.template" \
-  "/root/client/templates/router-uninstall.sh.template" \
-  "$(dirname "$SCRIPT_DIR")/client/templates/router-uninstall.sh.template"; do
+  "$REPO_ROOT/client/templates/phobos-uninstall.sh.template" \
+  "/opt/Phobos/templates/phobos-uninstall.sh.template" \
+  "/root/client/templates/phobos-uninstall.sh.template" \
+  "$(dirname "$SCRIPT_DIR")/client/templates/phobos-uninstall.sh.template"; do
 
   if [[ -f "$UNINSTALL_PATH" ]]; then
-    cp "$UNINSTALL_PATH" "$PACKAGE_DIR/router-uninstall.sh"
-    chmod +x "$PACKAGE_DIR/router-uninstall.sh"
+    cp "$UNINSTALL_PATH" "$PACKAGE_DIR/phobos-uninstall.sh"
+    chmod +x "$PACKAGE_DIR/phobos-uninstall.sh"
     UNINSTALL_FOUND=true
     break
   fi
 done
 
 if [[ "$UNINSTALL_FOUND" == "false" ]]; then
-  echo "Предупреждение: шаблон router-uninstall.sh не найден (не критично)"
+  echo "Предупреждение: шаблон phobos-uninstall.sh не найден (не критично)"
 fi
 
 echo "==> Создание README..."
@@ -226,6 +228,7 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
 ЦЕЛЕВЫЕ ПЛАТФОРМЫ:
   - Роутер Keenetic с установленным Entware
   - Роутер OpenWRT (любая версия)
+  - Linux клиенты (Ubuntu/Debian)
 
 ИНСТРУКЦИЯ ПО УСТАНОВКЕ:
 
@@ -266,6 +269,15 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
   ✓ Создаст интерфейс "phobos_wg" и файрволл зону "phobos"
   ✓ Активирует подключение
 
+  ДЛЯ LINUX (Ubuntu/Debian):
+  ✓ Установит зависимости (jq, curl, tar) через apt-get
+  ✓ Установит WireGuard через apt-get
+  ✓ Установит wg-obfuscator
+  ✓ Настроит WireGuard через systemd (wg-quick@$CLIENT_ID)
+  ✓ Настроит obfuscator через systemd (phobos-obfuscator.service)
+  ✓ Добавит порты в UFW (если установлен)
+  ✓ Активирует оба сервиса
+
 Шаг 4. Проверка результата
 ---------------------------------------
   Если автоматическая настройка прошла успешно:
@@ -297,8 +309,8 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
 
 Шаг 5. Проверка соединения
 ---------------------------------------
-  ./router-health-check.sh   
-  ps | grep wg-obfuscator    
+  ./health-check.sh
+  ps | grep wg-obfuscator
   ping 10.8.0.1              
 
 ПАРАМЕТРЫ СЕРВЕРА:
@@ -325,17 +337,18 @@ fi)
   - install-router.sh                    - Скрипт установки (универсальный, определяет платформу)
   - router-configure-wireguard.sh        - Скрипт автоматической настройки WireGuard через RCI API (Keenetic)
   - router-configure-wireguard-openwrt.sh - Скрипт автоматической настройки WireGuard через UCI (OpenWRT)
-  - router-health-check.sh               - Скрипт проверки состояния роутера (универсальный)
-  - router-uninstall.sh                  - Скрипт удаления Phobos с роутера (универсальный)
+  - health-check.sh                      - Скрипт проверки состояния (универсальный)
+  - phobos-uninstall.sh                  - Скрипт удаления Phobos (универсальный)
   - detect-router-arch.sh                - Скрипт определения архитектуры роутера
   - bin/wg-obfuscator-*                  - Бинарники для разных архитектур
     - wg-obfuscator-mipsel                 (MIPS Little Endian)
     - wg-obfuscator-mips                   (MIPS Big Endian)
     - wg-obfuscator-aarch64                (ARM64)
     - wg-obfuscator-armv7                  (ARMv7)
+    - wg-obfuscator-x86_64                 (x86_64 / AMD64)
   - README.txt                           - Этот файл
 
-УСТАНОВЛЕННЫЕ ФАЙЛЫ НА РОУТЕРЕ:
+УСТАНОВЛЕННЫЕ ФАЙЛЫ НА УСТРОЙСТВЕ:
 
   KEENETIC:
   /opt/bin/wg-obfuscator                      - Бинарник obfuscator
@@ -348,6 +361,13 @@ fi)
   /etc/Phobos/wg-obfuscator.conf              - Конфиг obfuscator
   /etc/Phobos/$CLIENT_ID.conf                 - Конфиг WireGuard
   /etc/init.d/phobos-obfuscator               - Procd init-скрипт
+
+  LINUX (Ubuntu/Debian):
+  /usr/local/bin/wg-obfuscator                - Бинарник obfuscator
+  /opt/Phobos/wg-obfuscator.conf              - Конфиг obfuscator
+  /opt/Phobos/$CLIENT_ID.conf                 - Конфиг WireGuard (fallback)
+  /etc/wireguard/$CLIENT_ID.conf              - Конфиг WireGuard (основной)
+  /etc/systemd/system/phobos-obfuscator.service - Systemd service
 
 ВАЖНЫЕ ЗАМЕЧАНИЯ:
 
@@ -366,17 +386,25 @@ fi)
   - Файлы размещаются в корневой ФС: /usr/bin/, /etc/Phobos/
   - Init-скрипт: procd (/etc/init.d/phobos-obfuscator)
 
+  LINUX:
+  - Автоматическая установка WireGuard через apt-get
+  - WireGuard настраивается через systemd (wg-quick@$CLIENT_ID)
+  - Obfuscator управляется через systemd (phobos-obfuscator.service)
+  - Автоматическая настройка UFW файрволла (если установлен)
+  - Файлы размещаются в /opt/Phobos/ и /etc/wireguard/
+  - Поддержка x86_64 и ARM64 архитектур
+
   ОБЩЕЕ:
-  - Obfuscator управляется через init-скрипт (Entware или procd)
+  - Obfuscator управляется через init-скрипт (Entware/procd) или systemd (Linux)
   - Endpoint в конфиге указывает на локальный obfuscator (127.0.0.1:13255)
-  - Поддержка dual-stack IPv4/IPv6 на обеих платформах
+  - Поддержка dual-stack IPv4/IPv6 на всех платформах
 
 УДАЛЕНИЕ PHOBOS:
 
-  Для удаления Phobos с роутера выполните:
+  Для удаления Phobos выполните:
   1. cd /tmp/phobos-$CLIENT_ID
-  2. chmod +x router-uninstall.sh
-  3. ./router-uninstall.sh
+  2. chmod +x phobos-uninstall.sh
+  3. ./phobos-uninstall.sh
 
   Скрипт автоматически:
   ✓ Остановит wg-obfuscator
@@ -386,14 +414,22 @@ fi)
 
 ОТЛАДКА:
 
-  Если возникли проблемы, проверьте:
-  1. ps | grep wg-obfuscator     
-  2. /opt/etc/init.d/S49wg-obfuscator start  
-  3. В веб-панели Keenetic проверьте статус WireGuard
+  KEENETIC/OPENWRT - Если возникли проблемы, проверьте:
+  1. ps | grep wg-obfuscator
+  2. /opt/etc/init.d/S49wg-obfuscator start     (Keenetic)
+  3. /etc/init.d/phobos-obfuscator status       (OpenWRT)
+  4. В веб-панели проверьте статус WireGuard
+
+  LINUX - Если возникли проблемы, проверьте:
+  1. systemctl status phobos-obfuscator
+  2. systemctl status wg-quick@$CLIENT_ID
+  3. journalctl -u phobos-obfuscator -n 50
+  4. journalctl -u wg-quick@$CLIENT_ID -n 50
+  5. wg show
 
 ПОДДЕРЖКА:
 
-  GitHub: https://github.com/yourusername/Phobos
+  GitHub: https://github.com/Ground-Zerro/Phobos
 
 ====================================================
 EOF

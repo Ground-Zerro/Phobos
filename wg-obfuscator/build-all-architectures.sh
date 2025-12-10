@@ -209,7 +209,7 @@ main() {
 
     if $has_gcc || check_compiler "gcc"; then
         log_info "=== Building for x86_64 ==="
-        if build_for_arch "x86_64" "gcc" "" "wg-obfuscator_x86_64" "static"; then
+        if build_for_arch "x86_64" "gcc" "" "wg-obfuscator-x86_64" "static"; then
             success_count=$((success_count + 1))
         fi
         build_count=$((build_count + 1))

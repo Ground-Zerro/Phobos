@@ -10,10 +10,16 @@ ROUTER_PLATFORM=""
 detect_router_platform() {
   local uname_output=$(uname -a)
 
-  if echo "$uname_output" | grep -qi "Keenetic"; then
+  if echo "$uname_output" | grep -qi "Keenetic\|Netcraze"; then
     echo "keenetic"
   elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE"; then
     echo "openwrt"
+  elif [ -f /etc/os-release ]; then
+    if grep -qi "ubuntu\|debian" /etc/os-release 2>/dev/null; then
+      echo "linux"
+    else
+      echo "unknown"
+    fi
   else
     echo "unknown"
   fi
@@ -26,9 +32,13 @@ detect_phobos_dir() {
     echo "/opt/etc/Phobos"
   elif [ "$platform" = "openwrt" ]; then
     echo "/etc/Phobos"
+  elif [ "$platform" = "linux" ]; then
+    echo "/opt/Phobos"
   else
     if [ -d "/opt/etc/Phobos" ]; then
       echo "/opt/etc/Phobos"
+    elif [ -d "/opt/Phobos" ]; then
+      echo "/opt/Phobos"
     else
       echo "/etc/Phobos"
     fi
@@ -82,6 +92,11 @@ check_obfuscator_process() {
       print_status "OK" "wg-obfuscator запущен (проверка через init скрипт)"
       return 0
     fi
+  elif [ "$ROUTER_PLATFORM" = "linux" ] && command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-active --quiet phobos-obfuscator 2>/dev/null; then
+      print_status "OK" "wg-obfuscator запущен (проверка через systemd)"
+      return 0
+    fi
   fi
 
   print_status "FAIL" "wg-obfuscator не запущен"
@@ -90,6 +105,8 @@ check_obfuscator_process() {
     echo "    └─ Попробуйте: /opt/etc/init.d/S49wg-obfuscator status"
   elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f "/etc/init.d/phobos-obfuscator" ]; then
     echo "    └─ Попробуйте: /etc/init.d/phobos-obfuscator status"
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    echo "    └─ Попробуйте: systemctl status phobos-obfuscator"
   fi
 
   return 1
@@ -239,6 +256,91 @@ check_wireguard_openwrt() {
   return 0
 }
 
+check_wireguard_linux() {
+  if ! command -v wg >/dev/null 2>&1; then
+    print_status "WARN" "WireGuard tools не установлены"
+    return 1
+  fi
+
+  local wg_interfaces=$(ip link show type wireguard 2>/dev/null | grep -o '^[0-9]*: [^:]*' | cut -d' ' -f2 || echo "")
+
+  if [ -z "$wg_interfaces" ]; then
+    print_status "WARN" "WireGuard интерфейсы не найдены"
+
+    if command -v systemctl >/dev/null 2>&1; then
+      local wg_services=$(systemctl list-units 'wg-quick@*' --no-pager --no-legend 2>/dev/null | awk '{print $1}' || echo "")
+      if [ -n "$wg_services" ]; then
+        print_status "WARN" "Systemd сервисы WireGuard найдены, но интерфейсы не активны"
+        echo "  └─ Сервисы:"
+        echo "$wg_services" | while read -r service; do
+          local status=$(systemctl is-active "$service" 2>/dev/null || echo "inactive")
+          echo "    └─ $service: $status"
+        done
+      fi
+    fi
+
+    return 1
+  fi
+
+  local wg_count=$(echo "$wg_interfaces" | wc -l)
+  print_status "OK" "WireGuard интерфейсов в Linux: ${wg_count}"
+
+  echo "  └─ Детали интерфейсов:"
+
+  echo "$wg_interfaces" | while read -r if_name; do
+    if [ -z "$if_name" ]; then
+      continue
+    fi
+
+    local if_state="down"
+    local link_state="down"
+    if ip link show "$if_name" 2>/dev/null | grep -q "state UP"; then
+      link_state="up"
+      if_state="up"
+    fi
+
+    local peer_count=$(wg show "$if_name" peers 2>/dev/null | wc -l || echo "0")
+
+    local latest_handshake=$(wg show "$if_name" latest-handshakes 2>/dev/null | head -1 | awk '{print $2}' || echo "0")
+    local handshake_ago=999999
+    if [ "$latest_handshake" != "0" ] && [ -n "$latest_handshake" ]; then
+      local current_time=$(date +%s)
+      handshake_ago=$((current_time - latest_handshake))
+
+      if [ "$link_state" = "down" ] && [ "$handshake_ago" -lt 180 ]; then
+        if_state="up"
+      fi
+    fi
+
+    local vps_status=""
+    if [ "$if_state" = "up" ]; then
+      if ping -I "$if_name" -c 1 -W 2 10.25.0.1 >/dev/null 2>&1; then
+        vps_status="VPS доступен"
+      else
+        vps_status="VPS недоступен"
+      fi
+    fi
+
+    printf "    %s: %s" "$if_name" "$if_state"
+
+    if [ "$peer_count" -gt 0 ]; then
+      printf " (peers: %s)" "$peer_count"
+    fi
+
+    if [ -n "$vps_status" ]; then
+      printf " (%s)" "$vps_status"
+    fi
+
+    printf "\n"
+
+    if [ "$handshake_ago" -ne 999999 ]; then
+      printf "      └─ Последний handshake: %s секунд назад\n" "$handshake_ago"
+    fi
+  done
+
+  return 0
+}
+
 check_config_files() {
   if [ "$ROUTER_PLATFORM" = "openwrt" ]; then
     if command -v uci >/dev/null 2>&1; then
@@ -292,11 +394,17 @@ check_init_script() {
     else
       print_status "FAIL" "Init скрипт obfuscator не найден"
     fi
-  else
-    if [ -f "/opt/etc/init.d/S49wg-obfuscator" ] || [ -f "/etc/init.d/phobos-obfuscator" ]; then
-      print_status "OK" "Init скрипт obfuscator найден"
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    if [ -f "/etc/systemd/system/phobos-obfuscator.service" ]; then
+      print_status "OK" "Systemd сервис obfuscator найден (/etc/systemd/system/phobos-obfuscator.service)"
     else
-      print_status "FAIL" "Init скрипт obfuscator не найден"
+      print_status "FAIL" "Systemd сервис obfuscator не найден"
+    fi
+  else
+    if [ -f "/opt/etc/init.d/S49wg-obfuscator" ] || [ -f "/etc/init.d/phobos-obfuscator" ] || [ -f "/etc/systemd/system/phobos-obfuscator.service" ]; then
+      print_status "OK" "Init скрипт/сервис obfuscator найден"
+    else
+      print_status "FAIL" "Init скрипт/сервис obfuscator не найден"
     fi
   fi
 }
@@ -360,6 +468,9 @@ if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
 elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
   echo "==> Проверка WireGuard в OpenWRT"
   check_wireguard_openwrt
+elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+  echo "==> Проверка WireGuard в Linux"
+  check_wireguard_linux
 else
   echo "==> Проверка WireGuard"
   print_status "WARN" "Неизвестная платформа, пропускаем проверку WireGuard"
@@ -367,8 +478,8 @@ fi
 
 echo ""
 echo "==> Проверка сетевого подключения"
-check_dns_resolution
-check_internet_via_tunnel
+check_dns_resolution || true
+check_internet_via_tunnel || true
 
 echo ""
 echo "==> Системная информация"

@@ -11,10 +11,16 @@ log() {
 detect_router_platform() {
   local uname_output=$(uname -a)
 
-  if echo "$uname_output" | grep -qi "Keenetic"; then
+  if echo "$uname_output" | grep -qi "Keenetic\|Netcraze"; then
     echo "keenetic"
   elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE"; then
     echo "openwrt"
+  elif [ -f /etc/os-release ]; then
+    if grep -qi "ubuntu\|debian" /etc/os-release 2>/dev/null; then
+      echo "linux"
+    else
+      echo "unknown"
+    fi
   else
     echo "unknown"
   fi
@@ -27,9 +33,13 @@ detect_phobos_dir() {
     echo "/opt/etc/Phobos"
   elif [ "$platform" = "openwrt" ]; then
     echo "/etc/Phobos"
+  elif [ "$platform" = "linux" ]; then
+    echo "/opt/Phobos"
   else
     if [ -d "/opt/etc/Phobos" ]; then
       echo "/opt/etc/Phobos"
+    elif [ -d "/opt/Phobos" ]; then
+      echo "/opt/Phobos"
     else
       echo "/etc/Phobos"
     fi
@@ -53,8 +63,12 @@ stop_obfuscator() {
     /etc/init.d/phobos-obfuscator stop >/dev/null 2>&1 || true
     /etc/init.d/phobos-obfuscator disable >/dev/null 2>&1 || true
     log "✓ wg-obfuscator остановлен (procd)"
+  elif command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet phobos-obfuscator 2>/dev/null; then
+    systemctl stop phobos-obfuscator >/dev/null 2>&1 || true
+    systemctl disable phobos-obfuscator >/dev/null 2>&1 || true
+    log "✓ wg-obfuscator остановлен (systemd)"
   else
-    log "  Init-скрипт не найден"
+    log "  Init-скрипт/сервис не найден"
   fi
 
   if ps | grep -v grep | grep -q wg-obfuscator; then
@@ -186,6 +200,41 @@ remove_firewall_zone_openwrt() {
   fi
 }
 
+remove_wireguard_interfaces_linux() {
+  log "Удаление WireGuard интерфейсов Phobos (Linux)..."
+
+  if ! command -v systemctl >/dev/null 2>&1; then
+    log "  systemctl не найден, пропускаем удаление интерфейсов"
+    return 0
+  fi
+
+  local wg_interface="phobos"
+
+  if systemctl is-enabled --quiet wg-quick@${wg_interface} 2>/dev/null || systemctl is-active --quiet wg-quick@${wg_interface} 2>/dev/null; then
+    log "  Остановка и удаление WireGuard сервиса: wg-quick@${wg_interface}"
+    systemctl stop wg-quick@${wg_interface} >/dev/null 2>&1 || true
+    systemctl disable wg-quick@${wg_interface} >/dev/null 2>&1 || true
+    log "  ✓ Сервис wg-quick@${wg_interface} остановлен и отключен"
+  else
+    log "  Сервис wg-quick@${wg_interface} не найден"
+  fi
+
+  if [ -d "/etc/systemd/system/wg-quick@${wg_interface}.service.d" ]; then
+    log "  Удаление systemd override: /etc/systemd/system/wg-quick@${wg_interface}.service.d"
+    rm -rf "/etc/systemd/system/wg-quick@${wg_interface}.service.d"
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    log "  ✓ Systemd override удален"
+  fi
+
+  if [ -f "/etc/wireguard/${wg_interface}.conf" ]; then
+    log "  Удаление конфигурации: /etc/wireguard/${wg_interface}.conf"
+    rm -f "/etc/wireguard/${wg_interface}.conf"
+    log "  ✓ Конфигурационный файл WireGuard удален"
+  else
+    log "  Конфигурация /etc/wireguard/${wg_interface}.conf не найдена"
+  fi
+}
+
 remove_files() {
   log "Удаление файлов Phobos..."
 
@@ -209,6 +258,17 @@ remove_files() {
     log "  ✓ Удален бинарник: /usr/bin/wg-obfuscator"
   fi
 
+  if [ -f /usr/local/bin/wg-obfuscator ]; then
+    rm -f /usr/local/bin/wg-obfuscator
+    log "  ✓ Удален бинарник: /usr/local/bin/wg-obfuscator"
+  fi
+
+  if [ -f /etc/systemd/system/phobos-obfuscator.service ]; then
+    rm -f /etc/systemd/system/phobos-obfuscator.service
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    log "  ✓ Удален systemd сервис: /etc/systemd/system/phobos-obfuscator.service"
+  fi
+
   if [ -d "$PHOBOS_DIR" ]; then
     rm -rf "$PHOBOS_DIR"
     log "  ✓ Удалена директория: $PHOBOS_DIR"
@@ -218,11 +278,11 @@ remove_files() {
 show_final_info() {
   log ""
   log "╔════════════════════════════════════════════════════════════╗"
-  log "║  Phobos успешно удален с роутера                           ║"
+  log "║  Phobos успешно удален                                     ║"
   log "╚════════════════════════════════════════════════════════════╝"
   log ""
   log "Удалены компоненты:"
-  log "  - wg-obfuscator (процесс, init-скрипт, бинарник)"
+  log "  - wg-obfuscator (процесс, init-скрипт/сервис, бинарник)"
   log "  - WireGuard интерфейсы Phobos"
   log "  - Конфигурационные файлы"
   log ""
@@ -232,7 +292,7 @@ main() {
   ROUTER_PLATFORM=$(detect_router_platform)
   PHOBOS_DIR=$(detect_phobos_dir "$ROUTER_PLATFORM")
 
-  log "==> Начало удаления Phobos с роутера $ROUTER_PLATFORM"
+  log "==> Начало удаления Phobos (платформа: $ROUTER_PLATFORM)"
   log "==> Директория: $PHOBOS_DIR"
 
   check_root
@@ -244,6 +304,8 @@ main() {
   elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
     remove_wireguard_interfaces_openwrt
     remove_firewall_zone_openwrt
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    remove_wireguard_interfaces_linux
   else
     log "ПРЕДУПРЕЖДЕНИЕ: Неизвестная платформа, пропускаем удаление WireGuard интерфейсов"
   fi

@@ -198,6 +198,167 @@ change_ip() {
   sleep 2
 }
 
+change_wireguard_server_ip() {
+  echo ""
+  echo "==> Смена внутреннего пула адресов WireGuard"
+  echo ""
+
+  local wg_config="/etc/wireguard/wg0.conf"
+
+  if [[ ! -f "$wg_config" ]]; then
+    echo "Ошибка: конфигурация WireGuard не найдена"
+    read -p "Нажмите Enter для продолжения..."
+    return
+  fi
+
+  local current_address=$(grep "^Address" "$wg_config" | head -1 | cut -d'=' -f2- | tr -d ' ')
+  local current_ipv4=$(echo "$current_address" | cut -d',' -f1)
+  local current_ipv6=$(echo "$current_address" | cut -d',' -f2)
+
+  if [[ "$current_ipv6" == "$current_ipv4" ]]; then
+    current_ipv6="не установлен"
+  fi
+
+  echo "Текущие туннельные адреса сервера:"
+  echo "  IPv4: $current_ipv4"
+  echo "  IPv6: $current_ipv6"
+  echo ""
+  echo "⚠ ВНИМАНИЕ: Изменение туннельных адресов РАЗОРВЕТ связь"
+  echo "   со ВСЕМИ клиентами! Потребуется перегенерация всех"
+  echo "   клиентских конфигураций."
+  echo ""
+
+  local client_count=$(ls -1 "$PHOBOS_DIR/clients" 2>/dev/null | wc -l)
+  if [[ $client_count -gt 0 ]]; then
+    echo "  Количество клиентов: $client_count"
+    echo ""
+  fi
+
+  read -p "Продолжить? (y/n): " confirm_change
+  if [[ ! "$confirm_change" =~ ^[Yy]$ ]]; then
+    echo "Отменено"
+    sleep 1
+    return
+  fi
+
+  echo ""
+  echo "Введите новую туннельную сеть IPv4 (формат: 10.X.0.0/16)"
+  read -p "По умолчанию [10.25.0.0/16]: " new_network
+  new_network=${new_network:-10.25.0.0/16}
+
+  if [[ ! "$new_network" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]]; then
+    echo "Ошибка: недопустимый формат сети"
+    sleep 2
+    return
+  fi
+
+  local network_prefix=$(echo "$new_network" | cut -d'.' -f1-2)
+  local new_server_ip="${network_prefix}.0.1/16"
+
+  echo ""
+  echo "Включить IPv6? (y/n)"
+  read -p "По умолчанию [y]: " enable_ipv6
+  enable_ipv6=${enable_ipv6:-y}
+
+  local new_server_ipv6=""
+  local new_address=""
+  local postup_rules=""
+  local postdown_rules=""
+  local main_interface=$(ip route | grep default | head -1 | awk '{print $5}')
+
+  if [[ "$enable_ipv6" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "Введите новую туннельную сеть IPv6 (формат: fd00:X:Y::/48)"
+    read -p "По умолчанию [fd00:10:25::/48]: " new_network_v6
+    new_network_v6=${new_network_v6:-fd00:10:25::/48}
+
+    local ipv6_prefix=$(echo "$new_network_v6" | cut -d':' -f1-3)
+    new_server_ipv6="${ipv6_prefix}::1/48"
+    new_address="$new_server_ip, $new_server_ipv6"
+
+    postup_rules="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $main_interface -j MASQUERADE; ip6tables -A FORWARD -i wg0 -o wg0 -j DROP; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o $main_interface -j MASQUERADE"
+    postdown_rules="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $main_interface -j MASQUERADE; ip6tables -D FORWARD -i wg0 -o wg0 -j DROP; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o $main_interface -j MASQUERADE"
+  else
+    new_address="$new_server_ip"
+    postup_rules="iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $main_interface -j MASQUERADE"
+    postdown_rules="iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $main_interface -j MASQUERADE"
+  fi
+
+  echo ""
+  echo "Новые туннельные адреса:"
+  echo "  Сеть IPv4: $new_network"
+  echo "  Адрес сервера IPv4: $new_server_ip"
+  if [[ -n "$new_server_ipv6" ]]; then
+    echo "  Сеть IPv6: $new_network_v6"
+    echo "  Адрес сервера IPv6: $new_server_ipv6"
+  fi
+  echo ""
+  read -p "Применить изменения? (y/n): " confirm_apply
+
+  if [[ ! "$confirm_apply" =~ ^[Yy]$ ]]; then
+    echo "Отменено"
+    sleep 1
+    return
+  fi
+
+  echo ""
+  echo "==> Создание резервной копии..."
+  mkdir -p "$BACKUP_DIR"
+  local backup_file="$BACKUP_DIR/wg0-backup-$(date +%Y%m%d-%H%M%S).conf"
+  cp "$wg_config" "$backup_file"
+  echo "Резервная копия: $backup_file"
+
+  echo ""
+  echo "==> Остановка WireGuard..."
+  systemctl stop wg-quick@wg0 || true
+
+  echo ""
+  echo "==> Обновление конфигурации WireGuard..."
+
+  sed -i "s|^Address = .*|Address = $new_address|" "$wg_config"
+  sed -i "s|^PostUp = .*|PostUp = $postup_rules|" "$wg_config"
+  sed -i "s|^PostDown = .*|PostDown = $postdown_rules|" "$wg_config"
+
+  echo ""
+  echo "==> Запуск WireGuard с новой конфигурацией..."
+  systemctl start wg-quick@wg0
+
+  sleep 2
+
+  if systemctl is-active --quiet wg-quick@wg0; then
+    echo "✓ WireGuard успешно перезапущен с новыми адресами"
+    echo ""
+    echo "╔════════════════════════════════════════════════════════════╗"
+    echo "║  ⚠  КРИТИЧЕСКИ ВАЖНО                                       ║"
+    echo "╠════════════════════════════════════════════════════════════╣"
+    echo "║  Туннельные адреса изменены! ВСЕ клиенты отключены!       ║"
+    echo "║                                                            ║"
+
+    if [[ $client_count -gt 0 ]]; then
+      echo "║  Необходимо ПЕРЕГЕНЕРИРОВАТЬ конфигурации для             ║"
+      echo "║  $client_count клиентов и переустановить их на устройствах!     ║"
+      echo "║                                                            ║"
+      echo "║  Используйте для каждого клиента:                         ║"
+      echo "║  1. Удалите старого клиента                               ║"
+      echo "║  2. Создайте клиента заново с тем же именем               ║"
+      echo "║     (будут выданы новые туннельные адреса)                ║"
+      echo "║  3. Сгенерируйте новый токен установки                    ║"
+    fi
+
+    echo "╚════════════════════════════════════════════════════════════╝"
+  else
+    echo "✗ Ошибка запуска WireGuard!"
+    echo ""
+    echo "Выполняется откат к резервной копии..."
+    cp "$backup_file" "$wg_config"
+    systemctl start wg-quick@wg0
+    echo "Откат выполнен. Проверьте журналы: journalctl -u wg-quick@wg0 -n 50"
+  fi
+
+  echo ""
+  read -p "Нажмите Enter для продолжения..."
+}
+
 generate_new_key() {
   load_current_config
 
@@ -829,21 +990,22 @@ config_menu() {
 
     echo " 1) Изменить порт прослушивания"
     echo " 2) Изменить IP интерфейса"
-    echo " 3) Сгенерировать новый ключ обфускации"
-    echo " 4) Изменить уровень логирования"
-    echo " 5) Изменить режим маскировки"
-    echo " 6) Изменить таймаут неактивности"
-    echo " 7) Изменить максимум dummy-пакетов"
+    echo " 3) Смена IP WireGuard сервера"
+    echo " 4) Сгенерировать новый ключ обфускации"
+    echo " 5) Изменить уровень логирования"
+    echo " 6) Изменить режим маскировки"
+    echo " 7) Изменить таймаут неактивности"
+    echo " 8) Изменить максимум dummy-пакетов"
     echo ""
-    echo " 8) Предпросмотр изменений"
-    echo " 9) Применить изменения и перезапустить службу"
-    echo "10) Сброс к настройкам по умолчанию"
-    echo "11) Показать полную конфигурацию"
+    echo " 9) Предпросмотр изменений"
+    echo "10) Применить изменения и перезапустить службу"
+    echo "11) Сброс к настройкам по умолчанию"
+    echo "12) Показать полную конфигурацию"
     echo ""
-    echo "12) Массовое обновление клиентов"
-    echo "13) Проверка здоровья конфигурации"
-    echo "14) Экспорт конфигурации"
-    echo "15) Импорт конфигурации"
+    echo "13) Массовое обновление клиентов"
+    echo "14) Проверка здоровья конфигурации"
+    echo "15) Экспорт конфигурации"
+    echo "16) Импорт конфигурации"
     echo ""
     echo " 0) Назад"
     echo ""
@@ -858,19 +1020,20 @@ config_menu() {
     case $choice in
       1) change_port ;;
       2) change_ip ;;
-      3) generate_new_key ;;
-      4) change_log_level ;;
-      5) change_masking_mode ;;
-      6) change_idle_timeout ;;
-      7) change_max_dummy ;;
-      8) show_changes_preview; read -p "Нажмите Enter..." ;;
-      9) apply_changes ;;
-      10) reset_to_defaults ;;
-      11) show_full_config ;;
-      12) mass_update_clients ;;
-      13) check_health ;;
-      14) export_config ;;
-      15) import_config ;;
+      3) change_wireguard_server_ip ;;
+      4) generate_new_key ;;
+      5) change_log_level ;;
+      6) change_masking_mode ;;
+      7) change_idle_timeout ;;
+      8) change_max_dummy ;;
+      9) show_changes_preview; read -p "Нажмите Enter..." ;;
+      10) apply_changes ;;
+      11) reset_to_defaults ;;
+      12) show_full_config ;;
+      13) mass_update_clients ;;
+      14) check_health ;;
+      15) export_config ;;
+      16) import_config ;;
       0) break ;;
       *) echo "Неверный выбор"; sleep 1 ;;
     esac

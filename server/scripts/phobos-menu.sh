@@ -316,9 +316,10 @@ show_clients_menu() {
     echo "  1) Список клиентов"
     echo "  2) Создать клиента"
     echo "  3) Удалить клиента"
-    echo "  4) Пересоздать конфигурацию клиента"
-    echo "  5) Собрать архив для клиента"
-    echo "  6) Сгенерировать ссылку для установки"
+    echo "  4) Мониторинг клиентов"
+    echo "  5) Пересоздать конфигурацию клиента"
+    echo "  6) Собрать архив для клиента"
+    echo "  7) Сгенерировать ссылку для установки"
     echo ""
     echo "  0) Назад"
     echo ""
@@ -328,9 +329,10 @@ show_clients_menu() {
       1) show_clients_list ;;
       2) create_client ;;
       3) remove_client ;;
-      4) rebuild_client_config ;;
-      5) generate_package ;;
-      6) generate_install_link ;;
+      4) monitor_clients ;;
+      5) rebuild_client_config ;;
+      6) generate_package ;;
+      7) generate_install_link ;;
       0) break ;;
       *) echo "Неверный выбор"; sleep 1 ;;
     esac
@@ -459,11 +461,9 @@ show_system_menu() {
     echo ""
     echo "  1) Показать параметры сервера"
     echo "  2) Проверка состояния системы"
-    echo "  3) Мониторинг клиентов"
-    echo "  4) Очистка просроченных токенов"
-    echo "  5) Очистка осиротевших симлинков"
-    echo "  6) Резервное копирование конфигураций"
-    echo "  7) Настройка WG-Obfuscator"
+    echo "  3) Очистка просроченных токенов"
+    echo "  4) Очистка осиротевших симлинков"
+    echo "  5) Резервное копирование конфигураций"
     echo ""
     echo "  0) Назад"
     echo ""
@@ -472,11 +472,9 @@ show_system_menu() {
     case $choice in
       1) show_server_info ;;
       2) run_health_check ;;
-      3) monitor_clients ;;
-      4) cleanup_tokens ;;
-      5) cleanup_orphaned_symlinks ;;
-      6) backup_configs ;;
-      7) configure_obfuscator ;;
+      3) cleanup_tokens ;;
+      4) cleanup_orphaned_symlinks ;;
+      5) backup_configs ;;
       0) break ;;
       *) echo "Неверный выбор"; sleep 1 ;;
     esac
@@ -488,18 +486,20 @@ main_menu() {
     show_header
     echo "ГЛАВНОЕ МЕНЮ"
     echo ""
-    echo "  1) Управление службами"
-    echo "  2) Управление клиентами"
-    echo "  3) Системные функции"
+    echo "  1) Управление клиентами"
+    echo "  2) Управление службами"
+    echo "  3) Настройка WG-Obfuscator"
+    echo "  4) Системные функции"
     echo ""
     echo "  0) Выход"
     echo ""
     read -p "Выберите раздел: " choice
 
     case $choice in
-      1) show_services_menu ;;
-      2) show_clients_menu ;;
-      3) show_system_menu ;;
+      1) show_clients_menu ;;
+      2) show_services_menu ;;
+      3) configure_obfuscator ;;
+      4) show_system_menu ;;
       0) echo "Выход..."; exit 0 ;;
       *) echo "Неверный выбор"; sleep 1 ;;
     esac

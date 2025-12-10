@@ -12,10 +12,16 @@ log() {
 detect_router_platform() {
   local uname_output=$(uname -a)
 
-  if echo "$uname_output" | grep -qi "Keenetic"; then
+  if echo "$uname_output" | grep -qi "Keenetic\|Netcraze"; then
     echo "keenetic"
   elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE"; then
     echo "openwrt"
+  elif [ -f /etc/os-release ]; then
+    if grep -qi "ubuntu\|debian" /etc/os-release; then
+      echo "linux"
+    else
+      echo "unknown"
+    fi
   else
     echo "unknown"
   fi
@@ -28,6 +34,8 @@ detect_phobos_dir() {
     echo "/opt/etc/Phobos"
   elif [ "$platform" = "openwrt" ]; then
     echo "/etc/Phobos"
+  elif [ "$platform" = "linux" ]; then
+    echo "/opt/Phobos"
   else
     if [ -d "/opt" ] && [ -d "/opt/etc" ]; then
       echo "/opt/etc/Phobos"
@@ -55,23 +63,45 @@ check_dependencies() {
 
   if [ -n "$missing" ]; then
     log "ВНИМАНИЕ: Отсутствуют необходимые утилиты:$missing"
-    log "Устанавливаю недостающие пакеты через opkg..."
 
-    if command -v opkg >/dev/null 2>&1; then
-      if ! opkg update; then
-        log "ОШИБКА: Не удалось обновить список пакетов opkg"
+    if [ "$platform" = "linux" ]; then
+      log "Устанавливаю недостающие пакеты через apt-get..."
+
+      if command -v apt-get >/dev/null 2>&1; then
+        if ! apt-get update; then
+          log "ОШИБКА: Не удалось обновить список пакетов apt-get"
+          return 1
+        fi
+
+        for cmd in $missing; do
+          log "Установка $cmd..."
+          if ! apt-get install -y "$cmd" 2>/dev/null; then
+            log "ПРЕДУПРЕЖДЕНИЕ: Не удалось установить $cmd через apt-get"
+          fi
+        done
+      else
+        log "ОШИБКА: apt-get не найден. Невозможно установить зависимости."
         return 1
       fi
-
-      for cmd in $missing; do
-        log "Установка $cmd..."
-        if ! opkg install "$cmd" 2>/dev/null; then
-          log "ПРЕДУПРЕЖДЕНИЕ: Не удалось установить $cmd через opkg"
-        fi
-      done
     else
-      log "ОШИБКА: opkg не найден. Невозможно установить зависимости."
-      return 1
+      log "Устанавливаю недостающие пакеты через opkg..."
+
+      if command -v opkg >/dev/null 2>&1; then
+        if ! opkg update; then
+          log "ОШИБКА: Не удалось обновить список пакетов opkg"
+          return 1
+        fi
+
+        for cmd in $missing; do
+          log "Установка $cmd..."
+          if ! opkg install "$cmd" 2>/dev/null; then
+            log "ПРЕДУПРЕЖДЕНИЕ: Не удалось установить $cmd через opkg"
+          fi
+        done
+      else
+        log "ОШИБКА: opkg не найден. Невозможно установить зависимости."
+        return 1
+      fi
     fi
   fi
 
@@ -172,26 +202,26 @@ setup_configs() {
 }
 
 deploy_health_check() {
-  log "Развертывание скрипта проверки состояния роутера..."
+  log "Развертывание скрипта проверки состояния..."
 
-  if [ -f "router-health-check.sh" ]; then
-    cp "router-health-check.sh" "$PHOBOS_DIR/router-health-check.sh"
-    chmod +x "$PHOBOS_DIR/router-health-check.sh"
-    log "Скрипт проверки состояния установлен: $PHOBOS_DIR/router-health-check.sh"
+  if [ -f "health-check.sh" ]; then
+    cp "health-check.sh" "$PHOBOS_DIR/health-check.sh"
+    chmod +x "$PHOBOS_DIR/health-check.sh"
+    log "Скрипт проверки состояния установлен: $PHOBOS_DIR/health-check.sh"
   else
-    log "ПРЕДУПРЕЖДЕНИЕ: router-health-check.sh не найден в архиве"
+    log "ПРЕДУПРЕЖДЕНИЕ: health-check.sh не найден в архиве"
   fi
 }
 
 deploy_uninstall_script() {
   log "Развертывание скрипта удаления Phobos..."
 
-  if [ -f "router-uninstall.sh" ]; then
-    cp "router-uninstall.sh" "$PHOBOS_DIR/router-uninstall.sh"
-    chmod +x "$PHOBOS_DIR/router-uninstall.sh"
-    log "Скрипт удаления установлен: $PHOBOS_DIR/router-uninstall.sh"
+  if [ -f "phobos-uninstall.sh" ]; then
+    cp "phobos-uninstall.sh" "$PHOBOS_DIR/phobos-uninstall.sh"
+    chmod +x "$PHOBOS_DIR/phobos-uninstall.sh"
+    log "Скрипт удаления установлен: $PHOBOS_DIR/phobos-uninstall.sh"
   else
-    log "ПРЕДУПРЕЖДЕНИЕ: router-uninstall.sh не найден в архиве"
+    log "ПРЕДУПРЕЖДЕНИЕ: phobos-uninstall.sh не найден в архиве"
   fi
 }
 
@@ -440,6 +470,150 @@ show_manual_instructions() {
   log ""
 }
 
+install_wireguard_linux() {
+  log "Установка WireGuard для Linux..."
+
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update || log "ПРЕДУПРЕЖДЕНИЕ: Не удалось обновить список пакетов"
+    apt-get install -y wireguard wireguard-tools resolvconf net-tools || {
+      log "ОШИБКА: Не удалось установить WireGuard"
+      return 1
+    }
+  else
+    log "ОШИБКА: apt-get не найден. Поддерживаются только Ubuntu/Debian"
+    return 1
+  fi
+
+  log "✓ WireGuard установлен"
+  return 0
+}
+
+configure_wireguard_linux() {
+  log ""
+  log "==> Настройка WireGuard через systemd..."
+
+  local wg_interface="phobos"
+  local wg_config_dir="/etc/wireguard"
+  mkdir -p "$wg_config_dir"
+
+  cp "$PHOBOS_DIR/${CLIENT_NAME}.conf" "$wg_config_dir/${wg_interface}.conf"
+  chmod 600 "$wg_config_dir/${wg_interface}.conf"
+
+  log "Настройка routing: VPN как запасной интерфейс..."
+  sed -i '/^MTU/a Table = off' "$wg_config_dir/${wg_interface}.conf"
+  sed -i '/^Table = off/a PostUp = ip route add 10.25.0.0/16 dev %i' "$wg_config_dir/${wg_interface}.conf"
+  sed -i '/^PostUp/a PostDown = ip route del 10.25.0.0/16 dev %i || true' "$wg_config_dir/${wg_interface}.conf"
+
+  log "Настройка зависимости WireGuard от obfuscator..."
+  mkdir -p "/etc/systemd/system/wg-quick@${wg_interface}.service.d"
+  cat > "/etc/systemd/system/wg-quick@${wg_interface}.service.d/override.conf" <<EOF
+[Unit]
+After=phobos-obfuscator.service
+Requires=phobos-obfuscator.service
+EOF
+
+  systemctl daemon-reload
+
+  log "Включение и запуск WireGuard интерфейса ${wg_interface}..."
+  systemctl enable wg-quick@${wg_interface} || log "ПРЕДУПРЕЖДЕНИЕ: Не удалось включить автозапуск"
+  systemctl start wg-quick@${wg_interface} || {
+    log "ОШИБКА: Не удалось запустить WireGuard"
+    return 1
+  }
+
+  sleep 3
+
+  if systemctl is-active --quiet wg-quick@${wg_interface}; then
+    log "✓ WireGuard успешно запущен (интерфейс: ${wg_interface})"
+    log "  VPN настроен как запасной интерфейс (не перехватывает системный трафик)"
+
+    if wg show ${wg_interface} 2>/dev/null | grep -q "latest handshake"; then
+      log "✓ Туннель установлен и работает"
+    else
+      log "  Ожидание установки туннеля..."
+    fi
+
+    return 0
+  else
+    log "ПРЕДУПРЕЖДЕНИЕ: WireGuard может быть не запущен, проверьте статус"
+    return 1
+  fi
+}
+
+create_systemd_obfuscator_service() {
+  log "Создание systemd service для obfuscator..."
+
+  cat > /etc/systemd/system/phobos-obfuscator.service <<EOFS
+[Unit]
+Description=Phobos WireGuard Obfuscator
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wg-obfuscator --config $PHOBOS_DIR/wg-obfuscator.conf
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOFS
+
+  if [ ! -f /usr/local/bin/wg-obfuscator ]; then
+    local target_path="/usr/local/bin/wg-obfuscator"
+    if [ -f /opt/bin/wg-obfuscator ]; then
+      cp /opt/bin/wg-obfuscator "$target_path"
+      chmod +x "$target_path"
+    elif [ -f /usr/bin/wg-obfuscator ]; then
+      cp /usr/bin/wg-obfuscator "$target_path"
+      chmod +x "$target_path"
+    fi
+  fi
+
+  systemctl daemon-reload
+  systemctl enable phobos-obfuscator
+  systemctl start phobos-obfuscator
+
+  log "Ожидание запуска obfuscator (до 10 секунд)..."
+  local wait_count=0
+  while [ $wait_count -lt 10 ]; do
+    sleep 1
+    if systemctl is-active --quiet phobos-obfuscator && ss -ln | grep -q "127.0.0.1:13255"; then
+      log "✓ Obfuscator успешно запущен и слушает на 127.0.0.1:13255"
+      break
+    fi
+    wait_count=$((wait_count + 1))
+  done
+
+  if [ $wait_count -ge 10 ]; then
+    log "ПРЕДУПРЕЖДЕНИЕ: Obfuscator может быть не готов (таймаут 10 сек)"
+  fi
+
+  log "Systemd service создан: /etc/systemd/system/phobos-obfuscator.service"
+}
+
+configure_ufw_linux() {
+  log ""
+  log "==> Проверка UFW firewall..."
+
+  if ! command -v ufw >/dev/null 2>&1; then
+    log "UFW не установлен, пропуск настройки"
+    return 0
+  fi
+
+  log "✓ UFW обнаружен"
+  log "  Клиентская конфигурация не требует открытия портов:"
+  log "  - obfuscator слушает на 127.0.0.1:13255 (локальный интерфейс)"
+  log "  - obfuscator делает исходящие соединения (разрешены по умолчанию)"
+
+  if ufw status 2>/dev/null | grep -q "Status: active"; then
+    log "  UFW активен, клиент будет работать корректно"
+  else
+    log "  UFW неактивен"
+  fi
+}
+
 show_final_info() {
   log ""
   log "╔════════════════════════════════════════════════════════════╗"
@@ -452,6 +626,8 @@ show_final_info() {
     log "  Бинарник: /opt/bin/wg-obfuscator"
   elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
     log "  Бинарник: /usr/bin/wg-obfuscator"
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    log "  Бинарник: /usr/local/bin/wg-obfuscator"
   fi
 
   log "  Конфиг obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
@@ -461,10 +637,13 @@ show_final_info() {
     log "  Init-скрипт: /opt/etc/init.d/S49wg-obfuscator"
   elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/phobos-obfuscator ]; then
     log "  Init-скрипт: /etc/init.d/phobos-obfuscator"
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    log "  Systemd service: /etc/systemd/system/phobos-obfuscator.service"
+    log "  WireGuard конфиг: /etc/wireguard/phobos.conf"
   fi
 
-  log "  Health Check: $PHOBOS_DIR/router-health-check.sh"
-  log "  Uninstall: $PHOBOS_DIR/router-uninstall.sh"
+  log "  Health Check: $PHOBOS_DIR/health-check.sh"
+  log "  Uninstall: $PHOBOS_DIR/phobos-uninstall.sh"
   log ""
   log "Управление:"
 
@@ -472,10 +651,13 @@ show_final_info() {
     log "  /opt/etc/init.d/S49wg-obfuscator status    # Проверить что obfuscator запущен"
   elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/phobos-obfuscator ]; then
     log "  /etc/init.d/phobos-obfuscator status       # Проверить что obfuscator запущен"
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    log "  systemctl status phobos-obfuscator         # Проверить что obfuscator запущен"
+    log "  systemctl status wg-quick@phobos           # Проверить что WireGuard запущен"
   fi
 
-  log "  $PHOBOS_DIR/router-health-check.sh         # Проверить состояние роутера"
-  log "  $PHOBOS_DIR/router-uninstall.sh            # Удалить Phobos с роутера"
+  log "  $PHOBOS_DIR/health-check.sh         # Проверить состояние"
+  log "  $PHOBOS_DIR/phobos-uninstall.sh     # Удалить Phobos"
   log ""
 }
 
@@ -487,12 +669,13 @@ main() {
   log "==> Директория Phobos: $PHOBOS_DIR"
 
   if [ "$ROUTER_PLATFORM" = "unknown" ]; then
-    log "ОШИБКА: Неподдерживаемая платформа роутера"
+    log "ОШИБКА: Неподдерживаемая платформа"
     log "Вывод uname -a: $(uname -a)"
     log ""
     log "Поддерживаемые платформы:"
-    log "  - Keenetic (определяется по 'Keenetic' в uname)"
+    log "  - Keenetic/Netcraze (определяется по 'Keenetic' или 'Netcraze' в uname)"
     log "  - OpenWRT (определяется по 'OpenWrt' или 'LEDE' в uname)"
+    log "  - Linux (Ubuntu/Debian)"
     exit 1
   fi
 
@@ -567,6 +750,31 @@ main() {
       log "║  ⚠ WireGuard требует ручной настройки                     ║"
       log "╚════════════════════════════════════════════════════════════╝"
       show_manual_instructions
+      show_final_info
+    fi
+
+  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
+    install_wireguard_linux || {
+      log "ОШИБКА: Не удалось установить WireGuard"
+      exit 1
+    }
+
+    create_systemd_obfuscator_service
+
+    if configure_wireguard_linux; then
+      configure_ufw_linux
+      log ""
+      log "╔════════════════════════════════════════════════════════════╗"
+      log "║  ✓ Установка завершена успешно!                            ║"
+      log "║  ✓ WireGuard и Obfuscator настроены через systemd         ║"
+      log "╚════════════════════════════════════════════════════════════╝"
+      show_final_info
+    else
+      log ""
+      log "╔════════════════════════════════════════════════════════════╗"
+      log "║  ⚠ Установка завершена с предупреждениями                 ║"
+      log "║  ⚠ Проверьте статус служб вручную                         ║"
+      log "╚════════════════════════════════════════════════════════════╝"
       show_final_info
     fi
   fi

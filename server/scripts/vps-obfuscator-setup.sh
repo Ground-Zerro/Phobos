@@ -294,6 +294,14 @@ systemctl start wg-obfuscator
 
 sleep 2
 
+echo "==> Настройка UFW firewall..."
+if command -v ufw &>/dev/null; then
+  ufw allow ${OBFUSCATOR_LISTEN_PORT}/udp comment "Phobos Obfuscator" 2>/dev/null || true
+  echo "  Порт ${OBFUSCATOR_LISTEN_PORT}/udp добавлен в исключения UFW"
+else
+  echo "  UFW не установлен, пропуск настройки"
+fi
+
 echo ""
 echo "==> wg-obfuscator успешно установлен и запущен!"
 echo ""

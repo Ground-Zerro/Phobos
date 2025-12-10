@@ -203,6 +203,14 @@ else
   echo "Предупреждение: ${SERVER_ENV} не найден"
 fi
 
+echo "==> Настройка UFW firewall..."
+if command -v ufw &>/dev/null; then
+  ufw allow ${HTTP_PORT}/tcp comment "Phobos HTTP Server" 2>/dev/null || true
+  echo "  Порт ${HTTP_PORT}/tcp добавлен в исключения UFW"
+else
+  echo "  UFW не установлен, пропуск настройки"
+fi
+
 echo ""
 echo "=========================================="
 echo "  HTTP сервер успешно настроен!"

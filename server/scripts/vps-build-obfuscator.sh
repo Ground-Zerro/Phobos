@@ -22,16 +22,21 @@ mkdir -p "$INSTALL_DIR"
 
 echo "==> Копирование бинарников wg-obfuscator..."
 
-if [[ -f "$BIN_SOURCE_DIR/wg-obfuscator_x86_64" ]]; then
-  cp "$BIN_SOURCE_DIR/wg-obfuscator_x86_64" "$INSTALL_DIR/wg-obfuscator"
+if [[ -f "$BIN_SOURCE_DIR/wg-obfuscator-x86_64" ]]; then
+  cp "$BIN_SOURCE_DIR/wg-obfuscator-x86_64" "$INSTALL_DIR/wg-obfuscator"
   chmod +x "$INSTALL_DIR/wg-obfuscator"
   if [[ -f /usr/local/bin/wg-obfuscator ]]; then
     rm /usr/local/bin/wg-obfuscator
   fi
   cp "$INSTALL_DIR/wg-obfuscator" /usr/local/bin/wg-obfuscator
+
+  cp "$BIN_SOURCE_DIR/wg-obfuscator-x86_64" "$INSTALL_DIR/wg-obfuscator-x86_64"
+  chmod +x "$INSTALL_DIR/wg-obfuscator-x86_64"
+
   echo "  ✓ wg-obfuscator (x86_64) скопирован"
+  echo "  ✓ wg-obfuscator-x86_64 (для пакетов) скопирован"
 else
-  echo "  ✗ Ошибка: wg-obfuscator_x86_64 не найден"
+  echo "  ✗ Ошибка: wg-obfuscator-x86_64 не найден"
   exit 1
 fi
 
