@@ -150,7 +150,13 @@ mkdir -p "${INSTALL_DIR}"
 cd "${INSTALL_DIR}"
 
 echo "==> Загрузка установочного пакета"
-if ! wget "${PACKAGE_URL}" -O phobos.tar.gz; then
+WGET_FLAGS=""
+if uname -a | grep -qi "OpenWrt\|LEDE\|ImmortalWrt\|Keenetic\|Netcraze"; then
+  WGET_FLAGS="--no-check-certificate"
+  echo "Обнаружена встроенная система, используется флаг --no-check-certificate"
+fi
+
+if ! wget ${WGET_FLAGS} "${PACKAGE_URL}" -O phobos.tar.gz; then
   echo "Ошибка: не удалось загрузить пакет"
   echo "Проверьте доступность сервера"
   exit 1

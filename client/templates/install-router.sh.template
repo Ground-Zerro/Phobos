@@ -14,7 +14,7 @@ detect_router_platform() {
 
   if echo "$uname_output" | grep -qi "Keenetic\|Netcraze"; then
     echo "keenetic"
-  elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE"; then
+  elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE\|ImmortalWrt"; then
     echo "openwrt"
   elif [ -f /etc/os-release ]; then
     if grep -qi "ubuntu\|debian" /etc/os-release; then
@@ -42,6 +42,16 @@ detect_phobos_dir() {
     else
       echo "/etc/Phobos"
     fi
+  fi
+}
+
+detect_3xui_mode() {
+  local platform="$1"
+
+  if [ "$platform" = "linux" ] && [ -f /etc/x-ui/x-ui.db ]; then
+    echo "true"
+  else
+    echo "false"
   fi
 }
 
@@ -222,6 +232,64 @@ deploy_uninstall_script() {
     log "Скрипт удаления установлен: $PHOBOS_DIR/phobos-uninstall.sh"
   else
     log "ПРЕДУПРЕЖДЕНИЕ: phobos-uninstall.sh не найден в архиве"
+  fi
+}
+
+deploy_3xui_script() {
+  log "Развертывание скрипта 3xui.py..."
+
+  if [ -f "3xui.py" ]; then
+    cp "3xui.py" "$PHOBOS_DIR/3xui.py"
+    chmod +x "$PHOBOS_DIR/3xui.py"
+    log "Скрипт 3xui.py установлен: $PHOBOS_DIR/3xui.py"
+  else
+    log "ПРЕДУПРЕЖДЕНИЕ: 3xui.py не найден в архиве"
+  fi
+}
+
+run_3xui_integration() {
+  log ""
+  log "==> Интеграция WireGuard конфигурации в 3x-ui..."
+
+  if [ ! -f "$PHOBOS_DIR/3xui.py" ]; then
+    log "ОШИБКА: Скрипт $PHOBOS_DIR/3xui.py не найден"
+    return 1
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    log "ОШИБКА: python3 не найден. Установите python3 для работы с 3x-ui"
+    return 1
+  fi
+
+  local wg_config="$PHOBOS_DIR/${CLIENT_NAME}.conf"
+
+  if [ ! -f "$wg_config" ]; then
+    log "ОШИБКА: Конфигурация WireGuard не найдена: $wg_config"
+    return 1
+  fi
+
+  log "Запуск интеграции: python3 $PHOBOS_DIR/3xui.py $wg_config"
+
+  if python3 "$PHOBOS_DIR/3xui.py" "$wg_config"; then
+    log "✓ WireGuard конфигурация успешно интегрирована в 3x-ui"
+    log "✓ Outbound 'Phobos' добавлен в конфигурацию 3x-ui"
+    return 0
+  else
+    log "ОШИБКА: Не удалось интегрировать конфигурацию в 3x-ui"
+    return 1
+  fi
+}
+
+cleanup_3xui_script() {
+  local keep_script="$1"
+
+  if [ "$keep_script" = "true" ]; then
+    log "Скрипт 3xui.py сохранен для использования в 3x-ui режиме"
+  else
+    if [ -f "$PHOBOS_DIR/3xui.py" ]; then
+      rm -f "$PHOBOS_DIR/3xui.py"
+      log "Скрипт 3xui.py удален (не требуется в обычном режиме)"
+    fi
   fi
 }
 
@@ -664,9 +732,16 @@ show_final_info() {
 main() {
   ROUTER_PLATFORM=$(detect_router_platform)
   PHOBOS_DIR=$(detect_phobos_dir "$ROUTER_PLATFORM")
+  IS_3XUI_MODE=$(detect_3xui_mode "$ROUTER_PLATFORM")
 
   log "==> Определена платформа: $ROUTER_PLATFORM"
   log "==> Директория Phobos: $PHOBOS_DIR"
+
+  if [ "$IS_3XUI_MODE" = "true" ]; then
+    log "==> Обнаружен режим установки: 3x-ui"
+    log "==> В этом режиме WireGuard не устанавливается"
+    log "==> Будет развернут только wg-obfuscator и интеграция с 3x-ui"
+  fi
 
   if [ "$ROUTER_PLATFORM" = "unknown" ]; then
     log "ОШИБКА: Неподдерживаемая платформа"
@@ -674,7 +749,7 @@ main() {
     log ""
     log "Поддерживаемые платформы:"
     log "  - Keenetic/Netcraze (определяется по 'Keenetic' или 'Netcraze' в uname)"
-    log "  - OpenWRT (определяется по 'OpenWrt' или 'LEDE' в uname)"
+    log "  - OpenWRT (определяется по 'OpenWrt', 'LEDE' или 'ImmortalWrt' в uname)"
     log "  - Linux (Ubuntu/Debian)"
     exit 1
   fi
@@ -703,6 +778,10 @@ main() {
   setup_configs
   deploy_health_check
   deploy_uninstall_script
+
+  if [ "$IS_3XUI_MODE" = "true" ]; then
+    deploy_3xui_script
+  fi
 
   if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
     create_init_script
@@ -754,28 +833,71 @@ main() {
     fi
 
   elif [ "$ROUTER_PLATFORM" = "linux" ]; then
-    install_wireguard_linux || {
-      log "ОШИБКА: Не удалось установить WireGuard"
-      exit 1
-    }
-
-    create_systemd_obfuscator_service
-
-    if configure_wireguard_linux; then
-      configure_ufw_linux
+    if [ "$IS_3XUI_MODE" = "true" ]; then
       log ""
       log "╔════════════════════════════════════════════════════════════╗"
-      log "║  ✓ Установка завершена успешно!                            ║"
-      log "║  ✓ WireGuard и Obfuscator настроены через systemd         ║"
+      log "║  Режим установки: 3x-ui                                    ║"
       log "╚════════════════════════════════════════════════════════════╝"
-      show_final_info
+      log ""
+
+      create_systemd_obfuscator_service
+
+      if run_3xui_integration; then
+        cleanup_3xui_script "true"
+        log ""
+        log "╔════════════════════════════════════════════════════════════╗"
+        log "║  ✓ Установка в режиме 3x-ui завершена успешно!            ║"
+        log "║  ✓ Obfuscator настроен через systemd                      ║"
+        log "║  ✓ Outbound 'Phobos' добавлен в конфигурацию 3x-ui        ║"
+        log "╚════════════════════════════════════════════════════════════╝"
+        log ""
+        log "Файлы установки:"
+        log "  Бинарник: /usr/local/bin/wg-obfuscator"
+        log "  Конфиг obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
+        log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
+        log "  Скрипт 3xui.py: $PHOBOS_DIR/3xui.py"
+        log "  Systemd service: /etc/systemd/system/phobos-obfuscator.service"
+        log ""
+        log "Управление:"
+        log "  systemctl status phobos-obfuscator         # Проверить что obfuscator запущен"
+        log ""
+        log "Примечание:"
+        log "  WireGuard управляется через 3x-ui панель"
+        log "  Скрипт 3xui.py сохранен для повторной интеграции при необходимости"
+        log ""
+      else
+        log ""
+        log "╔════════════════════════════════════════════════════════════╗"
+        log "║  ✗ Установка в режиме 3x-ui завершена с ошибками          ║"
+        log "╚════════════════════════════════════════════════════════════╝"
+        exit 1
+      fi
     else
-      log ""
-      log "╔════════════════════════════════════════════════════════════╗"
-      log "║  ⚠ Установка завершена с предупреждениями                 ║"
-      log "║  ⚠ Проверьте статус служб вручную                         ║"
-      log "╚════════════════════════════════════════════════════════════╝"
-      show_final_info
+      install_wireguard_linux || {
+        log "ОШИБКА: Не удалось установить WireGuard"
+        exit 1
+      }
+
+      create_systemd_obfuscator_service
+
+      if configure_wireguard_linux; then
+        configure_ufw_linux
+        cleanup_3xui_script "false"
+        log ""
+        log "╔════════════════════════════════════════════════════════════╗"
+        log "║  ✓ Установка завершена успешно!                            ║"
+        log "║  ✓ WireGuard и Obfuscator настроены через systemd         ║"
+        log "╚════════════════════════════════════════════════════════════╝"
+        show_final_info
+      else
+        cleanup_3xui_script "false"
+        log ""
+        log "╔════════════════════════════════════════════════════════════╗"
+        log "║  ⚠ Установка завершена с предупреждениями                 ║"
+        log "║  ⚠ Проверьте статус служб вручную                         ║"
+        log "╚════════════════════════════════════════════════════════════╝"
+        show_final_info
+      fi
     fi
   fi
 

@@ -1,0 +1,633 @@
+#!/usr/bin/env python3
+
+import json
+import re
+import sys
+import sqlite3
+import subprocess
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+
+class Colors:
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+
+
+def print_status(message: str, status: str = "info"):
+    colors = {
+        "success": Colors.GREEN + "✓",
+        "error": Colors.RED + "✗",
+        "warning": Colors.YELLOW + "⚠",
+        "info": Colors.BLUE + "ℹ",
+        "debug": Colors.CYAN + "🔍"
+    }
+    print(f"{colors.get(status, '')} {message}{Colors.RESET}")
+
+
+def get_default_xray_config() -> Dict:
+    return {
+        "api": {
+            "services": [
+                "HandlerService",
+                "StatsService",
+                "LoggerService"
+            ],
+            "tag": "api"
+        },
+        "inbounds": [
+            {
+                "listen": "127.0.0.1",
+                "port": 62789,
+                "protocol": "dokodemo-door",
+                "settings": {
+                    "address": "127.0.0.1"
+                },
+                "tag": "api"
+            }
+        ],
+        "outbounds": [
+            {
+                "protocol": "freedom",
+                "settings": {},
+                "tag": "direct"
+            },
+            {
+                "protocol": "blackhole",
+                "settings": {},
+                "tag": "block"
+            }
+        ],
+        "policy": {
+            "levels": {
+                "0": {
+                    "statsUserDownlink": True,
+                    "statsUserUplink": True
+                }
+            },
+            "system": {
+                "statsInboundDownlink": True,
+                "statsInboundUplink": True,
+                "statsOutboundDownlink": True,
+                "statsOutboundUplink": True
+            }
+        },
+        "routing": {
+            "domainStrategy": "AsIs",
+            "rules": [
+                {
+                    "inboundTag": [
+                        "api"
+                    ],
+                    "outboundTag": "api",
+                    "type": "field"
+                },
+                {
+                    "ip": [
+                        "geoip:private"
+                    ],
+                    "outboundTag": "block",
+                    "type": "field"
+                }
+            ]
+        },
+        "stats": {}
+    }
+
+
+def check_jq_available() -> bool:
+    try:
+        result = subprocess.run(['jq', '--version'],
+                              capture_output=True,
+                              text=True,
+                              timeout=5)
+        if result.returncode == 0:
+            print_status(f"jq найден: {result.stdout.strip()}", "success")
+            return True
+        return False
+    except (subprocess.SubprocessError, FileNotFoundError):
+        print_status("jq не найден в системе", "warning")
+        return False
+
+
+def jq_format_json(json_data: str) -> Optional[str]:
+    try:
+        result = subprocess.run(
+            ['jq', '.'],
+            input=json_data,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            return result.stdout
+        return None
+    except Exception:
+        return None
+
+
+def parse_wireguard_conf(config_path: str) -> Dict:
+    config = {'interface': {}, 'peer': {}}
+    current_section = None
+
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1].lower()
+                    continue
+
+                if '=' in line and current_section:
+                    key, value = line.split('=', 1)
+                    key, value = key.strip(), value.strip()
+
+                    if current_section == 'interface':
+                        config['interface'][key] = value
+                    elif current_section == 'peer':
+                        if key == 'AllowedIPs' and ',' in value:
+                            config['peer'][key] = [ip.strip() for ip in value.split(',')]
+                        else:
+                            config['peer'][key] = value
+
+        return config
+
+    except FileNotFoundError:
+        print_status(f"Файл {config_path} не найден", "error")
+        sys.exit(1)
+    except Exception as e:
+        print_status(f"Ошибка при чтении файла: {e}", "error")
+        sys.exit(1)
+
+
+def extract_endpoint_info(endpoint: str) -> Tuple[str, int]:
+    if '[' in endpoint:
+        match = re.match(r'\[([^\]]+)\]:(\d+)', endpoint)
+        if match:
+            return match.group(1), int(match.group(2))
+    else:
+        parts = endpoint.rsplit(':', 1)
+        if len(parts) == 2:
+            return parts[0], int(parts[1])
+
+    return endpoint, 51820
+
+
+def convert_to_xray_outbound(wg_config: Dict, tag: str = "Phobos") -> Dict:
+    interface = wg_config.get('interface', {})
+    peer = wg_config.get('peer', {})
+
+    endpoint = peer.get('Endpoint', '')
+    server_address, server_port = extract_endpoint_info(endpoint)
+
+    addresses = interface.get('Address', '').split(',')
+
+    local_addresses = []
+    for addr in addresses:
+        addr = addr.strip()
+        if not addr:
+            continue
+
+        if '/' in addr:
+            ip_part = addr.split('/')[0]
+            if ':' in ip_part:
+                local_addresses.append(f"{ip_part}/128")
+            else:
+                local_addresses.append(f"{ip_part}/32")
+        else:
+            if ':' in addr:
+                local_addresses.append(f"{addr}/128")
+            else:
+                local_addresses.append(f"{addr}/32")
+
+    allowed_ips_raw = peer.get('AllowedIPs', [])
+    if isinstance(allowed_ips_raw, str):
+        allowed_ips = [ip.strip() for ip in allowed_ips_raw.split(',') if ip.strip()]
+    elif isinstance(allowed_ips_raw, list):
+        allowed_ips = allowed_ips_raw
+    else:
+        allowed_ips = ['0.0.0.0/0', '::/0']
+
+    if not allowed_ips:
+        allowed_ips = ['0.0.0.0/0', '::/0']
+
+    peer_config = {
+        "publicKey": peer.get('PublicKey', ''),
+        "allowedIPs": allowed_ips,
+        "endpoint": f"{server_address}:{server_port}"
+    }
+
+    keep_alive = peer.get('PersistentKeepalive', '0')
+    if keep_alive and int(keep_alive) > 0:
+        peer_config["keepAlive"] = int(keep_alive)
+
+    if 'PresharedKey' in peer or 'PreSharedKey' in peer:
+        psk = peer.get('PresharedKey') or peer.get('PreSharedKey')
+        if psk:
+            peer_config["preSharedKey"] = psk
+
+    mtu = interface.get('MTU', '1420')
+
+    settings = {
+        "mtu": int(mtu) if mtu else 1420,
+        "secretKey": interface.get('PrivateKey', ''),
+        "address": local_addresses if local_addresses else [],
+        "workers": 2,
+        "peers": [peer_config],
+        "noKernelTun": False
+    }
+
+    outbound = {
+        "protocol": "wireguard",
+        "settings": settings,
+        "tag": tag
+    }
+
+    return outbound
+
+
+def find_database() -> Optional[str]:
+    common_paths = [
+        "/etc/x-ui/x-ui.db",
+        "/usr/local/x-ui/x-ui.db",
+        "/opt/x-ui/x-ui.db",
+        "./x-ui.db"
+    ]
+
+    for path in common_paths:
+        if Path(path).exists():
+            print_status(f"База данных найдена: {path}", "success")
+            return path
+
+    return None
+
+
+def diagnose_database(db_path: str) -> Optional[str]:
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+        print_status(f"Найденные таблицы: {[t[0] for t in tables]}", "debug")
+
+        if ('settings',) in tables:
+            cursor.execute("SELECT key FROM settings")
+            keys = cursor.fetchall()
+            print_status(f"Ключи в таблице settings: {[k[0] for k in keys]}", "debug")
+
+            possible_keys = [
+                'xrayTemplateConfig',
+                'xrayConfig',
+                'xray_config',
+                'config'
+            ]
+
+            for key in possible_keys:
+                cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+                result = cursor.fetchone()
+                if result:
+                    print_status(f"Найден ключ конфигурации: {key}", "success")
+                    conn.close()
+                    return key
+
+        conn.close()
+        return None
+
+    except Exception as e:
+        print_status(f"Ошибка диагностики БД: {e}", "error")
+        return None
+
+
+def create_xray_config_in_db(db_path: str, outbound: Dict) -> bool:
+    print_status("Создание базовой конфигурации Xray...", "info")
+
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        base_config = get_default_xray_config()
+
+        base_config['outbounds'].insert(0, outbound)
+
+        config_json = json.dumps(base_config, ensure_ascii=False, indent=2)
+
+        json.loads(config_json)
+
+        config_key = 'xrayTemplateConfig'
+
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (config_key,))
+        exists = cursor.fetchone()
+
+        if exists:
+            print_status(f"Обновление существующего ключа {config_key}", "info")
+            cursor.execute(
+                "UPDATE settings SET value = ? WHERE key = ?",
+                (config_json, config_key)
+            )
+        else:
+            print_status(f"Создание нового ключа {config_key}", "info")
+            cursor.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?)",
+                (config_key, config_json)
+            )
+
+        conn.commit()
+
+        print_status("Базовая конфигурация Xray создана", "success")
+        print_status(f"Outbound '{outbound['tag']}' добавлен", "success")
+
+        return True
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print_status(f"Ошибка при создании конфигурации: {e}", "error")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+
+def import_via_database(outbound: Dict, db_path: str, interactive: bool = True) -> bool:
+    print_status("Попытка прямого импорта в базу данных...", "info")
+
+    if not Path(db_path).exists():
+        print_status(f"База данных не найдена: {db_path}", "error")
+        return False
+
+    print_status(f"Работа с базой данных: {db_path}", "info")
+
+    config_key = diagnose_database(db_path)
+
+    if not config_key:
+        print_status("Конфигурация Xray отсутствует в базе данных", "warning")
+        return create_xray_config_in_db(db_path, outbound)
+
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"SELECT value FROM settings WHERE key = ?", (config_key,))
+        result = cursor.fetchone()
+
+        if not result:
+            print_status("Конфигурация Xray не найдена в базе", "error")
+            return False
+
+        config_json = result[0]
+
+        try:
+            config = json.loads(config_json)
+        except json.JSONDecodeError as e:
+            print_status(f"Ошибка парсинга JSON конфигурации: {e}", "error")
+            return False
+
+        if 'outbounds' not in config:
+            config['outbounds'] = []
+
+        existing_tags = [ob.get('tag') for ob in config.get('outbounds', [])]
+        tag_exists = outbound['tag'] in existing_tags
+
+        if tag_exists:
+            print_status(f"Outbound с тегом '{outbound['tag']}' уже существует, заменяю", "warning")
+            config['outbounds'] = [
+                ob for ob in config['outbounds']
+                if ob.get('tag') != outbound['tag']
+            ]
+
+        config['outbounds'].insert(0, outbound)
+
+        final_config = json.dumps(config, ensure_ascii=False, indent=2)
+
+        json.loads(final_config)
+
+        cursor.execute(
+            f"UPDATE settings SET value = ? WHERE key = ?",
+            (final_config, config_key)
+        )
+
+        conn.commit()
+
+        print_status("Outbound успешно добавлен в базу данных", "success")
+
+        return True
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print_status(f"Ошибка при работе с базой данных: {e}", "error")
+        import traceback
+        traceback.print_exc()
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+
+def restart_xui_service() -> bool:
+    print_status("Перезапуск сервиса x-ui...", "info")
+
+    try:
+        result = subprocess.run(
+            ['systemctl', 'restart', 'x-ui'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode == 0:
+            print_status("Сервис x-ui успешно перезапущен", "success")
+
+            status_result = subprocess.run(
+                ['systemctl', 'is-active', 'x-ui'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if status_result.returncode == 0 and status_result.stdout.strip() == 'active':
+                print_status("Сервис x-ui активен и работает", "success")
+                return True
+            else:
+                print_status("Сервис x-ui перезапущен, но статус неизвестен", "warning")
+                print_status("Проверьте статус: systemctl status x-ui", "info")
+                return True
+        else:
+            print_status(f"Ошибка перезапуска: {result.stderr}", "error")
+            return False
+
+    except subprocess.TimeoutExpired:
+        print_status("Таймаут при перезапуске сервиса", "error")
+        return False
+    except FileNotFoundError:
+        print_status("systemctl не найден. Попытка альтернативного метода...", "warning")
+
+        alternative_commands = [
+            ['service', 'x-ui', 'restart'],
+            ['/etc/init.d/x-ui', 'restart'],
+            ['x-ui', 'restart']
+        ]
+
+        for cmd in alternative_commands:
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    print_status(f"Сервис перезапущен через {' '.join(cmd)}", "success")
+                    return True
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+
+        print_status("Не удалось перезапустить сервис автоматически", "error")
+        print_status("Перезапустите вручную: systemctl restart x-ui", "info")
+        return False
+    except Exception as e:
+        print_status(f"Неожиданная ошибка при перезапуске: {e}", "error")
+        return False
+
+
+def check_xui_logs() -> None:
+    print_status("Проверка логов x-ui...", "info")
+
+    try:
+        result = subprocess.run(
+            ['journalctl', '-u', 'x-ui', '-n', '20', '--no-pager'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode == 0:
+            logs = result.stdout
+
+            error_keywords = ['error', 'failed', 'fatal', 'panic']
+            has_errors = any(keyword in logs.lower() for keyword in error_keywords)
+
+            if has_errors:
+                print_status("Обнаружены ошибки в логах:", "warning")
+                print(logs[-500:])
+            else:
+                print_status("Логи не содержат явных ошибок", "success")
+
+    except Exception:
+        print_status("Не удалось проверить логи", "debug")
+
+
+def main():
+    print(f"\n{Colors.BOLD}=== WireGuard to 3x-ui Auto-Import Tool ==={Colors.RESET}\n")
+
+    use_jq = check_jq_available()
+
+    if not use_jq:
+        print_status("Работа будет продолжена без jq (используя Python)", "info")
+
+    print()
+
+    if len(sys.argv) < 2:
+        config_path = input("Путь к wireguard.conf: ").strip()
+    else:
+        config_path = sys.argv[1]
+
+    print_status(f"Парсинг {config_path}...", "info")
+    wg_config = parse_wireguard_conf(config_path)
+
+    print_status("Конвертация в Xray формат...", "info")
+    outbound = convert_to_xray_outbound(wg_config, tag="Phobos")
+
+    print(f"\n{Colors.BOLD}Конфигурация outbound:{Colors.RESET}")
+
+    outbound_json = json.dumps(outbound, indent=2, ensure_ascii=False)
+
+    if use_jq:
+        formatted = jq_format_json(outbound_json)
+        if formatted:
+            print(formatted)
+        else:
+            print(outbound_json)
+    else:
+        print(outbound_json)
+
+    print()
+
+    print_status("Импорт в базу данных 3x-ui...", "info")
+
+    db_path = "/etc/x-ui/x-ui.db"
+
+    if not Path(db_path).exists():
+        print_status(f"База данных не найдена по пути: {db_path}", "warning")
+        found_db = find_database()
+        if found_db:
+            db_path = found_db
+        else:
+            print_status("База данных не найдена в стандартных местах", "error")
+            print_status("Убедитесь что 3x-ui установлен", "info")
+            sys.exit(1)
+
+    success = False
+    if Path(db_path).exists():
+        success = import_via_database(outbound, db_path, interactive=False)
+
+    if not success:
+        print_status("Импорт в базу данных не удался", "error")
+        sys.exit(1)
+
+    output_path = config_path.rsplit('.', 1)[0] + '_3xui_outbound.json'
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            if use_jq:
+                formatted = jq_format_json(outbound_json)
+                f.write(formatted if formatted else outbound_json)
+            else:
+                f.write(outbound_json)
+        print_status(f"JSON сохранен в: {output_path}", "success")
+    except Exception as e:
+        print_status(f"Ошибка при сохранении файла: {e}", "error")
+
+    print()
+
+    restart_success = restart_xui_service()
+
+    if restart_success:
+        import time
+        time.sleep(2)
+
+        check_xui_logs()
+
+    print()
+    print_status("Импорт завершен успешно!", "success")
+    print()
+    print_status(f"{Colors.BOLD}Информация:{Colors.RESET}", "info")
+    print_status(f"• Outbound 'Phobos' добавлен в конфигурацию", "info")
+    print_status(f"• Сервис x-ui {'перезапущен' if restart_success else 'требует перезапуска'}", "info")
+    print_status(f"• JSON конфигурация сохранена в {output_path}", "info")
+    print()
+    print_status(f"{Colors.BOLD}Проверка:{Colors.RESET}", "info")
+    print_status("• Откройте веб-панель 3x-ui", "info")
+    print_status("• Перейдите в раздел Outbounds", "info")
+    print_status("• Убедитесь что outbound 'Phobos' присутствует", "info")
+
+    if not restart_success:
+        print()
+        print_status(f"{Colors.BOLD}Требуется действие:{Colors.RESET}", "warning")
+        print_status("Выполните вручную: systemctl restart x-ui", "warning")
+
+    print()
+
+
+if __name__ == "__main__":
+    main()

@@ -199,6 +199,28 @@ if [[ "$UNINSTALL_FOUND" == "false" ]]; then
   echo "Предупреждение: шаблон phobos-uninstall.sh не найден (не критично)"
 fi
 
+echo "==> Копирование скрипта интеграции 3x-ui..."
+
+XUITOOL_FOUND=false
+
+for XUITOOL_PATH in \
+  "$REPO_ROOT/client/templates/3xui.py.template" \
+  "/opt/Phobos/templates/3xui.py.template" \
+  "/root/client/templates/3xui.py.template" \
+  "$(dirname "$SCRIPT_DIR")/client/templates/3xui.py.template"; do
+
+  if [[ -f "$XUITOOL_PATH" ]]; then
+    cp "$XUITOOL_PATH" "$PACKAGE_DIR/3xui.py"
+    chmod +x "$PACKAGE_DIR/3xui.py"
+    XUITOOL_FOUND=true
+    break
+  fi
+done
+
+if [[ "$XUITOOL_FOUND" == "false" ]]; then
+  echo "Предупреждение: шаблон 3xui.py не найден (не критично для стандартных установок)"
+fi
+
 echo "==> Создание README..."
 
 if [[ ! -f "$PHOBOS_DIR/server/server.env" ]]; then
