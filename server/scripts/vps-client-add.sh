@@ -138,15 +138,13 @@ chmod 600 "$CLIENT_DIR/${CLIENT_ID}.conf"
 
 echo "==> Создание конфигурации wg-obfuscator для клиента (только IPv4)..."
 
-SERVER_IP_V4="${SERVER_PUBLIC_IP_V4:-$SERVER_PUBLIC_IP}"
-
 CURRENT_MAX_DUMMY=$(grep "^max-dummy" "$PHOBOS_DIR/server/wg-obfuscator.conf" | cut -d'=' -f2- | tr -d ' ' 2>/dev/null || echo "4")
 
 cat > "$CLIENT_DIR/wg-obfuscator.conf" <<EOF
 [instance]
 source-if = 127.0.0.1
 source-lport = 13255
-target = $SERVER_IP_V4:$OBFUSCATOR_PORT
+target = $SERVER_PUBLIC_IP_V4:$OBFUSCATOR_PORT
 key = $OBFUSCATOR_KEY
 masking = AUTO
 verbose = INFO
@@ -167,7 +165,7 @@ cat > "$CLIENT_DIR/metadata.json" <<EOF
   "public_key": "$CLIENT_PUBLIC_KEY",
   "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "obfuscator_key": "$OBFUSCATOR_KEY",
-  "server_ip_v4": "$SERVER_IP_V4",
+  "server_ip_v4": "$SERVER_PUBLIC_IP_V4",
   "server_ip_v6": "$SERVER_PUBLIC_IP_V6",
   "server_port": "$OBFUSCATOR_PORT"
 }
@@ -244,7 +242,7 @@ if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
   echo "  Туннельный IP (IPv6): $CLIENT_IP_V6/128"
 fi
 echo "  Публичный ключ: $CLIENT_PUBLIC_KEY"
-echo "  Сервер (obfuscator): $SERVER_IP_V4:$OBFUSCATOR_PORT"
+echo "  Сервер (obfuscator): $SERVER_PUBLIC_IP_V4:$OBFUSCATOR_PORT"
 echo ""
 echo "Файлы клиента сохранены в: $CLIENT_DIR"
 echo "  - client_private.key"

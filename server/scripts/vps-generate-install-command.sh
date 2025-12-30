@@ -75,8 +75,8 @@ if [[ -z "${HTTP_PORT:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${SERVER_PUBLIC_IP:-}" ]]; then
-  echo "Ошибка: SERVER_PUBLIC_IP не указан в ${SERVER_ENV}"
+if [[ -z "${SERVER_PUBLIC_IP_V4:-}" ]]; then
+  echo "Ошибка: SERVER_PUBLIC_IP_V4 не указан в ${SERVER_ENV}"
   exit 1
 fi
 
@@ -127,9 +127,13 @@ echo "==> Генерация уникального токена"
 TOKEN=$(openssl rand -hex 16)
 echo "Токен: ${TOKEN}"
 
+echo "==> Генерация хеша для имени пакета"
+PACKAGE_HASH=$(openssl rand -hex 8)
+echo "Хеш пакета: ${PACKAGE_HASH}"
+
 echo "==> Создание симлинка на пакет"
 mkdir -p "${WWW_DIR}/packages/${TOKEN}"
-ln -sf "${PACKAGE_FILE}" "${WWW_DIR}/packages/${TOKEN}/phobos-${CLIENT_ID}.tar.gz"
+ln -sf "${PACKAGE_FILE}" "${WWW_DIR}/packages/${TOKEN}/${PACKAGE_HASH}"
 
 echo "==> Создание одноразового init-скрипта"
 cat > "${WWW_DIR}/init/${TOKEN}.sh" <<'INIT_SCRIPT_EOF'
@@ -149,21 +153,39 @@ echo "==> Создание временной директории"
 mkdir -p "${INSTALL_DIR}"
 cd "${INSTALL_DIR}"
 
-echo "==> Загрузка установочного пакета"
-WGET_FLAGS=""
-if uname -a | grep -qi "OpenWrt\|LEDE\|ImmortalWrt\|Keenetic\|Netcraze"; then
-  WGET_FLAGS="--no-check-certificate"
-  echo "Обнаружена встроенная система, используется флаг --no-check-certificate"
+echo "==> Проверка наличия curl"
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl не найден, попытка установки..."
+  if command -v opkg >/dev/null 2>&1; then
+    opkg update && opkg install curl
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get update && apt-get install -y curl
+  elif command -v apk >/dev/null 2>&1; then
+    apk update && apk add curl
+  else
+    echo "Ошибка: не удалось установить curl"
+    exit 1
+  fi
 fi
 
-if ! wget ${WGET_FLAGS} "${PACKAGE_URL}" -O phobos.tar.gz; then
+echo "==> Генерация временного имени файла"
+TEMP_FILE=$(echo "$$-$(date +%s)" | md5sum | cut -c1-16)
+
+echo "==> Загрузка установочного пакета"
+CURL_FLAGS="-L -C - -k"
+if uname -a | grep -qi "OpenWrt\|LEDE\|ImmortalWrt\|Keenetic\|Netcraze"; then
+  echo "Обнаружена встроенная система, используются флаги: следование переадресации, докачка, игнорирование сертификатов"
+fi
+
+if ! curl ${CURL_FLAGS} "${PACKAGE_URL}" -o "${TEMP_FILE}"; then
   echo "Ошибка: не удалось загрузить пакет"
   echo "Проверьте доступность сервера"
   exit 1
 fi
 
 echo "==> Распаковка пакета"
-tar xzf phobos.tar.gz
+tar xzf "${TEMP_FILE}"
+rm -f "${TEMP_FILE}"
 cd "phobos-${CLIENT_NAME}"
 
 echo "==> Запуск установки"
@@ -192,7 +214,7 @@ exit ${INSTALL_EXIT_CODE}
 INIT_SCRIPT_EOF
 
 sed -i "s|__CLIENT_NAME_PLACEHOLDER__|${CLIENT_ID}|g" "${WWW_DIR}/init/${TOKEN}.sh"
-sed -i "s|__PACKAGE_URL_PLACEHOLDER__|http://${SERVER_PUBLIC_IP}:${HTTP_PORT}/packages/${TOKEN}/phobos-${CLIENT_ID}.tar.gz|g" "${WWW_DIR}/init/${TOKEN}.sh"
+sed -i "s|__PACKAGE_URL_PLACEHOLDER__|http://${SERVER_PUBLIC_IP_V4}:${HTTP_PORT}/packages/${TOKEN}/${PACKAGE_HASH}|g" "${WWW_DIR}/init/${TOKEN}.sh"
 
 chmod +x "${WWW_DIR}/init/${TOKEN}.sh"
 
@@ -246,7 +268,7 @@ echo "Срок действия: ${EXPIRES_AT_HUMAN} (${TOKEN_TTL} секунд)
 echo ""
 echo "Отправьте клиенту следующую команду для установки:"
 echo ""
-echo "wget -O - http://${SERVER_PUBLIC_IP}:${HTTP_PORT}/init/${TOKEN}.sh | sh"
+echo "wget -O - http://${SERVER_PUBLIC_IP_V4}:${HTTP_PORT}/init/${TOKEN}.sh | sh"
 echo ""
 echo "ВАЖНО: Токен действителен до ${EXPIRES_AT_HUMAN}"
 echo ""

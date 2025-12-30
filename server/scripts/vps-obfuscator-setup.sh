@@ -5,7 +5,7 @@ IFS=$'\n\t'
 OBFUSCATOR_LISTEN_PORT="${OBFUSCATOR_LISTEN_PORT:-}"
 OBFUSCATOR_KEY="${OBFUSCATOR_KEY:-}"
 WG_LOCAL_ENDPOINT="${WG_LOCAL_ENDPOINT:-127.0.0.1:51820}"
-SERVER_PUBLIC_IP="${SERVER_PUBLIC_IP:-}"
+SERVER_PUBLIC_IP_V4="${SERVER_PUBLIC_IP_V4:-}"
 PHOBOS_DIR="/opt/Phobos"
 
 if [[ $(id -u) -ne 0 ]]; then
@@ -97,8 +97,8 @@ if [[ -f "$PHOBOS_DIR/server/ip_addresses.env" ]]; then
   SOURCE_RESULT=$?
   set -e
   if [[ $SOURCE_RESULT -eq 0 ]]; then
-    if [[ "$SERVER_PUBLIC_IP_V4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-      SERVER_PUBLIC_IP="${SERVER_PUBLIC_IP_V4}"
+    if [[ ! "$SERVER_PUBLIC_IP_V4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      SERVER_PUBLIC_IP_V4=""
     fi
     if [[ "$SERVER_PUBLIC_IP_V6" =~ ^[0-9a-fA-F:]+$ ]] && [[ ! "$SERVER_PUBLIC_IP_V6" =~ [^0-9a-fA-F:] ]] && [[ "$SERVER_PUBLIC_IP_V6" =~ : ]]; then
       SERVER_PUBLIC_IP_V6="${SERVER_PUBLIC_IP_V6}"
@@ -107,20 +107,20 @@ if [[ -f "$PHOBOS_DIR/server/ip_addresses.env" ]]; then
     fi
   else
     echo "Предупреждение: файл ip_addresses.env содержит некорректные данные, игнорируем"
-    SERVER_PUBLIC_IP=""
+    SERVER_PUBLIC_IP_V4=""
     SERVER_PUBLIC_IP_V6=""
   fi
 fi
 
-if [[ -z "$SERVER_PUBLIC_IP" ]]; then
+if [[ -z "$SERVER_PUBLIC_IP_V4" ]]; then
   echo "==> Определение публичного IPv4 адреса..."
-  SERVER_PUBLIC_IP=$(curl -4 -s ifconfig.me || curl -4 -s icanhazip.com || curl -4 -s ipecho.net/plain)
-  if [[ ! "$SERVER_PUBLIC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    SERVER_PUBLIC_IP=""
+  SERVER_PUBLIC_IP_V4=$(curl -4 -s ifconfig.me || curl -4 -s icanhazip.com || curl -4 -s ipecho.net/plain)
+  if [[ ! "$SERVER_PUBLIC_IP_V4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SERVER_PUBLIC_IP_V4=""
   fi
-  if [[ -z "$SERVER_PUBLIC_IP" ]]; then
+  if [[ -z "$SERVER_PUBLIC_IP_V4" ]]; then
     echo "Не удалось автоматически определить публичный IPv4. Укажите вручную:"
-    read -p "Введите публичный IPv4 адрес VPS: " SERVER_PUBLIC_IP
+    read -p "Введите публичный IPv4 адрес VPS: " SERVER_PUBLIC_IP_V4
   fi
 fi
 
@@ -215,7 +215,7 @@ if [[ -z "$SERVER_PUBLIC_IP_V6" ]]; then
   fi
 fi
 
-echo "Публичный IPv4 адрес: $SERVER_PUBLIC_IP"
+echo "Публичный IPv4 адрес: $SERVER_PUBLIC_IP_V4"
 if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
   echo "Публичный IPv6 адрес: $SERVER_PUBLIC_IP_V6"
 fi
@@ -241,9 +241,8 @@ echo "==> Сохранение параметров сервера..."
 cat > "$PHOBOS_DIR/server/server.env" <<EOF
 OBFUSCATOR_PORT=$OBFUSCATOR_LISTEN_PORT
 OBFUSCATOR_KEY=$OBFUSCATOR_KEY
-SERVER_PUBLIC_IP_V4=$SERVER_PUBLIC_IP
+SERVER_PUBLIC_IP_V4=$SERVER_PUBLIC_IP_V4
 SERVER_PUBLIC_IP_V6=$SERVER_PUBLIC_IP_V6
-SERVER_PUBLIC_IP=$SERVER_PUBLIC_IP
 WG_LOCAL_ENDPOINT=$WG_LOCAL_ENDPOINT
 TOKEN_TTL=3600
 EOF

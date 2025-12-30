@@ -337,7 +337,7 @@ cat > "$PACKAGE_DIR/README.txt" <<EOF
 
 ПАРАМЕТРЫ СЕРВЕРА:
 
-  Публичный IP VPS (IPv4): ${SERVER_PUBLIC_IP_V4:-$SERVER_PUBLIC_IP}
+  Публичный IP VPS (IPv4): $SERVER_PUBLIC_IP_V4
 $(if [[ -n "${SERVER_PUBLIC_IP_V6:-}" ]]; then echo "  Публичный IP VPS (IPv6): $SERVER_PUBLIC_IP_V6"; fi)
   Порт obfuscator: $OBFUSCATOR_PORT/udp (только IPv4)
   Endpoint в WireGuard: 127.0.0.1:13255 (локальный obfuscator)

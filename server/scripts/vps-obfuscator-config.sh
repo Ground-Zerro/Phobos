@@ -823,7 +823,7 @@ mass_update_clients() {
       local client_id=$(basename "$client_dir")
 
       if [[ -f "$client_dir/wg-obfuscator.conf" ]]; then
-        sed -i "s/^target = .*/target = ${SERVER_PUBLIC_IP_V4:-$SERVER_PUBLIC_IP}:$CURRENT_PORT/" "$client_dir/wg-obfuscator.conf"
+        sed -i "s/^target = .*/target = $SERVER_PUBLIC_IP_V4:$CURRENT_PORT/" "$client_dir/wg-obfuscator.conf"
         sed -i "s/^key = .*/key = $CURRENT_KEY/" "$client_dir/wg-obfuscator.conf"
         sed -i "s/^max-dummy = .*/max-dummy = $CURRENT_DUMMY/" "$client_dir/wg-obfuscator.conf"
         echo "  ✓ $client_id обновлен"

@@ -2,7 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-SERVER_PUBLIC_IP="${SERVER_PUBLIC_IP:-}"
+SERVER_PUBLIC_IP_V4="${SERVER_PUBLIC_IP_V4:-}"
 WG_PORT="${WG_PORT:-51820}"
 TUNNEL_NETWORK="${TUNNEL_NETWORK:-10.25.0.0/16}"
 TUNNEL_NETWORK_V6="${TUNNEL_NETWORK_V6:-fd00:10:25::/48}"
@@ -23,19 +23,19 @@ echo "==> Установка WireGuard..."
 apt update
 apt install -y wireguard wireguard-tools
 
-if [[ -z "$SERVER_PUBLIC_IP" ]]; then
+if [[ -z "$SERVER_PUBLIC_IP_V4" ]]; then
   echo "==> Определение публичного IPv4 адреса..."
-  SERVER_PUBLIC_IP=$(curl -4 -s ifconfig.me || curl -4 -s icanhazip.com || curl -4 -s ipecho.net/plain)
-  if [[ ! "$SERVER_PUBLIC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    SERVER_PUBLIC_IP=""
+  SERVER_PUBLIC_IP_V4=$(curl -4 -s ifconfig.me || curl -4 -s icanhazip.com || curl -4 -s ipecho.net/plain)
+  if [[ ! "$SERVER_PUBLIC_IP_V4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SERVER_PUBLIC_IP_V4=""
   fi
-  if [[ -z "$SERVER_PUBLIC_IP" ]]; then
+  if [[ -z "$SERVER_PUBLIC_IP_V4" ]]; then
     echo "Не удалось автоматически определить публичный IPv4. Укажите вручную:"
-    read -p "Введите публичный IPv4 адрес VPS: " SERVER_PUBLIC_IP
+    read -p "Введите публичный IPv4 адрес VPS: " SERVER_PUBLIC_IP_V4
   fi
 fi
 
-echo "Публичный IPv4 адрес: $SERVER_PUBLIC_IP"
+echo "Публичный IPv4 адрес: $SERVER_PUBLIC_IP_V4"
 
 echo "==> Определение публичного IPv6 адреса (опционально)..."
 SERVER_PUBLIC_IP_V6=""
@@ -299,7 +299,7 @@ systemctl start wg-quick@wg0
 
 echo "==> Сохранение IP адресов..."
 cat > "$PHOBOS_DIR/server/ip_addresses.env" <<EOF
-SERVER_PUBLIC_IP_V4=$SERVER_PUBLIC_IP
+SERVER_PUBLIC_IP_V4=$SERVER_PUBLIC_IP_V4
 SERVER_PUBLIC_IP_V6=$SERVER_PUBLIC_IP_V6
 EOF
 chmod 600 "$PHOBOS_DIR/server/ip_addresses.env"
@@ -317,7 +317,7 @@ echo ""
 echo "==> WireGuard сервер успешно установлен и запущен!"
 echo ""
 echo "Параметры сервера:"
-echo "  Публичный IPv4: $SERVER_PUBLIC_IP"
+echo "  Публичный IPv4: $SERVER_PUBLIC_IP_V4"
 if [[ -n "$SERVER_PUBLIC_IP_V6" ]]; then
   echo "  Публичный IPv6: $SERVER_PUBLIC_IP_V6"
 fi
