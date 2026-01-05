@@ -10,20 +10,29 @@ log() {
 }
 
 detect_router_platform() {
-  local uname_output=$(uname -a)
-
-  if echo "$uname_output" | grep -qi "Keenetic\|Netcraze"; then
-    echo "keenetic"
-  elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE\|ImmortalWrt"; then
+  if [ -f /etc/openwrt_release ] || [ -f /etc/openwrt_version ]; then
     echo "openwrt"
-  elif [ -f /etc/os-release ]; then
-    if grep -qi "ubuntu\|debian" /etc/os-release; then
+  elif [ -f /opt/etc/.entware_install_log ] || [ -d /opt/etc/ndm ]; then
+    echo "keenetic"
+  elif [ -f /etc/debian_version ]; then
+    echo "linux"
+  elif [ -d /etc/config ] && command -v uci >/dev/null 2>&1; then
+    echo "openwrt"
+  elif [ -f /opt/etc/init.d/rc.func ]; then
+    echo "keenetic"
+  elif [ -d /run/systemd/system ] || pidof systemd >/dev/null 2>&1; then
+    echo "linux"
+  else
+    local uname_output=$(uname -a)
+    if echo "$uname_output" | grep -qi "Keenetic\|Netcraze"; then
+      echo "keenetic"
+    elif echo "$uname_output" | grep -qi "OpenWrt\|LEDE\|ImmortalWrt"; then
+      echo "openwrt"
+    elif echo "$uname_output" | grep -qi "Linux"; then
       echo "linux"
     else
       echo "unknown"
     fi
-  else
-    echo "unknown"
   fi
 }
 

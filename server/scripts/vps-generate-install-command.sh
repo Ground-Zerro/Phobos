@@ -173,7 +173,7 @@ TEMP_FILE=$(echo "$$-$(date +%s)" | md5sum | cut -c1-16)
 
 echo "==> Загрузка установочного пакета"
 CURL_FLAGS="-L -C - -k"
-if uname -a | grep -qi "OpenWrt\|LEDE\|ImmortalWrt\|Keenetic\|Netcraze"; then
+if [ -f /etc/openwrt_release ] || [ -f /etc/openwrt_version ] || [ -f /opt/etc/.entware_install_log ] || [ -d /opt/etc/ndm ] || [ -d /etc/config ]; then
   echo "Обнаружена встроенная система, используются флаги: следование переадресации, докачка, игнорирование сертификатов"
 fi
 
