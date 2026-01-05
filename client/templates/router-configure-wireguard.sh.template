@@ -163,52 +163,31 @@ find_free_wireguard_interface() {
     return 1
 }
 
-clear_wireguard_peers() {
+remove_wireguard_interface() {
     local interface_name="$1"
 
-    log "Очистка существующих peer'ов в ${interface_name}..."
+    log "Удаление существующего интерфейса: ${interface_name}..."
 
-    local clear_json=$(cat <<EOF
-{
-  "interface": {
-    "${interface_name}": {
-      "wireguard": {
-        "peer": {
-          "no": true
-        }
-      }
-    }
-  }
-}
-EOF
-)
-
-    local result=$(echo "${clear_json}" | curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d @- \
-        "${RCI_URL}" 2>/dev/null)
-
-    if echo "${result}" | jq -e '.status == "error"' >/dev/null 2>&1; then
-        local error_msg=$(echo "${result}" | jq -r '.message // "Unknown error"' 2>/dev/null)
-        log "Предупреждение: не удалось очистить peer'ы: ${error_msg}"
+    if command -v ndmc >/dev/null 2>&1; then
+        if ndmc -c "no interface ${interface_name}" >/dev/null 2>&1; then
+            log "Интерфейс ${interface_name} успешно удален ✓"
+            return 0
+        else
+            log "Предупреждение: не удалось удалить интерфейс через ndmc"
+            return 1
+        fi
+    else
+        log "Предупреждение: команда ndmc не найдена"
         return 1
     fi
-
-    log "Peer'ы очищены ✓"
-    return 0
 }
 
 configure_wireguard_interface() {
     local interface_name="$1"
-    local is_update="$2"
 
     local description="Phobos-${CLIENT_NAME}"
     local client_ip_addr=$(echo "${CLIENT_IP}" | cut -d'/' -f1)
     local client_ipv6_block="${CLIENT_IPV6}"
-
-    if [ "${is_update}" = "yes" ]; then
-        clear_wireguard_peers "${interface_name}" || true
-    fi
 
     log "Настройка интерфейса ${interface_name}..."
 
@@ -289,11 +268,7 @@ EOF
         return 1
     fi
 
-    if [ "${is_update}" = "yes" ]; then
-        log "Интерфейс ${interface_name} обновлён ✓"
-    else
-        log "Интерфейс ${interface_name} создан ✓"
-    fi
+    log "Интерфейс ${interface_name} создан ✓"
 
     return 0
 }
@@ -375,22 +350,25 @@ main() {
     log "=== Phobos WireGuard RCI Configuration ==="
     log "Клиент: ${CLIENT_NAME}"
 
-    INTERFACE_NAME=$(find_phobos_interface "${CLIENT_NAME}") || true
-    IS_UPDATE="no"
+    EXISTING_INTERFACE=$(find_phobos_interface "${CLIENT_NAME}") || true
 
-    if [ -n "${INTERFACE_NAME}" ]; then
-        log "Обновление существующего интерфейса: ${INTERFACE_NAME}"
-        IS_UPDATE="yes"
-    else
-        INTERFACE_NAME=$(find_free_wireguard_interface) || true
-        if [ -z "${INTERFACE_NAME}" ]; then
-            show_fallback_instructions
-            exit 1
+    if [ -n "${EXISTING_INTERFACE}" ]; then
+        log "Обнаружен существующий интерфейс: ${EXISTING_INTERFACE}"
+        if remove_wireguard_interface "${EXISTING_INTERFACE}"; then
+            log "Интерфейс ${EXISTING_INTERFACE} удален, будет создан заново"
+        else
+            log "Не удалось удалить интерфейс ${EXISTING_INTERFACE}, попытка пересоздать"
         fi
-        log "Создание нового интерфейса: ${INTERFACE_NAME}"
     fi
 
-    if ! configure_wireguard_interface "${INTERFACE_NAME}" "${IS_UPDATE}"; then
+    INTERFACE_NAME=$(find_free_wireguard_interface) || true
+    if [ -z "${INTERFACE_NAME}" ]; then
+        show_fallback_instructions
+        exit 1
+    fi
+    log "Создание нового интерфейса: ${INTERFACE_NAME}"
+
+    if ! configure_wireguard_interface "${INTERFACE_NAME}"; then
         error "Не удалось настроить WireGuard через RCI API"
         show_fallback_instructions
         exit 1

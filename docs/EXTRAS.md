@@ -3,20 +3,28 @@
 ## Архитектура
 
 ```
-Клиент → Роутер Keenetic (WireGuard встроен) → Obfuscator (127.0.0.1:13255) →
+Клиент → Роутер/Linux (WireGuard) → Obfuscator (127.0.0.1:13255) →
 Internet → VPS Obfuscator (public_ip:random_port) → VPS WireGuard (127.0.0.1:51820) → Internet
 ```
 
 ### Поддерживаемые платформы
 
-- **VPS**: Ubuntu Server
-- **Роутер**: Keenetic с установленным Entware
+**Сервер:**
+- **VPS**: Ubuntu Server 20.04/22.04
+
+**Клиенты:**
+- **Роутеры**: Keenetic/Netcraze (Entware), OpenWrt/LEDE, ImmortalWrt
+- **Linux**: Ubuntu/Debian (стандартный режим и режим 3x-ui)
+
+**Управление:**
+- **Интерактивное меню** на VPS (команда `phobos`)
+- **Telegram-бот** для управления клиентами
 
 ## Структура проекта
 
 ```
 Phobos/
-├── server/
+├── server/                                  # Серверные скрипты
 │   ├── scripts/
 │   │   ├── vps-install-dependencies.sh      # Установка зависимостей
 │   │   ├── vps-build-obfuscator.sh          # Копирование готовых бинарников
@@ -37,29 +45,53 @@ Phobos/
 │   │   ├── vps-uninstall.sh                 # Удаление Phobos с VPS
 │   │   ├── phobos-menu.sh                   # Интерактивное меню управления
 │   │   ├── vps-install-menu.sh              # Установка меню phobos
+│   │   ├── phobos-http-server.py            # Безопасный HTTP сервер
 │   │   └── common-functions.sh              # Библиотека функций
 │   └── templates/
-├── client/
+├── client/                                  # Клиентские шаблоны
 │   └── templates/
-│       ├── install-router.sh.template                # Установка на роутер
-│       ├── router-configure-wireguard.sh.template    # Автонастройка WireGuard через RCI
-│       ├── health-check.sh.template                  # Health check
-│       ├── phobos-uninstall.sh.template              # Удаление Phobos
-│       └── detect-router-arch.sh.template            # Определение архитектуры
-├── wg-obfuscator/
+│       ├── install-router.sh.template                        # Установка на роутер
+│       ├── router-configure-wireguard.sh.template            # Автонастройка WireGuard через RCI (Keenetic)
+│       ├── router-configure-wireguard-openwrt.sh.template    # Автонастройка WireGuard через UCI (OpenWrt)
+│       ├── health-check.sh.template                          # Health check
+│       ├── phobos-uninstall.sh.template                      # Удаление Phobos
+│       ├── detect-router-arch.sh.template                    # Определение архитектуры
+│       ├── router-health-check.sh.template                   # Health check для роутеров
+│       ├── router-uninstall.sh.template                      # Удаление с роутеров
+│       └── 3xui.py.template                                  # Интеграция с 3x-ui
+├── bot/                                     # Telegram-бот
+│   └── phobos-bot/
+│       ├── cmd/bot/main.go                  # Точка входа бота
+│       ├── internal/                        # Логика бота
+│       │   ├── bot.go                       # Основная логика
+│       │   ├── handler.go                   # Обработчики команд
+│       │   ├── config.go                    # Конфигурация
+│       │   ├── backup_service.go            # Сервис бэкапов
+│       │   ├── config_reloader.go           # Перезагрузка конфигурации
+│       │   ├── health_server.go             # Health check сервер
+│       │   └── database/                    # Работа с БД
+│       ├── docs/                            # Документация бота
+│       ├── bash/                            # Управляющие скрипты
+│       │   ├── bot_deploy.sh                # Развертывание бота
+│       │   ├── bot_toggle.sh                # Старт/стоп бота
+│       │   └── run_sqlite_web.sh            # Веб-интерфейс БД
+│       └── migrations/                      # Миграции БД
+├── wg-obfuscator/                           # Бинарники obfuscator
 │   └── bin/
-│       ├── wg-obfuscator-x86_64                      # Готовый бинарник для VPS (x86_64)
-│       ├── wg-obfuscator-mipsel                      # Готовый бинарник для MIPS Little Endian
-│       ├── wg-obfuscator-mips                        # Готовый бинарник для MIPS Big Endian
-│       ├── wg-obfuscator-aarch64                     # Готовый бинарник для ARM64
-│       └── wg-obfuscator-armv7                       # Готовый бинарник для ARMv7
-├── docs/
+│       ├── wg-obfuscator-x86_64             # VPS (x86_64)
+│       ├── wg-obfuscator-mipsel             # MIPS Little Endian
+│       ├── wg-obfuscator-mips               # MIPS Big Endian
+│       ├── wg-obfuscator-aarch64            # ARM64
+│       └── wg-obfuscator-armv7              # ARMv7
+├── docs/                                    # Документация
+│   ├── README.md                            # Оглавление документации
 │   ├── README-server.md                     # Руководство администратора
 │   ├── README-client.md                     # Руководство пользователя
 │   ├── FAQ.md                               # Часто задаваемые вопросы
 │   ├── TROUBLESHOOTING.md                   # Решение проблем
 │   └── EXTRAS.md                            # Этот файл
-└── README.md                                # Кратккие седения о проекте
+├── README.md                                # Краткие сведения о проекте
+└── NEWS.md                                  # История изменений
 
 ```
 
@@ -102,7 +134,9 @@ Phobos/
     └── phobos-menu.log                  # Логи интерактивного меню
 ```
 
-## Данные на роутере Keenetic
+## Данные на клиентах
+
+### Роутер Keenetic/Netcraze/ImmortalWrt
 
 ```
 /opt/bin/wg-obfuscator                     # Бинарник obfuscator
@@ -115,6 +149,50 @@ Phobos/
 ```
 
 **Примечание:** WireGuard настраивается автоматически через RCI API. Также доступен ручной импорт через веб-панель.
+
+### Роутер OpenWrt
+
+```
+/usr/bin/wg-obfuscator                     # Бинарник obfuscator
+/etc/init.d/wg-obfuscator                  # Init-скрипт
+/etc/Phobos/
+├── health-check.sh                        # Диагностика
+├── phobos-uninstall.sh                    # Удаление Phobos
+├── wg-obfuscator.conf                     # Конфиг obfuscator
+└── <client_name>.conf                     # Конфиг WireGuard (fallback)
+```
+
+**Примечание:** WireGuard настраивается автоматически через UCI.
+
+### Linux клиент
+
+```
+/usr/local/bin/wg-obfuscator               # Бинарник obfuscator
+/opt/Phobos/
+├── health-check.sh                        # Диагностика
+├── phobos-uninstall.sh                    # Удаление Phobos
+├── wg-obfuscator.conf                     # Конфиг obfuscator
+└── <client_name>.conf                     # Исходный конфиг WireGuard
+/etc/wireguard/phobos.conf                 # Конфиг WireGuard для systemd
+/etc/systemd/system/
+├── phobos-obfuscator.service              # Systemd service obfuscator
+└── wg-quick@phobos.service.d/             # Override конфигурация WireGuard
+```
+
+**Режим 3x-ui:** При обнаружении 3x-ui устанавливается только obfuscator, WireGuard управляется через панель.
+
+### Telegram-бот
+
+```
+/root/bot/phobos-bot/
+├── bot                                    # Бинарный файл бота
+├── config.yaml                            # Конфигурация
+├── phobos-bot.db                          # База данных SQLite
+├── backups/                               # Бэкапы БД
+├── migrations/                            # Миграции БД
+└── bash/                                  # Управляющие скрипты
+/etc/systemd/system/phobos-bot.service     # Systemd service бота
+```
 
 ## Настройка WireGuard
 
@@ -203,6 +281,34 @@ ping 10.25.0.1
 - Управление клиентами (создание, удаление, пересоздание)
 - Системные функции (бэкапы, очистка, мониторинг)
 - Настройка параметров obfuscator
+
+### Telegram-бот
+
+Бот предоставляет следующие возможности:
+
+**Управление клиентами:**
+- Создание/удаление клиентов
+- Просмотр статистики подключений
+- Мониторинг активности
+
+**Система уровней:**
+- **Basic** - обычные пользователи
+- **Premium** - премиум пользователи (защита от автоудаления)
+- **Moderator** - модераторы (управление пользователями)
+- **Admin** - администраторы (полный доступ)
+
+**Автоматизация:**
+- **Watchdog** - автоматическое удаление неактивных клиентов
+- **Config Reloader** - горячая перезагрузка конфигурации
+- **Backup Service** - автоматические бэкапы БД
+- **Health Server** - HTTP endpoint для мониторинга
+
+**Управление ботом:**
+```bash
+sudo /root/bot/phobos-bot/bash/bot_toggle.sh  # Старт/стоп бота
+sudo systemctl status phobos-bot               # Статус
+sudo journalctl -u phobos-bot -f               # Логи
+```
 
 ## Безопасность
 

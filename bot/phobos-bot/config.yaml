@@ -1,0 +1,4 @@
+# Phobos Bot Configuration - Database Path Only
+bot:
+  # Database file path (required for all other configuration)
+  database_path: "/opt/Phobos/bot/phobos-bot/phobos-bot.db"
