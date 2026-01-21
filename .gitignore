@@ -1,10 +1,8 @@
 .git/
 .idea/
 .claude/
+.gitignore
 CLAUDE.md
 QWEN.md
 
 bot/phobos-bot/backups/
-bot/phobos-bot/*.db.backup-*
-bot/phobos-bot/bot
-bot/phobos-bot/phobos-bot
