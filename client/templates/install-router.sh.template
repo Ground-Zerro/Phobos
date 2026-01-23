@@ -577,9 +577,15 @@ configure_wireguard_linux() {
   chmod 600 "$wg_config_dir/${wg_interface}.conf"
 
   log "Настройка routing: VPN как запасной интерфейс..."
+  
+  # Extract IPv4 address to calculate subnet route
+  local client_ip=$(grep '^Address' "$wg_config_dir/${wg_interface}.conf" | cut -d'=' -f2 | tr -d ' ' | cut -d',' -f1 | cut -d'/' -f1)
+  # Assuming /16 topology based on the first two octets for the routing rule
+  local route_target=$(echo "$client_ip" | cut -d'.' -f1-2).0.0/16
+  
   sed -i '/^MTU/a Table = off' "$wg_config_dir/${wg_interface}.conf"
-  sed -i '/^Table = off/a PostUp = ip route add 10.25.0.0/16 dev %i' "$wg_config_dir/${wg_interface}.conf"
-  sed -i '/^PostUp/a PostDown = ip route del 10.25.0.0/16 dev %i || true' "$wg_config_dir/${wg_interface}.conf"
+  sed -i "/^Table = off/a PostUp = ip route add $route_target dev %i" "$wg_config_dir/${wg_interface}.conf"
+  sed -i "/^PostUp/a PostDown = ip route del $route_target dev %i || true" "$wg_config_dir/${wg_interface}.conf"
 
   log "Настройка зависимости WireGuard от obfuscator..."
   mkdir -p "/etc/systemd/system/wg-quick@${wg_interface}.service.d"

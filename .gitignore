@@ -1,8 +1,9 @@
 .git/
 .idea/
 .claude/
+_Old_orig/
+bot/
+docs/
 .gitignore
 CLAUDE.md
 QWEN.md
-
-bot/phobos-bot/backups/

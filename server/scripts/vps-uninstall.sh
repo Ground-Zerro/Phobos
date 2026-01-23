@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 IFS=$'\n\t'
 
 PHOBOS_DIR="/opt/Phobos"
@@ -95,19 +95,12 @@ fi
 echo ""
 echo "==> Удаление cron задач..."
 
-CLEANUP_SCRIPT="$PHOBOS_DIR/server/scripts/vps-cleanup-tokens.sh"
-TEMP_CRON=$(mktemp)
-crontab -l > "${TEMP_CRON}" 2>/dev/null || true
-
-if grep -qF "${CLEANUP_SCRIPT}" "${TEMP_CRON}"; then
-  grep -vF "${CLEANUP_SCRIPT}" "${TEMP_CRON}" > "${TEMP_CRON}.new" || true
-  crontab "${TEMP_CRON}.new" 2>/dev/null || true
-  echo "  ✓ Cron задача очистки токенов удалена"
+if [[ -f /etc/cron.d/phobos-cleanup ]]; then
+  rm /etc/cron.d/phobos-cleanup
+  echo "  ✓ /etc/cron.d/phobos-cleanup удален"
 else
   echo "  - Cron задачи не найдены"
 fi
-
-rm -f "${TEMP_CRON}" "${TEMP_CRON}.new"
 
 echo ""
 echo "==> Удаление бинарных файлов..."
@@ -141,17 +134,7 @@ if [[ "$KEEP_DATA" == "--keep-data" ]]; then
 
   if [[ -f "$PHOBOS_DIR/server/server.env" ]]; then
     cp "$PHOBOS_DIR/server/server.env" "$BACKUP_DIR/"
-    echo "  ✓ Конфигурация сохранена в $BACKUP_DIR/server.env"
-  fi
-
-  if [[ -f "$PHOBOS_DIR/server/server_private.key" ]]; then
-    cp "$PHOBOS_DIR/server/server_private.key" "$BACKUP_DIR/"
-    echo "  ✓ Приватный ключ сохранен в $BACKUP_DIR/server_private.key"
-  fi
-
-  if [[ -f "$PHOBOS_DIR/server/server_public.key" ]]; then
-    cp "$PHOBOS_DIR/server/server_public.key" "$BACKUP_DIR/"
-    echo "  ✓ Публичный ключ сохранен в $BACKUP_DIR/server_public.key"
+    echo "  ✓ Конфигурация (включая ключи) сохранена в $BACKUP_DIR/server.env"
   fi
 
   echo ""

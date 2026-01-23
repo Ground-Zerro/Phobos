@@ -314,10 +314,19 @@ check_wireguard_linux() {
 
     local vps_status=""
     if [ "$if_state" = "up" ]; then
-      if ping -I "$if_name" -c 1 -W 2 10.25.0.1 >/dev/null 2>&1; then
-        vps_status="VPS доступен"
+      # Determine Server IP dynamically (Client IP x.x.x.Y -> Server x.x.x.1)
+      local client_ip=$(ip -4 addr show dev "$if_name" | grep inet | awk '{print $2}' | cut -d'/' -f1 | head -1)
+      local server_ip="10.25.0.1" # Fallback
+      
+      if [ -n "$client_ip" ]; then
+         # Assume server is at .1 of the subnet
+         server_ip=$(echo "$client_ip" | sed 's/\.[0-9]*$/.1/')
+      fi
+      
+      if ping -I "$if_name" -c 1 -W 2 "$server_ip" >/dev/null 2>&1; then
+        vps_status="VPS доступен ($server_ip)"
       else
-        vps_status="VPS недоступен"
+        vps_status="VPS недоступен ($server_ip)"
       fi
     fi
 
