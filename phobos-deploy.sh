@@ -132,7 +132,7 @@ run_installer() {
 }
 
 add_first_client() {
-    CLIENT_SCRIPT="/opt/Phobos/server/scripts/phobos-client.sh"
+    CLIENT_SCRIPT="/opt/Phobos/repo/server/scripts/phobos-client.sh"
 
     if [ ! -f "$CLIENT_SCRIPT" ]; then
         error_exit "Скрипт управления клиентами не найден"
