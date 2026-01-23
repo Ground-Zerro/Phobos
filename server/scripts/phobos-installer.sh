@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-if [[ "$SCRIPT_DIR" != "/opt/Phobos/server/scripts" && "$SCRIPT_DIR" != "/opt/Phobos/repo/server/scripts" ]]; then
+if [[ "$SCRIPT_DIR" != "/opt/Phobos/repo/server/scripts" ]]; then
   echo "[INFO] Копирование файлов репозитория в /opt/Phobos/repo..."
   mkdir -p /opt/Phobos/repo
   cp -r "$REPO_ROOT"/* /opt/Phobos/repo/
