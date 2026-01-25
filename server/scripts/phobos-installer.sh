@@ -51,6 +51,20 @@ spin() {
   printf "\r"
 }
 
+find_free_port() {
+  local min=${1:-1024}
+  local max=${2:-65535}
+  local port
+  for _ in {1..100}; do
+    port=$((min + RANDOM % (max - min + 1)))
+    if ! ss -tlnp | grep -q ":$port " && ! ss -ulnp | grep -q ":$port "; then
+      echo "$port"
+      return 0
+    fi
+  done
+  return 1
+}
+
 step_deps() {
   log_info "Установка зависимостей..."
   (apt-get update -qq && apt-get install -y -qq wireguard qrencode jq curl build-essential git cmake python3 ufw) >/dev/null 2>&1 &
@@ -132,7 +146,7 @@ step_obf() {
   local key_len=$(echo "$params" | cut -d' ' -f1)
   local dummy=$(echo "$params" | cut -d' ' -f2)
 
-  local port=$((100 + RANDOM % 600))
+  local port=$(find_free_port 1024 49151)
   local key=$(head -c $((key_len * 2)) /dev/urandom | base64 | tr -d '+/=\n' | head -c "$key_len")
   local pub_ip_v4=$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo "")
   local pub_ip_v6=$(get_public_ipv6)
@@ -187,10 +201,7 @@ EOF
 step_http() {
   log_info "Настройка HTTP сервера..."
 
-  local port=80
-  if ss -tlnp | grep -q ":80 "; then
-    port=8080
-  fi
+  local port=$(find_free_port 1024 49151)
 
   cat > /etc/systemd/system/phobos-http.service <<EOF
 [Unit]

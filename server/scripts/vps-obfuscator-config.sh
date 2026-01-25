@@ -100,13 +100,14 @@ EOF
 
 generate_safe_port() {
   local port
-  while true; do
-    port=$((100 + RANDOM % 601))
+  for _ in {1..100}; do
+    port=$((1024 + RANDOM % 48128))
     if ! ss -tlnp | grep -q ":$port " && ! ss -ulnp | grep -q ":$port "; then
       echo "$port"
       return 0
     fi
   done
+  echo "1024"
 }
 
 
@@ -426,6 +427,57 @@ change_wg_pool() {
   log_success "Адреса обновлены."
 }
 
+change_wg_listen_port() {
+  echo ""
+  echo "=== Смена порта WireGuard ==="
+
+  local current_port=$(grep "^ListenPort" "$WG_CONFIG" | cut -d'=' -f2 | tr -d ' ')
+  echo "Текущий порт WireGuard: $current_port"
+  echo ""
+  read -p "Введите новый порт (1024-65535) или 'r' для случайного: " input
+
+  local new_port
+  if [[ "$input" == "r" ]]; then
+    new_port=$(generate_safe_port)
+  elif [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -ge 1024 ] && [ "$input" -le 65535 ]; then
+    if ss -ulnp | grep -q ":$input "; then
+      log_error "Порт $input уже занят"
+      read -p "Нажмите Enter..."
+      return
+    fi
+    new_port="$input"
+  else
+    log_error "Неверный порт"
+    read -p "Нажмите Enter..."
+    return
+  fi
+
+  log_info "Смена порта WireGuard: $current_port -> $new_port"
+
+  sed -i "s|^ListenPort = .*|ListenPort = $new_port|" "$WG_CONFIG"
+
+  WG_LOCAL_ENDPOINT="127.0.0.1:$new_port"
+  save_server_env
+
+  apply_obfuscator_config skip_restart
+
+  log_info "Пересборка пакетов клиентов..."
+  local client_script="$SCRIPT_DIR/phobos-client.sh"
+  for client_dir in "$PHOBOS_DIR/clients"/*; do
+    if [[ -d "$client_dir" ]]; then
+      local client_id=$(basename "$client_dir")
+      "$client_script" package "$client_id" >/dev/null 2>&1 || true
+    fi
+  done
+
+  log_info "Перезапуск служб..."
+  systemctl restart wg-quick@wg0
+  systemctl restart wg-obfuscator
+
+  log_success "Порт WireGuard изменен на $new_port"
+  read -p "Нажмите Enter..."
+}
+
 # Menu
 
 show_menu() {
@@ -447,7 +499,9 @@ show_menu() {
   echo "  8) Idle таймаут (сек)     [$CURRENT_IDLE]"
   echo "  9) Max dummy (байт)       [$CURRENT_DUMMY]"
   echo ""
+  local wg_port=$(grep "^ListenPort" "$WG_CONFIG" 2>/dev/null | cut -d'=' -f2 | tr -d ' ')
   echo " 10) Смена пула адресов WG  (IPv4/IPv6)"
+  echo " 11) Порт WireGuard         [${wg_port:-51820}]"
   echo ""
   echo "  0) Назад"
   echo ""
@@ -464,6 +518,7 @@ show_menu() {
     8) change_idle_timeout ;;
     9) change_dummy ;;
     10) change_wg_pool ;;
+    11) change_wg_listen_port ;;
     0) exit 0 ;;
     *) echo "Неверный выбор" ;;
   esac
