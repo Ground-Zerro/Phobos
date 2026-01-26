@@ -67,7 +67,7 @@ find_free_port() {
 
 step_deps() {
   log_info "Установка зависимостей..."
-  (apt-get update -qq && apt-get install -y -qq wireguard qrencode jq curl build-essential git cmake python3 ufw) >/dev/null 2>&1 &
+  (apt-get update -qq && apt-get install -y -qq wireguard qrencode jq curl build-essential git cmake ufw) >/dev/null 2>&1 &
   spin $! "Установка пакетов..."
   wait $!
   log_success "Зависимости установлены."
@@ -90,6 +90,31 @@ step_build() {
   ln -sf "$PHOBOS_DIR/bin/wg-obfuscator-$arch" /usr/local/bin/wg-obfuscator
   chmod +x /usr/local/bin/wg-obfuscator
   log_success "Бинарник wg-obfuscator установлен"
+
+  log_info "Сборка darkhttpd..."
+  local darkhttpd_version="1.16"
+  local darkhttpd_url="https://github.com/emikulic/darkhttpd/archive/refs/tags/v${darkhttpd_version}.tar.gz"
+  local build_dir="/tmp/darkhttpd-build"
+
+  rm -rf "$build_dir"
+  mkdir -p "$build_dir"
+
+  if ! curl -sL "$darkhttpd_url" | tar -xz -C "$build_dir" --strip-components=1; then
+    log_error "Не удалось скачать darkhttpd"
+    exit 1
+  fi
+
+  if ! make -C "$build_dir" darkhttpd >/dev/null 2>&1; then
+    log_error "Не удалось собрать darkhttpd"
+    exit 1
+  fi
+
+  cp "$build_dir/darkhttpd" "$PHOBOS_DIR/bin/darkhttpd"
+  chmod +x "$PHOBOS_DIR/bin/darkhttpd"
+  ln -sf "$PHOBOS_DIR/bin/darkhttpd" /usr/local/bin/darkhttpd
+  rm -rf "$build_dir"
+
+  log_success "darkhttpd собран и установлен"
 }
 
 step_wg() {
@@ -212,7 +237,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$WWW_DIR
-ExecStart=/usr/bin/python3 $REPO_DIR/server/scripts/phobos-http-server.py $port $WWW_DIR
+ExecStart=/usr/local/bin/darkhttpd $WWW_DIR --port $port --no-listing
 Restart=on-failure
 RestartSec=5
 
