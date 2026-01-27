@@ -247,10 +247,8 @@ action_package() {
      chmod +x "$pkg_root/install-router.sh"
      
      # Copy others
-     for f in router-configure-wireguard router-configure-wireguard-openwrt health-check phobos-uninstall detect-router-arch 3xui.py; do
-       tgt="$f.sh"
-       [[ "$f" == "3xui.py" ]] && tgt="$f"
-       [[ -f "$tpl_dir/$tgt.template" ]] && cp "$tpl_dir/$tgt.template" "$pkg_root/$tgt" && chmod +x "$pkg_root/$tgt"
+     for f in router-configure-wireguard router-configure-wireguard-openwrt health-check phobos-uninstall detect-router-arch 3xui; do
+       [[ -f "$tpl_dir/$f.sh.template" ]] && cp "$tpl_dir/$f.sh.template" "$pkg_root/$f.sh" && chmod +x "$pkg_root/$f.sh"
      done
   else
      log_warn "Шаблоны не найдены в $tpl_dir"

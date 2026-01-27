@@ -245,14 +245,14 @@ deploy_uninstall_script() {
 }
 
 deploy_3xui_script() {
-  log "Развертывание скрипта 3xui.py..."
+  log "Развертывание скрипта 3xui.sh..."
 
-  if [ -f "3xui.py" ]; then
-    cp "3xui.py" "$PHOBOS_DIR/3xui.py"
-    chmod +x "$PHOBOS_DIR/3xui.py"
-    log "Скрипт 3xui.py установлен: $PHOBOS_DIR/3xui.py"
+  if [ -f "3xui.sh" ]; then
+    cp "3xui.sh" "$PHOBOS_DIR/3xui.sh"
+    chmod +x "$PHOBOS_DIR/3xui.sh"
+    log "Скрипт 3xui.sh установлен: $PHOBOS_DIR/3xui.sh"
   else
-    log "ПРЕДУПРЕЖДЕНИЕ: 3xui.py не найден в архиве"
+    log "ПРЕДУПРЕЖДЕНИЕ: 3xui.sh не найден в архиве"
   fi
 }
 
@@ -260,15 +260,17 @@ run_3xui_integration() {
   log ""
   log "==> Интеграция WireGuard конфигурации в 3x-ui..."
 
-  if [ ! -f "$PHOBOS_DIR/3xui.py" ]; then
-    log "ОШИБКА: Скрипт $PHOBOS_DIR/3xui.py не найден"
+  if [ ! -f "$PHOBOS_DIR/3xui.sh" ]; then
+    log "ОШИБКА: Скрипт $PHOBOS_DIR/3xui.sh не найден"
     return 1
   fi
 
-  if ! command -v python3 >/dev/null 2>&1; then
-    log "ОШИБКА: python3 не найден. Установите python3 для работы с 3x-ui"
-    return 1
-  fi
+  for cmd in jq sqlite3; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      log "ОШИБКА: $cmd не найден. Установите: apt install jq sqlite3"
+      return 1
+    fi
+  done
 
   local wg_config="$PHOBOS_DIR/${CLIENT_NAME}.conf"
 
@@ -277,11 +279,11 @@ run_3xui_integration() {
     return 1
   fi
 
-  log "Запуск интеграции: python3 $PHOBOS_DIR/3xui.py $wg_config"
+  log "Запуск интеграции: $PHOBOS_DIR/3xui.sh $wg_config"
 
-  if python3 "$PHOBOS_DIR/3xui.py" "$wg_config"; then
-    log "✓ WireGuard конфигурация успешно интегрирована в 3x-ui"
-    log "✓ Outbound 'Phobos' добавлен в конфигурацию 3x-ui"
+  if "$PHOBOS_DIR/3xui.sh" "$wg_config"; then
+    log "[OK] WireGuard конфигурация успешно интегрирована в 3x-ui"
+    log "[OK] Outbound 'Phobos' добавлен в конфигурацию 3x-ui"
     return 0
   else
     log "ОШИБКА: Не удалось интегрировать конфигурацию в 3x-ui"
@@ -293,11 +295,11 @@ cleanup_3xui_script() {
   local keep_script="$1"
 
   if [ "$keep_script" = "true" ]; then
-    log "Скрипт 3xui.py сохранен для использования в 3x-ui режиме"
+    log "Скрипт 3xui.sh сохранен для использования в 3x-ui режиме"
   else
-    if [ -f "$PHOBOS_DIR/3xui.py" ]; then
-      rm -f "$PHOBOS_DIR/3xui.py"
-      log "Скрипт 3xui.py удален (не требуется в обычном режиме)"
+    if [ -f "$PHOBOS_DIR/3xui.sh" ]; then
+      rm -f "$PHOBOS_DIR/3xui.sh"
+      log "Скрипт 3xui.sh удален (не требуется в обычном режиме)"
     fi
   fi
 }
@@ -870,7 +872,7 @@ main() {
         log "  Бинарник: /usr/local/bin/wg-obfuscator"
         log "  Конфиг obfuscator: $PHOBOS_DIR/wg-obfuscator.conf"
         log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
-        log "  Скрипт 3xui.py: $PHOBOS_DIR/3xui.py"
+        log "  Скрипт 3xui.sh: $PHOBOS_DIR/3xui.sh"
         log "  Systemd service: /etc/systemd/system/phobos-obfuscator.service"
         log ""
         log "Управление:"
@@ -878,7 +880,7 @@ main() {
         log ""
         log "Примечание:"
         log "  WireGuard управляется через 3x-ui панель"
-        log "  Скрипт 3xui.py сохранен для повторной интеграции при необходимости"
+        log "  Скрипт 3xui.sh сохранен для повторной интеграции при необходимости"
         log ""
       else
         log ""
