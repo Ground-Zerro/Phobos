@@ -181,6 +181,7 @@ OBFUSCATOR_PORT=$port
 OBFUSCATOR_KEY=$key
 OBFUSCATOR_DUMMY=$dummy
 OBFUSCATOR_IDLE=300
+OBFUSCATOR_MASKING=STUN
 SERVER_PUBLIC_IP_V4=$pub_ip_v4
 SERVER_PUBLIC_IP_V6=$pub_ip_v6
 WG_LOCAL_ENDPOINT=127.0.0.1:51820
@@ -209,11 +210,11 @@ EOF
 
   cat > "$OBF_CONFIG" <<EOF
 [instance]
-source-if = 0.0.0.0
+source-if = $pub_ip_v4
 source-lport = $port
 target = 127.0.0.1:51820
 key = $key
-masking = AUTO
+masking = STUN
 verbose = INFO
 idle-timeout = 300
 max-dummy = $dummy
