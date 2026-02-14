@@ -156,7 +156,7 @@ PublicKey = $pub_key
 AllowedIPs = $peer_ips
 EOF
   
-  wg syncconf wg0 <(wg-quick strip wg0)
+  wg syncconf wg0 <(wg-quick strip wg0 2>/dev/null) 2>/dev/null
   log_success "Клиент $name создан."
 
   CLIENT_ARG="$id"
@@ -181,7 +181,7 @@ action_remove() {
 
        sed -i '/^$/N;/^\n$/D' "$WG_CONFIG"
        
-       wg syncconf wg0 <(wg-quick strip wg0)
+       wg syncconf wg0 <(wg-quick strip wg0 2>/dev/null) 2>/dev/null
        log_success "Peer удален из конфигурации."
     fi
   fi
