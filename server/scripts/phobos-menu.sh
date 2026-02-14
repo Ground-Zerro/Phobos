@@ -157,7 +157,6 @@ show_clients_menu() {
            read -p "Пересоздать $client? [y/N]: " ans
            if [[ "$ans" =~ ^[Yy] ]]; then
              "$CLIENT_SCRIPT" rebuild "$client"
-             "$CLIENT_SCRIPT" package "$client"
            fi
         fi
         read -p "Enter..."

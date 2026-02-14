@@ -6,8 +6,9 @@
 #include "wg-obfuscator.h"
 #include "masking.h"
 #include "masking_stun.h"
+#include "obfuscation.h"
 
-static void rand_bytes(uint8_t* p, size_t n){ for(size_t i=0;i<n;i++) p[i]=rand()&0xFF; }
+static void rand_bytes(uint8_t* p, size_t n){ fast_rand_bytes(p, n); }
 
 static uint32_t crc32_table[256];
 static volatile int crc32_table_initialized = 0;
@@ -137,9 +138,7 @@ static int stun_wrap(uint8_t *buf, size_t data_len) {
         return -ENOMEM;
     }
 
-    for (int i = data_len - 1; i >= 0; i--) {
-        buf[i + total_add] = buf[i];
-    }
+    memmove(buf + total_add, buf, data_len);
 
     uint8_t txid[12];
     rand_bytes(txid, 12);
@@ -168,9 +167,7 @@ static int stun_unwrap(uint8_t *buf, size_t len) {
     uint16_t data_len = (buf[22] << 8) | buf[23];
     if (data_len + 24 > len) return -1;
 
-    for (size_t i = 0; i < data_len; i++) {
-        buf[i] = buf[i + 24];
-    }
+    memmove(buf, buf + 24, data_len);
 
     return data_len;
 }

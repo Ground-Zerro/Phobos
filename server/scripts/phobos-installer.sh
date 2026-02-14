@@ -51,23 +51,9 @@ spin() {
   printf "\r"
 }
 
-find_free_port() {
-  local min=${1:-1024}
-  local max=${2:-65535}
-  local port
-  for _ in {1..100}; do
-    port=$((min + RANDOM % (max - min + 1)))
-    if ! ss -tlnp | grep -q ":$port " && ! ss -ulnp | grep -q ":$port "; then
-      echo "$port"
-      return 0
-    fi
-  done
-  return 1
-}
-
 step_deps() {
   log_info "Установка зависимостей..."
-  (apt-get update -qq && apt-get install -y -qq wireguard qrencode jq curl build-essential git cmake ufw) >/dev/null 2>&1 &
+  (apt-get update -qq && apt-get install -y -qq wireguard jq curl build-essential ufw) >/dev/null 2>&1 &
   spin $! "Установка пакетов..."
   wait $!
   log_success "Зависимости установлены."
@@ -173,7 +159,16 @@ step_obf() {
 
   local port=$(find_free_port 1024 49151)
   local key=$(head -c $((key_len * 2)) /dev/urandom | base64 | tr -d '+/=\n' | head -c "$key_len")
-  local pub_ip_v4=$(curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || echo "")
+  local pub_ip_v4
+  pub_ip_v4=$(get_public_ipv4) || true
+  if [[ -z "$pub_ip_v4" ]]; then
+    log_warn "Не удалось определить публичный IP автоматически"
+    while true; do
+      read -rp "Введите публичный IPv4 сервера: " pub_ip_v4
+      [[ "$pub_ip_v4" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && break
+      log_error "Неверный формат IP, повторите"
+    done
+  fi
   local pub_ip_v6=$(get_public_ipv6)
 
   cat >> "$SERVER_ENV" <<EOF
@@ -210,7 +205,7 @@ EOF
 
   cat > "$OBF_CONFIG" <<EOF
 [instance]
-source-if = $pub_ip_v4
+source-if = 0.0.0.0
 source-lport = $port
 target = 127.0.0.1:51820
 key = $key

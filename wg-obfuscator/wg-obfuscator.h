@@ -23,6 +23,8 @@
 #define LL_DEFAULT      LL_INFO
 
 #define BUFFER_SIZE                     65535
+#define PENDING_SEND_SIZE               8
+#define PENDING_SEND_BUF_SIZE           2048
 #define POLL_TIMEOUT                    5000
 #define HANDSHAKE_TIMEOUT               5000
 #define ITERATE_INTERVAL                1000
@@ -75,6 +77,8 @@ typedef struct {
     uint32_t fwmark;
     masking_handler_t *masking_handler;
 
+    uint8_t reuseport;
+
     uint8_t listen_port_set;
     uint8_t forward_host_port_set;
     uint8_t xor_key_set;
@@ -82,6 +86,11 @@ typedef struct {
     uint8_t static_bindings_set;
     uint8_t masking_handler_set;
 } obfuscator_config_t;
+
+typedef struct {
+    uint8_t data[PENDING_SEND_BUF_SIZE];
+    int length;
+} pending_packet_t;
 
 typedef struct {
     struct sockaddr_in client_addr;
@@ -98,6 +107,9 @@ typedef struct {
     long last_handshake_request_time;
     long last_handshake_time;
     long last_masking_timer_time;
+    pending_packet_t pending_sends[PENDING_SEND_SIZE];
+    volatile int pending_head;
+    volatile int pending_tail;
     UT_hash_handle hh;
 } client_entry_t;
 

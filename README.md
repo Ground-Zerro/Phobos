@@ -4,12 +4,12 @@
 
 ## Описание
 
-**Phobos** — комплексное решение для автоматизации настройки обфусцированного WireGuard соединения между VPS сервером и клиентами. Включает серверные скрипты и клиентские установщики для роутеров (Keenetic, OpenWrt, ImmortalWrt) и Linux систем (Ubuntu/Debian).
+**Phobos** — комплексное решение для автоматизации настройки обфусцированного WireGuard соединения между VPS сервером и клиентами. Включает серверные скрипты и клиентские установщики для роутеров (Keenetic/Netcraze, OpenWrt, ImmortalWrt) и Linux систем (Ubuntu/Debian).
 
 ### Основные компоненты
 
 - **Серверная часть** - автоматизация развертывания WireGuard с обфускацией на VPS
-- **Клиентская часть** - установщики для роутеров (Keenetic/OpenWrt/ImmortalWrt) и Linux систем
+- **Клиентская часть** - установщики для роутеров (Keenetic/Netcraze, OpenWrt, ImmortalWrt) и Linux систем
 - **Интеграция с 3x-ui** - поддержка установки только obfuscator для работы с панелью 3x-ui
 
 ## Быстрый старт
@@ -22,74 +22,19 @@
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/main/phobos-deploy.sh)" </dev/tty
 ```
 
-<details>
-  <summary>Подробней</summary>
-
-  Система выполнит:
-  - Проверку и установку необходимых системных зависимостей
-  - Копирование готовых бинарников wg-obfuscator для VPS сервера и всех поддерживаемых архитектур роутеров (mipsel, mips, aarch64, armv7, x86)
-  - Создание и настройку конфигурационных файлов для WireGuard и obfuscator с безопасными портами
-  - Автоматическое определение IPv6 адреса (если доступен)
-  - Создание первого клиента
-  - Генерацию установочного пакета с бинарниками и конфигурациями для Keenetic и OpenWrt
-  - Запуск HTTP-сервера для раздачи установочных пакетов
-  - Генерацию одноразовой команды установки с уникальным токеном
-  - Вывод готовой HTTP-ссылки для установки на роутере
-</details>
-
 ### 2. Установка на клиенте
 
-#### Keenetic/Netcraze/ImmortalWrt (Entware)
-
-Отправьте ссылку клиенту, он выполняет ее на роутере в терминале Entware, пример:
-
+**Keenetic/Netcraze/ImmortalWrt** (терминал Entware):
 ```bash
 wget -O - http://<server_ip>:8080/init/<token>.sh | sh
 ```
 
-<details>
-  <summary>Подробней</summary>
-
-  Скрипт автоматически:
-  - Установит jq для корректного парсинга JSON
-  - Скачает установочный пакет
-  - Определит архитектуру роутера
-  - Установит правильный бинарник wg-obfuscator
-  - Настроит автозапуск obfuscator
-  - Настроит WireGuard через RCI API
-  - Создаст интерфейс "Phobos-{client_name}"
-  - Активирует подключение
-  - Проверит создание интерфейса
-  - Развернет скрипты health-check и uninstall
-</details>
-
-#### OpenWrt
-
-Отправьте ссылку клиенту, он выполняет ее на роутере через SSH, пример:
-
+**OpenWrt** (SSH):
 ```bash
 wget -O - http://<server_ip>:8080/init/<token>.sh | sh
 ```
-<details>
-  <summary>Подробней</summary>
 
-  Скрипт автоматически:
-  - Установит пакеты WireGuard (kmod-wireguard, wireguard-tools, luci-app-wireguard)
-  - Скачает установочный пакет
-  - Определит архитектуру роутера
-  - Установит правильный бинарник wg-obfuscator
-  - Настроит автозапуск obfuscator
-  - Настроит WireGuard через UCI
-  - Создаст интерфейс "phobos_wg" и firewall зону "phobos"
-  - Активирует подключение
-  - Проверит создание интерфейса
-  - Развернет скрипты health-check и uninstall
-</details>
-
-#### Linux (Ubuntu/Debian)
-
-Отправьте ссылку клиенту, он выполняет ее на Linux компьютере через SSH или терминал, пример:
-
+**Linux (Ubuntu/Debian)** (SSH или терминал):
 ```bash
 wget -O - http://<server_ip>:8080/init/<token>.sh | sudo sh
 ```
@@ -97,30 +42,11 @@ wget -O - http://<server_ip>:8080/init/<token>.sh | sudo sh
 <details>
   <summary>Подробней</summary>
 
-  Скрипт автоматически:
-  - Определит режим установки (автоматическое определение 3x-ui панели)
-  - Установит WireGuard, resolvconf и net-tools через apt-get (стандартный режим)
-  - Скачает установочный пакет
-  - Определит архитектуру системы
-  - Установит правильный бинарник wg-obfuscator
-  - Настроит автозапуск obfuscator через systemd
-  - Настроит WireGuard через systemd с фиксированным интерфейсом "phobos" (стандартный режим)
-  - Настроит VPN как запасной интерфейс (не перехватывает системный трафик)
-  - Создаст зависимость WireGuard от obfuscator (стандартный режим)
-  - Активирует подключение
-  - Проверит создание интерфейса и туннеля
-  - Развернет скрипты health-check и uninstall
+  Скрипт автоматически определяет платформу и архитектуру, устанавливает wg-obfuscator, настраивает автозапуск, конфигурирует WireGuard, активирует подключение, развёртывает скрипты health-check и uninstall.
 
-  **Особенности Linux клиента:**
-  - VPN настроен как запасной интерфейс (`Table = off`)
-  - Системный трафик не перехватывается автоматически
-  - Для направления трафика через VPN используйте команды из документации
-  - Интерфейс называется "phobos" (аналогично OpenWrt "phobos_wg")
-
-  **Режим 3x-ui:**
-  - При обнаружении панели 3x-ui устанавливается только obfuscator
-  - WireGuard управляется через панель 3x-ui
-  - Автоматическая интеграция конфигурации через скрипт 3xui.py
+  **Keenetic/Netcraze:** настройка через RCI API, интерфейс `Phobos-{client_name}`
+  **OpenWrt/ImmortalWrt:** установка kmod-wireguard, wireguard-tools, luci-app-wireguard; настройка через UCI, интерфейс `phobos_wg`, firewall зона `phobos`
+  **Linux:** установка через apt-get и systemd, интерфейс `phobos`, VPN как запасной интерфейс (`Table = off`). При обнаружении 3x-ui — только obfuscator через 3xui.sh.
 </details>
 
 ## Управление системой
@@ -156,48 +82,17 @@ sudo /opt/Phobos/repo/server/scripts/vps-uninstall.sh --keep-data
 
 ### Удаление с клиента
 
-#### Keenetic/Netcraze
-
-Для полного удаления Phobos с роутера Keenetic/Netcraze:
-
+**Keenetic/Netcraze:**
 ```bash
 /opt/etc/Phobos/phobos-uninstall.sh
 ```
 
-<details>
-  <summary>Подробней</summary>
-
-  Скрипт автоматически:
-  - Остановит wg-obfuscator
-  - Удалит все WireGuard интерфейсы Phobos через RCI API
-  - Удалит бинарники и конфигурационные файлы
-  - Удалит init-скрипт
-  - Сохранит конфигурацию роутера
-</details>
-
-#### OpenWrt
-
-Для полного удаления Phobos с роутера OpenWrt:
-
+**OpenWrt/ImmortalWrt:**
 ```bash
 /etc/Phobos/phobos-uninstall.sh
 ```
 
-<details>
-  <summary>Подробней</summary>
-
-  Скрипт автоматически:
-  - Остановит wg-obfuscator
-  - Удалит WireGuard интерфейс и firewall зону через UCI
-  - Удалит бинарники и конфигурационные файлы
-  - Удалит init-скрипт
-  - Сохранит конфигурацию роутера
-</details>
-
-#### Linux (Ubuntu/Debian)
-
-Для полного удаления Phobos с Linux компьютера:
-
+**Linux (Ubuntu/Debian):**
 ```bash
 sudo /opt/Phobos/phobos-uninstall.sh
 ```
@@ -205,12 +100,11 @@ sudo /opt/Phobos/phobos-uninstall.sh
 <details>
   <summary>Подробней</summary>
 
-  Скрипт автоматически:
-  - Остановит phobos-obfuscator и wg-quick@phobos
-  - Удалит WireGuard интерфейс "phobos" и systemd override конфигурацию
-  - Удалит systemd сервисы (phobos-obfuscator.service)
-  - Удалит бинарники (/usr/local/bin/wg-obfuscator)
-  - Удалит конфигурационные файлы (/opt/Phobos, /etc/wireguard/phobos.conf)
+  Скрипт остановит obfuscator и WireGuard, удалит интерфейс, бинарники, конфигурационные файлы и init-скрипт / systemd сервис.
+
+  **Keenetic/Netcraze:** удаление интерфейсов через RCI API, сохранение конфигурации роутера
+  **OpenWrt/ImmortalWrt:** удаление через UCI, firewall зоны `phobos`, сохранение конфигурации роутера
+  **Linux:** удаление `/usr/local/bin/wg-obfuscator`, `/opt/Phobos`, `/etc/wireguard/phobos.conf`
 </details>
 
 ## Совместимость и поддерживаемые платформы
@@ -224,7 +118,7 @@ sudo /opt/Phobos/phobos-uninstall.sh
 
 **Роутеры:**
 - **Keenetic** (все модели с Entware) - mipsel, aarch64, mips
-- **Netcraze** (устройства Keenetic под другой маркой)
+- **Netcraze** (устройства Keenetic под другой маркой) - mipsel, aarch64, mips
 - **OpenWrt/LEDE** - mipsel, mips, aarch64, armv7, x86_64
 - **ImmortalWrt** - форк OpenWrt с дополнительными возможностями
 

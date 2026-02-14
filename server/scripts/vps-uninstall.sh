@@ -2,13 +2,12 @@
 set -uo pipefail
 IFS=$'\n\t'
 
-PHOBOS_DIR="/opt/Phobos"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KEEP_DATA="${1:-}"
 
-if [[ $(id -u) -ne 0 ]]; then
-  echo "Этот скрипт требует root привилегии. Запустите: sudo $0"
-  exit 1
-fi
+source "$SCRIPT_DIR/lib-core.sh"
+
+check_root
 
 echo "=========================================="
 echo "  Удаление Phobos VPS"
@@ -86,10 +85,10 @@ if [[ -f /etc/wireguard/wg0.conf ]]; then
   echo "  ✓ wg0.conf удален"
 fi
 
-if [[ -f /etc/sysctl.d/99-wireguard.conf ]]; then
-  rm /etc/sysctl.d/99-wireguard.conf
+if [[ -f /etc/sysctl.d/99-phobos.conf ]]; then
+  rm /etc/sysctl.d/99-phobos.conf
   sysctl -p 2>/dev/null || true
-  echo "  ✓ 99-wireguard.conf удален"
+  echo "  ✓ 99-phobos.conf удален"
 fi
 
 echo ""

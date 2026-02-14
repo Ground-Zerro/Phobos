@@ -3,27 +3,15 @@ set -uo pipefail
 IFS=$'\n\t'
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-PHOBOS_DIR="/opt/Phobos"
-SERVER_ENV="$PHOBOS_DIR/server/server.env"
-OBF_CONFIG="$PHOBOS_DIR/server/wg-obfuscator.conf"
-WG_CONFIG="/etc/wireguard/wg0.conf"
+source "$SCRIPT_DIR/lib-core.sh"
 
-if [[ $(id -u) -ne 0 ]]; then
-  echo "Требуются root привилегии. Запустите: sudo $0"
-  exit 1
-fi
-
-
-log_info() { echo -e "\033[0;34m[INFO]\033[0m $1"; }
-log_success() { echo -e "\033[0;32m[OK]\033[0m $1"; }
-log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
+check_root
 
 load_config() {
   if [[ -f "$SERVER_ENV" ]]; then
     source "$SERVER_ENV"
   fi
   
-  # Defaults if missing
   OBFUSCATOR_PORT="${OBFUSCATOR_PORT:-$(grep 'source-lport' "$OBF_CONFIG" 2>/dev/null | awk '{print $3}' || echo 51821)}"
   OBFUSCATOR_KEY="${OBFUSCATOR_KEY:-$(grep 'key' "$OBF_CONFIG" 2>/dev/null | awk '{print $3}' || echo "KEY")}"
   SERVER_PUBLIC_IP_V4="${SERVER_PUBLIC_IP_V4:-0.0.0.0}"
@@ -31,7 +19,6 @@ load_config() {
   WG_LOCAL_ENDPOINT="${WG_LOCAL_ENDPOINT:-127.0.0.1:51820}"
   CLIENT_WG_PORT="${CLIENT_WG_PORT:-13255}"
   
-  # Current obfuscator config
   if [[ -f "$OBF_CONFIG" ]]; then
     CURRENT_IP=$(grep '^source-if' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "0.0.0.0")
     CURRENT_LOG=$(grep '^verbose' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "INFO")
@@ -99,26 +86,13 @@ EOF
   fi
 }
 
-generate_safe_port() {
-  local port
-  for _ in {1..100}; do
-    port=$((1024 + RANDOM % 48128))
-    if ! ss -tlnp | grep -q ":$port " && ! ss -ulnp | grep -q ":$port "; then
-      echo "$port"
-      return 0
-    fi
-  done
-  echo "1024"
-}
-
-
 change_port() {
   echo ""
   echo "Текущий порт: $OBFUSCATOR_PORT"
   read -p "Введите новый порт (или 'r' для случайного): " input
   
   if [[ "$input" == "r" ]]; then
-    OBFUSCATOR_PORT=$(generate_safe_port)
+    OBFUSCATOR_PORT=$(find_free_port) || { log_error "Нет свободных портов"; return; }
   elif [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -ge 1 ] && [ "$input" -le 65535 ]; then
     OBFUSCATOR_PORT="$input"
   else
@@ -166,7 +140,7 @@ change_key() {
   read -p "Выбор: " choice
   
   if [[ "$choice" == "1" ]]; then
-    OBFUSCATOR_KEY=$(openssl rand -base64 3 | tr -d '+/=' | head -c 3)
+    OBFUSCATOR_KEY=$(head -c 6 /dev/urandom | base64 | tr -d '+/=\n' | head -c 3)
   elif [[ "$choice" == "2" ]]; then
     read -p "Введите ключ: " input
     OBFUSCATOR_KEY="$input"
@@ -439,7 +413,7 @@ change_wg_listen_port() {
 
   local new_port
   if [[ "$input" == "r" ]]; then
-    new_port=$(generate_safe_port)
+    new_port=$(find_free_port) || { log_error "Нет свободных портов"; read -p "Нажмите Enter..."; return; }
   elif [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -ge 1024 ] && [ "$input" -le 65535 ]; then
     if ss -ulnp | grep -q ":$input "; then
       log_error "Порт $input уже занят"
@@ -479,6 +453,40 @@ change_wg_listen_port() {
   read -p "Нажмите Enter..."
 }
 
+change_server_ip() {
+  echo ""
+  echo "Текущий публичный IP сервера: $SERVER_PUBLIC_IP_V4"
+  echo "1) Определить из сетевого интерфейса"
+  echo "2) Ввести вручную"
+  read -p "Выбор: " choice
+
+  local ip=""
+  if [[ "$choice" == "1" ]]; then
+    ip=$(get_public_ipv4) || true
+    if [[ -z "$ip" ]]; then
+      log_error "Не удалось определить IP из сетевого интерфейса"
+      read -p "Нажмите Enter..."
+      return
+    fi
+  elif [[ "$choice" == "2" ]]; then
+    read -p "Введите IPv4: " input
+    if [[ ! "$input" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      log_error "Неверный формат IP"
+      read -p "Нажмите Enter..."
+      return
+    fi
+    ip="$input"
+  else
+    return
+  fi
+
+  SERVER_PUBLIC_IP_V4="$ip"
+  save_server_env
+  rebuild_all_clients
+  log_success "Публичный IP сервера обновлен: $SERVER_PUBLIC_IP_V4"
+  read -p "Нажмите Enter..."
+}
+
 # Menu
 
 show_menu() {
@@ -503,6 +511,7 @@ show_menu() {
   local wg_port=$(grep "^ListenPort" "$WG_CONFIG" 2>/dev/null | cut -d'=' -f2 | tr -d ' ')
   echo " 10) Смена пула адресов WG  (IPv4/IPv6)"
   echo " 11) Порт WireGuard         [${wg_port:-51820}]"
+  echo " 12) Публичный IP сервера   [$SERVER_PUBLIC_IP_V4]"
   echo ""
   echo "  0) Назад"
   echo ""
@@ -520,6 +529,7 @@ show_menu() {
     9) change_dummy ;;
     10) change_wg_pool ;;
     11) change_wg_listen_port ;;
+    12) change_server_ip ;;
     0) exit 0 ;;
     *) echo "Неверный выбор" ;;
   esac

@@ -27,6 +27,7 @@ CLIENT_PRIVATE_KEY=""
 CLIENT_IP=""
 CLIENT_IPV6=""
 SERVER_PUBLIC_KEY=""
+ENDPOINT_PORT=13255
 KEEPALIVE=25
 MTU=1420
 FALLBACK_CONFIG=""
@@ -50,6 +51,7 @@ Options:
   --client-ip IP              Client tunnel IPv4 address (required)
   --client-ipv6 IP            Client tunnel IPv6 address (required)
   --server-public-key KEY     Server WireGuard public key (required)
+  --endpoint-port PORT        Local obfuscator port (default: 13255)
   --keepalive SECONDS         Keepalive interval (default: 25)
   --mtu MTU                   Interface MTU (default: 1420)
   --fallback-config PATH      Path to fallback .conf file
@@ -61,6 +63,7 @@ Example:
      --client-ip 10.25.0.4 \\
      --client-ipv6 fd00:10:25::4 \\
      --server-public-key "EFGH..." \\
+     --endpoint-port 13255 \\
      --fallback-config /opt/etc/Phobos/Pegacomp.conf
 
 EOF
@@ -88,6 +91,10 @@ parse_args() {
                 ;;
             --server-public-key)
                 SERVER_PUBLIC_KEY="$2"
+                shift 2
+                ;;
+            --endpoint-port)
+                ENDPOINT_PORT="$2"
                 shift 2
                 ;;
             --keepalive)
@@ -230,7 +237,7 @@ configure_wireguard_interface() {
             "key": "${SERVER_PUBLIC_KEY}",
             "comment": "Phobos VPS Server",
             "endpoint": {
-              "address": "127.0.0.1:13255"
+              "address": "127.0.0.1:${ENDPOINT_PORT}"
             },
             "keepalive-interval": {
               "interval": ${KEEPALIVE}

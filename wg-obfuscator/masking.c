@@ -12,11 +12,11 @@ static _Thread_local struct {
 } g_send_ctx;
 
 static ssize_t send_to_client_cb(uint8_t *buffer, int length) {
-    return sendto(g_send_ctx.listen_sock, buffer, length, 0, (struct sockaddr *)g_send_ctx.sender_addr, sizeof(*g_send_ctx.sender_addr));
+    return sendto(g_send_ctx.listen_sock, buffer, length, MSG_DONTWAIT, (struct sockaddr *)g_send_ctx.sender_addr, sizeof(*g_send_ctx.sender_addr));
 }
 
 static ssize_t send_to_server_cb(uint8_t *buffer, int length) {
-    return send(g_send_ctx.server_sock, buffer, length, 0);
+    return send(g_send_ctx.server_sock, buffer, length, MSG_DONTWAIT);
 }
 
 masking_handler_t * get_masking_handler_by_name(const char *name) {

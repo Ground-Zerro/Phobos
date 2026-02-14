@@ -1,4 +1,5 @@
-﻿#include <stdio.h>
+﻿#define _GNU_SOURCE
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -8,12 +9,20 @@
 #include <time.h>
 #include <stdarg.h>
 #include <pthread.h>
+#ifdef __linux__
+#include <sys/socket.h>
+#define RECV_BATCH 16
+#endif
 #include "wg-obfuscator.h"
 #include "config.h"
 #include "obfuscation.h"
 #include "uthash.h"
 #include "masking.h"
 #include "threading.h"
+#ifdef USE_IO_URING
+#include "io_uring_support.h"
+static uring_context_t uring_ctx = {0};
+#endif
 
 // Verbosity level
 int verbose = LL_DEFAULT;
@@ -24,10 +33,25 @@ static int listen_sock = 0;
 // Hash table for client connections
 client_entry_t *conn_table = NULL;
 
-// Threading context
 static threading_context_t threading_ctx = {0};
 static pthread_rwlock_t conn_table_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-static pthread_mutex_t conn_table_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static uint32_t drop_count_client = 0;
+static uint32_t drop_count_server = 0;
+static long last_drop_log_time = 0;
+
+static void log_packet_drop(long now, int from_client) {
+    if (from_client)
+        drop_count_client++;
+    else
+        drop_count_server++;
+    if (now - last_drop_log_time >= 1000) {
+        log(LL_WARN, "Queue full, dropped %u from server, %u from clients",
+            drop_count_server, drop_count_client);
+        drop_count_server = drop_count_client = 0;
+        last_drop_log_time = now;
+    }
+}
 
 #ifdef USE_EPOLL
     static int epfd = 0;
@@ -37,12 +61,6 @@ client_entry_t* find_client_safe(struct sockaddr_in *addr) {
     client_entry_t *result;
     if (threading_ctx.mode == THREAD_MODE_SINGLE) {
         HASH_FIND(hh, conn_table, addr, sizeof(*addr), result);
-        return result;
-    }
-    if (threading_ctx.mode == THREAD_MODE_DUAL) {
-        pthread_mutex_lock(&conn_table_mutex);
-        HASH_FIND(hh, conn_table, addr, sizeof(*addr), result);
-        pthread_mutex_unlock(&conn_table_mutex);
         return result;
     }
     pthread_rwlock_rdlock(&conn_table_rwlock);
@@ -56,12 +74,6 @@ void add_client_safe(client_entry_t *entry) {
         HASH_ADD(hh, conn_table, client_addr, sizeof(entry->client_addr), entry);
         return;
     }
-    if (threading_ctx.mode == THREAD_MODE_DUAL) {
-        pthread_mutex_lock(&conn_table_mutex);
-        HASH_ADD(hh, conn_table, client_addr, sizeof(entry->client_addr), entry);
-        pthread_mutex_unlock(&conn_table_mutex);
-        return;
-    }
     pthread_rwlock_wrlock(&conn_table_rwlock);
     HASH_ADD(hh, conn_table, client_addr, sizeof(entry->client_addr), entry);
     pthread_rwlock_unlock(&conn_table_rwlock);
@@ -70,12 +82,6 @@ void add_client_safe(client_entry_t *entry) {
 void delete_client_safe(client_entry_t *entry) {
     if (threading_ctx.mode == THREAD_MODE_SINGLE) {
         HASH_DEL(conn_table, entry);
-        return;
-    }
-    if (threading_ctx.mode == THREAD_MODE_DUAL) {
-        pthread_mutex_lock(&conn_table_mutex);
-        HASH_DEL(conn_table, entry);
-        pthread_mutex_unlock(&conn_table_mutex);
         return;
     }
     pthread_rwlock_wrlock(&conn_table_rwlock);
@@ -140,16 +146,13 @@ client_entry_t * new_client_entry(obfuscator_config_t *config, struct sockaddr_i
     client_entry->version = OBFUSCATION_VERSION;
     // Set the client address
     memcpy(&client_entry->client_addr, client_addr, sizeof(client_entry->client_addr));
-    // Create a socket for the server connection
-    client_entry->server_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    // TODO: add client address to log
+    client_entry->server_sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
     if (client_entry->server_sock < 0) {
         serror("Failed to create server socket for client");
         free(client_entry);
         return NULL;
     }
 #ifdef __linux__
-    // Set "Don't Fragment" flag
     int optval = 1;
     if (setsockopt(client_entry->server_sock, IPPROTO_IP, IP_MTU_DISCOVER, &optval, sizeof(optval)) < 0) {
         serror("Failed to set 'don't fragment' flag for client");
@@ -163,9 +166,13 @@ client_entry_t * new_client_entry(obfuscator_config_t *config, struct sockaddr_i
         }
     }
 #endif
-    // Set the server address to the specified one
+    {
+        int bufsize = 256 * 1024;
+        setsockopt(client_entry->server_sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+        setsockopt(client_entry->server_sock, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+    }
+
     connect(client_entry->server_sock, (struct sockaddr *)forward_addr, sizeof(*forward_addr));
-    // Get the assigned port number
     socklen_t our_addr_len = sizeof(client_entry->our_addr);
     if (getsockname(client_entry->server_sock, (struct sockaddr *)&client_entry->our_addr, &our_addr_len) == -1) {
         serror("Failed to get socket port number");
@@ -234,8 +241,7 @@ static client_entry_t * new_client_entry_static(obfuscator_config_t *config, str
     client_entry->masking_handler = config->masking_handler;
     // Set the client address
     memcpy(&client_entry->client_addr, client_addr, sizeof(client_entry->client_addr));
-    // Create a socket for the server connection
-    client_entry->server_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    client_entry->server_sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
     if (client_entry->server_sock < 0) {
         serror("Failed to create server socket for client");
         free(client_entry);
@@ -272,10 +278,15 @@ static client_entry_t * new_client_entry_static(obfuscator_config_t *config, str
     }
 
 #endif
-    // Set the server address to the specified one
+    {
+        int bufsize = 256 * 1024;
+        setsockopt(client_entry->server_sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+        setsockopt(client_entry->server_sock, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+    }
+
     connect(client_entry->server_sock, (struct sockaddr *)forward_addr, sizeof(*forward_addr));
 
-#ifdef USE_EPOLL    
+#ifdef USE_EPOLL
     struct epoll_event e = {
         .events = EPOLLIN,
         .data.ptr = client_entry
@@ -450,7 +461,21 @@ int main(int argc, char *argv[]) {
             log(LL_WARN, "Failed to set 'firewall mark' for listening socket: %s", strerror(errno));
         }
     }
+    if (config.reuseport) {
+        int reuseport = 1;
+        if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEPORT, &reuseport, sizeof(reuseport)) < 0) {
+            serror("Failed to set SO_REUSEPORT for listening socket");
+            FAILURE();
+        }
+        log(LL_INFO, "SO_REUSEPORT enabled");
+    }
 #endif
+
+    {
+        int bufsize = 256 * 1024;
+        setsockopt(listen_sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+        setsockopt(listen_sock, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+    }
 
     /* Bind the listening socket to the specified address and port */
     memset(&listen_addr, 0, sizeof(listen_addr));
@@ -571,6 +596,18 @@ int main(int argc, char *argv[]) {
 
     log(LL_INFO, "WireGuard obfuscator successfully started");
 
+#ifdef USE_IO_URING
+    if (uring_init(&uring_ctx) == 0) {
+        log(LL_INFO, "io_uring initialized (queue depth %d)", URING_QUEUE_DEPTH);
+        for (int i = 0; i < URING_RECV_BUFFERS / 2; i++) {
+            uring_submit_recv_client(&uring_ctx, listen_sock, i);
+        }
+        uring_flush(&uring_ctx);
+    } else {
+        log(LL_WARN, "Failed to initialize io_uring, falling back to epoll/poll");
+    }
+#endif
+
     /* Main loop */
     while (1) {
         // Using epoll or poll to wait for events
@@ -615,7 +652,74 @@ int main(int argc, char *argv[]) {
         for (int e = 0; e < nfds; e++) if (pollfds[e].revents & POLLIN) {
             if (pollfds[e].fd == listen_sock) {
 #endif
-                /* *** Handle incoming data from the clients *** */
+#if defined(__linux__) && defined(RECV_BATCH)
+                if (threading_ctx.mode != THREAD_MODE_SINGLE) {
+                    static struct mmsghdr mmsg_hdrs[RECV_BATCH];
+                    static struct iovec mmsg_iovs[RECV_BATCH];
+
+                    uint32_t head = threading_ctx.client_queue.head;
+                    uint32_t tail = __atomic_load_n(&threading_ctx.client_queue.tail, __ATOMIC_ACQUIRE);
+                    uint32_t available = (tail - head - 1) & QUEUE_MASK;
+                    if (available > RECV_BATCH) available = RECV_BATCH;
+                    if (available == 0) {
+                        uint8_t discard_buf[1];
+                        recvfrom(listen_sock, discard_buf, sizeof(discard_buf), MSG_DONTWAIT, NULL, NULL);
+                        log_packet_drop(now, 1);
+                        continue;
+                    }
+
+                    packet_job_t *slots[RECV_BATCH];
+                    for (uint32_t b = 0; b < available; b++) {
+                        slots[b] = &threading_ctx.client_queue.jobs[(head + b) & QUEUE_MASK];
+                        mmsg_iovs[b].iov_base = slots[b]->buffer;
+                        mmsg_iovs[b].iov_len = QUEUE_BUFFER_SIZE;
+                        mmsg_hdrs[b].msg_hdr.msg_name = &slots[b]->addr;
+                        mmsg_hdrs[b].msg_hdr.msg_namelen = sizeof(slots[b]->addr);
+                        mmsg_hdrs[b].msg_hdr.msg_iov = &mmsg_iovs[b];
+                        mmsg_hdrs[b].msg_hdr.msg_iovlen = 1;
+                        mmsg_hdrs[b].msg_hdr.msg_control = NULL;
+                        mmsg_hdrs[b].msg_hdr.msg_controllen = 0;
+                        mmsg_hdrs[b].msg_hdr.msg_flags = 0;
+                    }
+
+                    int n = recvmmsg(listen_sock, mmsg_hdrs, available, MSG_DONTWAIT, NULL);
+                    if (n < 0) {
+                        serror_level(LL_DEBUG, "recvmmsg client");
+                        continue;
+                    }
+                    for (int b = 0; b < n; b++) {
+                        int pkt_len = mmsg_hdrs[b].msg_len;
+                        slots[b]->length = (pkt_len >= 1 && pkt_len <= QUEUE_BUFFER_SIZE) ? pkt_len : 0;
+                        slots[b]->addr_len = sizeof(slots[b]->addr);
+                        slots[b]->is_from_client = 1;
+                        slots[b]->client = NULL;
+                        slots[b]->timestamp_ms = now;
+                        queue_publish(&threading_ctx.client_queue);
+                    }
+                    continue;
+                }
+#endif
+                if (threading_ctx.mode != THREAD_MODE_SINGLE) {
+                    packet_job_t *slot = queue_reserve(&threading_ctx.client_queue);
+                    if (slot) {
+                        slot->addr_len = sizeof(slot->addr);
+                        int length = recvfrom(listen_sock, slot->buffer, QUEUE_BUFFER_SIZE, MSG_TRUNC,
+                                              (struct sockaddr *)&slot->addr, &slot->addr_len);
+                        if (length >= 1 && length <= QUEUE_BUFFER_SIZE) {
+                            slot->length = length;
+                            slot->is_from_client = 1;
+                            slot->client = NULL;
+                            slot->timestamp_ms = now;
+                            queue_publish(&threading_ctx.client_queue);
+                        }
+                    } else {
+                        uint8_t discard_buf[1];
+                        recvfrom(listen_sock, discard_buf, sizeof(discard_buf), MSG_DONTWAIT, NULL, NULL);
+                        log_packet_drop(now, 1);
+                    }
+                    continue;
+                }
+
                 struct sockaddr_in sender_addr = {0};
                 socklen_t sender_addr_len = sizeof(sender_addr);
                 int length = recvfrom(listen_sock, buffer, BUFFER_SIZE, MSG_TRUNC, (struct sockaddr *)&sender_addr, &sender_addr_len);
@@ -629,22 +733,6 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
 
-                if (threading_ctx.mode != THREAD_MODE_SINGLE) {
-                    packet_job_t job;
-                    job.length = length;
-                    job.addr = sender_addr;
-                    job.addr_len = sender_addr_len;
-                    job.is_from_client = 1;
-                    job.client = NULL;
-                    memcpy(job.buffer, buffer, length);
-                    if (queue_push(&threading_ctx.queue, &job) < 0) {
-                        log(LL_WARN, "Packet queue is full, dropping packet from %s:%d",
-                            inet_ntoa(sender_addr.sin_addr), ntohs(sender_addr.sin_port));
-                    }
-                    continue;
-                }
-
-                // Find the client entry if any
                 client_entry_t *client_entry = find_client_safe(&sender_addr);
 
                 uint8_t obfuscated = length >= 4 && is_obfuscated(buffer);
@@ -795,12 +883,32 @@ int main(int argc, char *argv[]) {
                 }
                 client_entry->last_activity_time = now;
             } else { // if (event->data.fd == listen_sock)
-                /* *** Handle data from the server *** */
 #ifdef USE_EPOLL
                 client_entry_t *client_entry = event->data.ptr;
 #else
                 client_entry_t *client_entry = find_by_server_sock(pollfds[e].fd);
 #endif
+                if (threading_ctx.mode != THREAD_MODE_SINGLE) {
+                    packet_job_t *slot = queue_reserve(&threading_ctx.server_queue);
+                    if (slot) {
+                        int length = recv(client_entry->server_sock, slot->buffer, QUEUE_BUFFER_SIZE, MSG_TRUNC);
+                        if (length >= 1 && length <= QUEUE_BUFFER_SIZE) {
+                            slot->length = length;
+                            memset(&slot->addr, 0, sizeof(slot->addr));
+                            slot->addr_len = 0;
+                            slot->is_from_client = 0;
+                            slot->client = client_entry;
+                            slot->timestamp_ms = now;
+                            queue_publish(&threading_ctx.server_queue);
+                        }
+                    } else {
+                        uint8_t discard_buf[1];
+                        recv(client_entry->server_sock, discard_buf, sizeof(discard_buf), MSG_DONTWAIT);
+                        log_packet_drop(now, 0);
+                    }
+                    continue;
+                }
+
                 int length = recv(client_entry->server_sock, buffer, BUFFER_SIZE, MSG_TRUNC);
                 if (length < 0) {
                     serror_level(LL_DEBUG, "recv from server");
@@ -809,19 +917,6 @@ int main(int argc, char *argv[]) {
                 if (length > BUFFER_SIZE) {
                     log(LL_DEBUG, "Received packet from %s:%d is too large (%d bytes), while buffer size is %d bytes, ignoring",
                         target_host, target_port, length, BUFFER_SIZE);
-                    continue;
-                }
-
-                if (threading_ctx.mode != THREAD_MODE_SINGLE) {
-                    packet_job_t job;
-                    job.length = length;
-                    job.addr_len = 0;
-                    job.is_from_client = 0;
-                    job.client = client_entry;
-                    memcpy(job.buffer, buffer, length);
-                    if (queue_push(&threading_ctx.queue, &job) < 0) {
-                        log(LL_WARN, "Packet queue is full, dropping packet from server");
-                    }
                     continue;
                 }
 

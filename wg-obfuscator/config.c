@@ -28,6 +28,7 @@ static const mini_argp_opt options[] = {
     { "max-dummy", 'd', 1 },
     { "fwmark", 'f', 1 },
     { "verbose", 'v', 1 },
+    { "reuseport", 'R', 0 },
     { 0 }
 };
 
@@ -325,6 +326,9 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
                 config->masking_handler = handler;
                 config->masking_handler_set = 1;
             }
+            break;
+        case 'R':
+            config->reuseport = 1;
             break;
         case 'v':
             strncpy(val_lower, val, sizeof(val_lower) - 1);

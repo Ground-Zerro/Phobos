@@ -3,8 +3,6 @@
 .claude/
 _Old_orig/
 _test/
-bot/
-docs/
 .gitignore
 CLAUDE.md
 QWEN.md

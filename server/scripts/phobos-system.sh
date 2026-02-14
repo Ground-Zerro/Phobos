@@ -62,13 +62,15 @@ action_cleanup() {
      jq "[.[] | select(.expires >= $now)]" "$TOKENS_FILE" > "$TOKENS_FILE.tmp" && mv "$TOKENS_FILE.tmp" "$TOKENS_FILE"
   fi
   
-  # 2. Orphans
   if [[ -d "$WWW_DIR/packages" ]]; then
      for d in "$WWW_DIR/packages"/*; do
         if [[ -d "$d" ]]; then
            local t=$(basename "$d")
-           # Check if in json
-           if [[ -f "$TOKENS_FILE" ]] && ! grep -q "$t" "$TOKENS_FILE"; then
+           local in_json=false
+           if [[ -f "$TOKENS_FILE" ]]; then
+              in_json=$(jq -r --arg t "$t" 'map(select(.token == $t)) | length > 0' "$TOKENS_FILE" 2>/dev/null || echo false)
+           fi
+           if [[ "$in_json" == "false" ]]; then
               log_warn "Найден осиротевший каталог: $t"
               rm -rf "$d"
               rm -f "$WWW_DIR/init/$t.sh"

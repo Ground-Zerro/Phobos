@@ -38,7 +38,7 @@ endif
 LDFLAGS += -pthread
 
 ifeq ($(ARCH),mips)
-  EXTRA_CFLAGS += -march=mips32r2 -mtune=24kc
+  EXTRA_CFLAGS += -march=mips32r2 -mtune=1004kc
   EXTRA_CFLAGS += -fno-strict-aliasing -fweb -frename-registers
   EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=4
   LDFLAGS += -latomic
@@ -49,7 +49,7 @@ ifeq ($(ARCH),mips)
 endif
 
 ifeq ($(ARCH),mipsel)
-  EXTRA_CFLAGS += -march=mips32r2 -mtune=24kc -EL
+  EXTRA_CFLAGS += -march=mips32r2 -mtune=1004kc -EL
   EXTRA_CFLAGS += -fno-strict-aliasing -fweb -frename-registers
   EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=4
   LDFLAGS += -latomic

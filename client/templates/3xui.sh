@@ -34,11 +34,11 @@ check_dependencies() {
     if command -v apt-get >/dev/null 2>&1; then
       apt-get update -qq && apt-get install -y -qq "${missing[@]}" >/dev/null 2>&1
     elif command -v yum >/dev/null 2>&1; then
-      yum install -y -q "${missing[@]}" >/dev/null 2>&1
+      yum install -y -q "${missing[@]/sqlite3/sqlite}" >/dev/null 2>&1
     elif command -v dnf >/dev/null 2>&1; then
-      dnf install -y -q "${missing[@]}" >/dev/null 2>&1
+      dnf install -y -q "${missing[@]/sqlite3/sqlite}" >/dev/null 2>&1
     elif command -v apk >/dev/null 2>&1; then
-      apk add --quiet "${missing[@]}" >/dev/null 2>&1
+      apk add --quiet "${missing[@]/sqlite3/sqlite}" >/dev/null 2>&1
     fi
     for cmd in "${missing[@]}"; do
       if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -202,7 +202,7 @@ convert_to_xray_outbound() {
         "address": $addresses,
         "workers": 2,
         "peers": [$peer],
-        "noKernelTun": false
+        "noKernelTun": true
       },
       "tag": $tag
     }')
@@ -291,6 +291,19 @@ diagnose_database() {
   return 1
 }
 
+write_setting_to_db() {
+  local db_path="$1"
+  local config_key="$2"
+  local config_value="$3"
+  local tmp
+  tmp=$(mktemp)
+  printf '%s' "$config_value" > "$tmp"
+  sqlite3 "$db_path" "INSERT OR REPLACE INTO settings (key, value) VALUES ('$config_key', readfile('$tmp'));"
+  local ret=$?
+  rm -f "$tmp"
+  return $ret
+}
+
 import_via_database() {
   local db_path="$1"
 
@@ -309,10 +322,7 @@ import_via_database() {
     local base_config=$(get_default_xray_config)
     local new_config=$(echo "$base_config" | jq --argjson ob "$OUTBOUND_JSON" '.outbounds = [$ob] + .outbounds')
 
-    local escaped_config=$(echo "$new_config" | sed "s/'/''/g")
-    sqlite3 "$db_path" "INSERT OR REPLACE INTO settings (key, value) VALUES ('xrayTemplateConfig', '$escaped_config');" 2>/dev/null
-
-    if [[ $? -eq 0 ]]; then
+    if write_setting_to_db "$db_path" "xrayTemplateConfig" "$new_config"; then
       print_status "Base Xray config created with outbound" "success"
       return 0
     else
@@ -343,10 +353,7 @@ import_via_database() {
 
   local new_config=$(echo "$current_config" | jq --argjson ob "$OUTBOUND_JSON" '.outbounds = [$ob] + .outbounds')
 
-  local escaped_config=$(echo "$new_config" | sed "s/'/''/g")
-  sqlite3 "$db_path" "UPDATE settings SET value = '$escaped_config' WHERE key = '$config_key';" 2>/dev/null
-
-  if [[ $? -eq 0 ]]; then
+  if write_setting_to_db "$db_path" "$config_key" "$new_config"; then
     print_status "Outbound added to database" "success"
     return 0
   else
@@ -410,7 +417,9 @@ main() {
     fi
   fi
 
+  systemctl stop x-ui 2>/dev/null
   if ! import_via_database "$db_path"; then
+    systemctl start x-ui 2>/dev/null
     print_status "Database import failed" "error"
     exit 1
   fi

@@ -3,9 +3,12 @@
 
 #include <stdint.h>
 #include <pthread.h>
+#include <sched.h>
 #include "wg-obfuscator.h"
 
-#define QUEUE_SIZE 512
+#define QUEUE_SIZE 4096
+#define QUEUE_MASK (QUEUE_SIZE - 1)
+#define QUEUE_BUFFER_SIZE 2048
 #define MAX_WORKER_THREADS 16
 
 typedef enum {
@@ -15,21 +18,20 @@ typedef enum {
 } thread_mode_t;
 
 typedef struct {
-    uint8_t buffer[BUFFER_SIZE];
+    uint8_t buffer[QUEUE_BUFFER_SIZE];
     int length;
     struct sockaddr_in addr;
     socklen_t addr_len;
     int is_from_client;
     client_entry_t *client;
+    long timestamp_ms;
 } packet_job_t;
 
 typedef struct {
-    packet_job_t jobs[QUEUE_SIZE];
     volatile uint32_t head;
     volatile uint32_t tail;
     volatile int shutdown;
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
+    packet_job_t jobs[QUEUE_SIZE];
 } packet_queue_t;
 
 typedef struct {
@@ -49,8 +51,8 @@ typedef struct {
     int num_cores;
     int num_workers;
     worker_thread_t workers[MAX_WORKER_THREADS];
-    packet_queue_t queue;
-    pthread_t rx_thread;
+    packet_queue_t client_queue;
+    packet_queue_t server_queue;
     volatile int running;
 } threading_context_t;
 
@@ -59,7 +61,28 @@ int threading_init(threading_context_t *ctx, obfuscator_config_t *config);
 int threading_start(threading_context_t *ctx, int listen_sock, obfuscator_config_t *config,
                     char *xor_key, int key_length, struct sockaddr_in *forward_addr);
 void threading_shutdown(threading_context_t *ctx);
-int queue_push(packet_queue_t *queue, packet_job_t *job);
-int queue_pop(packet_queue_t *queue, packet_job_t *job);
+
+static inline packet_job_t *queue_reserve(packet_queue_t *queue) {
+    uint32_t head = queue->head;
+    uint32_t next = (head + 1) & QUEUE_MASK;
+    if (next == __atomic_load_n(&queue->tail, __ATOMIC_ACQUIRE))
+        return NULL;
+    return &queue->jobs[head];
+}
+
+static inline void queue_publish(packet_queue_t *queue) {
+    __atomic_store_n(&queue->head, (queue->head + 1) & QUEUE_MASK, __ATOMIC_RELEASE);
+}
+
+static inline packet_job_t *queue_peek(packet_queue_t *queue) {
+    uint32_t tail = queue->tail;
+    if (tail == __atomic_load_n(&queue->head, __ATOMIC_ACQUIRE))
+        return NULL;
+    return &queue->jobs[tail];
+}
+
+static inline void queue_consume(packet_queue_t *queue) {
+    __atomic_store_n(&queue->tail, (queue->tail + 1) & QUEUE_MASK, __ATOMIC_RELEASE);
+}
 
 #endif

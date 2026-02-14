@@ -1,4 +1,4 @@
-#!/opt/bin/sh
+#!/opt/bin/bash
 
 echo "=========================================="
 echo "  Phobos Router Architecture Detector"
@@ -13,7 +13,7 @@ echo "==> Базовая информация"
 echo "  Архитектура: ${ARCH}"
 echo "  Ядро: $(uname -s) $(uname -r)"
 
-if command -v ndm-client &>/dev/null; then
+if command -v ndm-client >/dev/null 2>&1; then
   KEENETIC_MODEL=$(ndm-client show system | grep "model:" | awk '{print $2}' | tr -d '"' || echo "Unknown")
   echo "  Модель Keenetic: ${KEENETIC_MODEL}"
 fi

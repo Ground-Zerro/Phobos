@@ -7,10 +7,9 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BIN_SOURCE_DIR="$REPO_ROOT/wg-obfuscator/bin"
 
-if [[ $(id -u) -ne 0 ]]; then
-  echo "Этот скрипт требует root привилегии. Запустите: sudo $0"
-  exit 1
-fi
+source "$SCRIPT_DIR/lib-core.sh"
+
+check_root
 
 if [[ ! -d "$BIN_SOURCE_DIR" ]]; then
   echo "Ошибка: папка с бинарниками не найдена: $BIN_SOURCE_DIR"

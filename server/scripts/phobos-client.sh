@@ -40,37 +40,32 @@ action_add() {
   local server_ip_v4="${SERVER_PUBLIC_IP_V4:-}"
   local server_ip_v6="${SERVER_PUBLIC_IP_V6:-}"
   
-  # --- IP Allocation ---
   local client_ip_v4="$manual_ip"
   local ipv4_prefix_main=$(echo "${SERVER_WG_IPV4_NETWORK:-10.25.0.0/16}" | cut -d'/' -f1 | cut -d'.' -f1-2)
   local ipv6_prefix_main=$(echo "${SERVER_WG_IPV6_NETWORK:-fd00:10:25::/48}" | cut -d'/' -f1 | sed 's/::.*//')
-  
+
   if [[ -z "$client_ip_v4" ]]; then
     log_info "Поиск свободного IP..."
     declare -A used_ips
-    
-    # Scan files
+
     for d in "$CLIENTS_DIR"/*; do
       if [[ -d "$d" ]] && [[ -f "$d/metadata.json" ]]; then
         local ip=$(jq -r '.tunnel_ip_v4 // empty' "$d/metadata.json" 2>/dev/null)
         [[ -n "$ip" ]] && used_ips["$ip"]=1
       fi
     done
-    
-    # Scan WG Config
+
     if [[ -f "$WG_CONFIG" ]]; then
       while read -r ip_suffix; do
         [[ -n "$ip_suffix" ]] && used_ips["${ipv4_prefix_main}.${ip_suffix}"]=1
       done < <(grep -oP "AllowedIPs\s*=\s*${ipv4_prefix_main//./\.}\.\K\d+\.\d+" "$WG_CONFIG" || true)
-      
-      # Exclude Server IP (assuming .1)
+
       used_ips["${ipv4_prefix_main}.0.1"]=1
     fi
     
     local found=false
     for oct3 in {0..255}; do
       local start_oct4=2
-      [[ "$oct3" -eq 0 ]] && start_oct4=2
       for oct4 in $(seq $start_oct4 254); do
          local candidate="${ipv4_prefix_main}.${oct3}.${oct4}"
          if [[ -z "${used_ips[$candidate]:-}" ]]; then
@@ -84,7 +79,6 @@ action_add() {
     [[ "$found" == "false" ]] && die "Нет свободных IP в подсети."
   fi
   
-  # --- Generate IPv6 ---
   local oct3=$(echo "$client_ip_v4" | cut -d. -f3)
   local oct4=$(echo "$client_ip_v4" | cut -d. -f4)
   local hex_part=$(printf "%x:%x" "$oct3" "$oct4")
@@ -93,7 +87,6 @@ action_add() {
   
   log_info "Назначен IP: $client_ip_v4 $([[ -n $client_ip_v6 ]] && echo "/ $client_ip_v6")"
   
-  # --- Generate Keys ---
   mkdir -p "$dir"
   umask 077
   wg genkey > "$dir/client_private.key"
@@ -101,7 +94,6 @@ action_add() {
   local priv_key=$(cat "$dir/client_private.key")
   local pub_key=$(cat "$dir/client_public.key")
   
-  # --- Configs ---
   local allowed_ips="0.0.0.0/0"
   local addr_str="$client_ip_v4/32"
   if [[ -n "$client_ip_v6" ]]; then
@@ -109,7 +101,6 @@ action_add() {
     addr_str="$client_ip_v4/32, $client_ip_v6/128"
   fi
   
-  # 1. WireGuard Config (Dual Stack)
   cat > "$dir/${id}.conf" <<EOF
 [Interface]
 PrivateKey = $priv_key
@@ -155,7 +146,6 @@ EOF
 EOF
   chmod 600 "$dir/metadata.json"
   
-  # --- Apply to Server ---
   local peer_ips="$client_ip_v4/32"
   [[ -n "$client_ip_v6" ]] && peer_ips="$peer_ips, $client_ip_v6/128"
   
@@ -181,20 +171,14 @@ action_remove() {
   
   log_info "Удаление клиента $id..."
   
-  # 1. Remove Peer from WireGuard
   if [[ -f "$dir/client_public.key" ]]; then
     local pub=$(cat "$dir/client_public.key")
-    # Using temp file for safety
     if grep -q "$pub" "$WG_CONFIG"; then
-       # Complex sed to remove block? Or just generic approach.
-       # Simplest reliable way in bash without dependencies:
-       # Read file, skip the block.
-       awk -v key="$pub" ' 
+       awk -v key="$pub" '
          BEGIN {RS=""; ORS="\n\n"}
          $0 !~ key {print $0}
        ' "$WG_CONFIG" > "$WG_CONFIG.tmp" && mv "$WG_CONFIG.tmp" "$WG_CONFIG"
-       
-       # Remove extra newlines
+
        sed -i '/^$/N;/^\n$/D' "$WG_CONFIG"
        
        wg syncconf wg0 <(wg-quick strip wg0)
@@ -202,11 +186,9 @@ action_remove() {
     fi
   fi
   
-  # 2. Cleanup Files
   rm -rf "$dir"
   rm -f "$PACKAGES_DIR/phobos-$id.tar.gz"
-  
-  # 3. Cleanup Tokens (Requires jq)
+
   if [[ -f "$TOKENS_FILE" ]] && command -v jq >/dev/null; then
     local tokens=$(jq -r ".[] | select(.client == \"$id\") | .token" "$TOKENS_FILE")
     for t in $tokens; do
@@ -230,37 +212,34 @@ action_package() {
   
   mkdir -p "$pkg_root/bin"
   
-  # Copy Configs
   cp "$dir/${id}.conf" "$pkg_root/${id}.conf"
   cp "$dir/wg-obfuscator.conf" "$pkg_root/wg-obfuscator.conf"
-  
-  # Copy Binaries
+
   for arch in mipsel mips aarch64 armv7 x86_64; do
     [[ -f "$PHOBOS_DIR/bin/wg-obfuscator-$arch" ]] && cp "$PHOBOS_DIR/bin/wg-obfuscator-$arch" "$pkg_root/bin/"
   done
-  
+
   local tpl_dir="$REPO_DIR/client/templates"
-  
+
   if [[ -d "$tpl_dir" ]]; then
      cp "$tpl_dir/install-router.sh.template" "$pkg_root/install-router.sh"
      sed -i "s|{{CLIENT_NAME}}|${id}|g" "$pkg_root/install-router.sh"
      chmod +x "$pkg_root/install-router.sh"
-     
-     # Copy others
-     for f in router-configure-wireguard router-configure-wireguard-openwrt health-check phobos-uninstall detect-router-arch 3xui; do
-       [[ -f "$tpl_dir/$f.sh.template" ]] && cp "$tpl_dir/$f.sh.template" "$pkg_root/$f.sh" && chmod +x "$pkg_root/$f.sh"
+     [[ -f "$tpl_dir/lib-client.sh" ]] && cp "$tpl_dir/lib-client.sh" "$pkg_root/lib-client.sh"
+     [[ -f "$tpl_dir/install-obfuscator.sh" ]] && cp "$tpl_dir/install-obfuscator.sh" "$pkg_root/install-obfuscator.sh"
+     [[ -f "$tpl_dir/install-wireguard.sh" ]] && cp "$tpl_dir/install-wireguard.sh" "$pkg_root/install-wireguard.sh"
+     for f in router-configure-wireguard router-configure-wireguard-openwrt phobos-uninstall 3xui; do
+       [[ -f "$tpl_dir/$f.sh" ]] && cp "$tpl_dir/$f.sh" "$pkg_root/$f.sh" && chmod +x "$pkg_root/$f.sh"
      done
   else
      log_warn "Шаблоны не найдены в $tpl_dir"
   fi
-  
-  # Create README
+
   echo "Phobos Client Package for $id" > "$pkg_root/README.txt"
   echo "Date: $(date)" >> "$pkg_root/README.txt"
   
   find "$pkg_root" -type f ! -path "*/bin/*" -exec sed -i 's/\r$//' {} \;
-  
-  # Compress
+
   tar -C "$tmp" -czf "$PACKAGES_DIR/phobos-$id.tar.gz" "phobos-$id"
   rm -rf "$tmp"
   

@@ -39,13 +39,173 @@ check_compiler() {
     fi
 }
 
+download_file() {
+    local url=$1
+    local dest=$2
+    if command -v curl >/dev/null 2>&1; then
+        curl -sL --max-time 60 --retry 3 -o "$dest" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q --timeout=60 --tries=3 -O "$dest" "$url"
+    else
+        log_error "Neither curl nor wget is available"
+        return 1
+    fi
+}
+
+download_file_with_fallback() {
+    local path=$1
+    local dest=$2
+    local -a MIRRORS=(
+        "http://archive.ubuntu.com/ubuntu/pool"
+        "http://ru.archive.ubuntu.com/ubuntu/pool"
+    )
+    for mirror in "${MIRRORS[@]}"; do
+        if download_file "${mirror}/${path}" "$dest" && [ -s "$dest" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+noble_repo_add() {
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" \
+        | sudo tee /etc/apt/sources.list.d/noble-mips-cross.list >/dev/null
+    printf 'Package: *\nPin: release n=noble\nPin-Priority: 100\n' \
+        | sudo tee /etc/apt/preferences.d/noble-mips-cross >/dev/null
+    sudo apt-get update -qq
+}
+
+noble_repo_remove() {
+    sudo rm -f /etc/apt/sources.list.d/noble-mips-cross.list
+    sudo rm -f /etc/apt/preferences.d/noble-mips-cross
+    sudo apt-get update -qq
+}
+
+install_mips_from_noble() {
+    log_info "Adding Ubuntu 24.04 (noble) repo for MIPS cross-compiler dependencies..."
+    noble_repo_add
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+
+    local -a PKGS=(
+        "universe/g/gcc-12-cross/gcc-12-cross-base_12.3.0-17ubuntu1cross1_all.deb"
+        "universe/g/gcc-12-cross-mipsen/gcc-12-cross-base-mipsen_12.3.0-17ubuntu1cross3_all.deb"
+        "universe/b/binutils-mipsen/binutils-mips-linux-gnu_2.42-2ubuntu1cross5_amd64.deb"
+        "universe/b/binutils-mipsen/binutils-mipsel-linux-gnu_2.42-2ubuntu1cross5_amd64.deb"
+        "universe/g/gcc-12-cross-mipsen/cpp-12-mips-linux-gnu_12.3.0-17ubuntu1cross3_amd64.deb"
+        "universe/g/gcc-12-cross-mipsen/cpp-12-mipsel-linux-gnu_12.3.0-17ubuntu1cross3_amd64.deb"
+        "universe/g/gcc-12-cross-mipsen/gcc-12-mips-linux-gnu_12.3.0-17ubuntu1cross3_amd64.deb"
+        "universe/g/gcc-12-cross-mipsen/gcc-12-mipsel-linux-gnu_12.3.0-17ubuntu1cross3_amd64.deb"
+        "universe/c/cross-toolchain-base-mipsen/linux-libc-dev-mips-cross_6.8.0-25.25cross2_all.deb"
+        "universe/c/cross-toolchain-base-mipsen/linux-libc-dev-mipsel-cross_6.8.0-25.25cross2_all.deb"
+        "universe/c/cross-toolchain-base-mipsen/libc6-mips-cross_2.39-0ubuntu8cross2_all.deb"
+        "universe/c/cross-toolchain-base-mipsen/libc6-dev-mips-cross_2.39-0ubuntu8cross2_all.deb"
+        "universe/c/cross-toolchain-base-mipsen/libc6-mipsel-cross_2.39-0ubuntu8cross2_all.deb"
+        "universe/c/cross-toolchain-base-mipsen/libc6-dev-mipsel-cross_2.39-0ubuntu8cross2_all.deb"
+        "universe/g/gcc-12-cross-mipsen/libgcc-12-dev-mips-cross_12.3.0-17ubuntu1cross3_all.deb"
+        "universe/g/gcc-12-cross-mipsen/libgcc-12-dev-mipsel-cross_12.3.0-17ubuntu1cross3_all.deb"
+    )
+
+    local failed=0
+    for pkg_path in "${PKGS[@]}"; do
+        local pkg_name
+        pkg_name=$(basename "$pkg_path")
+        log_info "Downloading ${pkg_name}..."
+        if ! download_file_with_fallback "${pkg_path}" "${tmpdir}/${pkg_name}"; then
+            log_error "Failed to download ${pkg_name}"
+            failed=1
+            break
+        fi
+    done
+
+    if [ $failed -eq 0 ]; then
+        log_info "Installing MIPS packages (noble repo active for dependency resolution)..."
+        if sudo apt-get install -y --allow-downgrades "${tmpdir}"/*.deb; then
+            for pair in "mips-linux-gnu" "mipsel-linux-gnu"; do
+                if [ ! -f "/usr/bin/${pair}-gcc" ] && [ -f "/usr/bin/${pair}-gcc-12" ]; then
+                    sudo ln -sf "/usr/bin/${pair}-gcc-12" "/usr/bin/${pair}-gcc"
+                    log_info "Created symlink: /usr/bin/${pair}-gcc -> /usr/bin/${pair}-gcc-12"
+                fi
+            done
+            rm -rf "$tmpdir"
+            noble_repo_remove
+            return 0
+        fi
+        log_error "apt install failed with noble repo"
+        failed=1
+    fi
+
+    rm -rf "$tmpdir"
+    noble_repo_remove
+    return 1
+}
+
+install_mips_from_bootlin() {
+    log_info "Trying Bootlin pre-built toolchains for MIPS..."
+    local BOOTLIN_BASE="https://toolchains.bootlin.com/downloads/releases/toolchains"
+    local INSTALL_DIR="/opt/cross"
+    local tmpdir
+    tmpdir=$(mktemp -d)
+
+    mkdir -p "$INSTALL_DIR"
+
+    local -a ARCH_LIST=(
+        "mips32|mips32--uclibc--stable-2024.02-1|mips-buildroot-linux-uclibc|mips-linux-gnu"
+        "mips32el|mips32el--uclibc--stable-2024.02-1|mipsel-buildroot-linux-uclibc|mipsel-linux-gnu"
+    )
+
+    for entry in "${ARCH_LIST[@]}"; do
+        local arch_dir compiler_prefix tarball_base link_prefix
+        arch_dir=$(echo "$entry" | cut -d'|' -f1)
+        tarball_base=$(echo "$entry" | cut -d'|' -f2)
+        compiler_prefix=$(echo "$entry" | cut -d'|' -f3)
+        link_prefix=$(echo "$entry" | cut -d'|' -f4)
+        local tarball="${tarball_base}.tar.bz2"
+
+        log_info "Downloading Bootlin ${arch_dir} toolchain (~200 MB)..."
+        if ! download_file "${BOOTLIN_BASE}/${arch_dir}/tarballs/${tarball}" "${tmpdir}/${tarball}"; then
+            log_error "Failed to download Bootlin ${arch_dir} toolchain"
+            rm -rf "$tmpdir"
+            return 1
+        fi
+
+        log_info "Extracting ${arch_dir} toolchain..."
+        tar -xjf "${tmpdir}/${tarball}" -C "$INSTALL_DIR"
+        rm -f "${tmpdir}/${tarball}"
+
+        local toolchain_dir
+        toolchain_dir=$(ls -d "${INSTALL_DIR}/${tarball_base}" 2>/dev/null | head -1)
+        if [ -z "$toolchain_dir" ]; then
+            log_error "Extracted toolchain directory not found"
+            rm -rf "$tmpdir"
+            return 1
+        fi
+
+        for tool in gcc g++ ar ld strip nm objdump objcopy as ranlib; do
+            local real_bin="${toolchain_dir}/bin/${compiler_prefix}-${tool}"
+            [ -f "$real_bin" ] || continue
+            printf '#!/bin/sh\nexec "%s" "$@"\n' "$real_bin" \
+                | sudo tee "/usr/local/bin/${link_prefix}-${tool}" >/dev/null
+            sudo chmod +x "/usr/local/bin/${link_prefix}-${tool}"
+        done
+
+        log_success "Bootlin ${arch_dir} toolchain installed to ${toolchain_dir}"
+    done
+
+    rm -rf "$tmpdir"
+    return 0
+}
+
 install_cross_compilers() {
     log_info "Installing cross-compilers and dependencies..."
 
     if [ -f /etc/debian_version ]; then
         log_info "Detected Debian/Ubuntu system"
         sudo apt-get update
-        sudo apt-get install -y \
+
+        local mips_ok=0
+        if sudo apt-get install -y \
             gcc \
             gcc-mips-linux-gnu \
             gcc-mipsel-linux-gnu \
@@ -59,17 +219,44 @@ install_cross_compilers() {
             libc6-dev-mips-cross \
             libc6-dev-mipsel-cross \
             libc6-dev-arm64-cross \
-            libc6-dev-armhf-cross
-        log_success "Cross-compilers and dependencies installed"
+            libc6-dev-armhf-cross 2>/dev/null; then
+            mips_ok=1
+        fi
+
+        if [ $mips_ok -eq 0 ]; then
+            log_warn "MIPS packages not found in current repos, trying Ubuntu 24.04 (noble) archives..."
+            if ! install_mips_from_noble; then
+                log_warn "Noble archive method failed, trying Bootlin pre-built toolchains..."
+                if ! install_mips_from_bootlin; then
+                    log_error "Failed to install MIPS cross-compilers from all sources"
+                    log_error "Manual option: https://toolchains.bootlin.com/"
+                fi
+            fi
+
+            sudo apt-get install -y \
+                gcc \
+                gcc-aarch64-linux-gnu \
+                gcc-arm-linux-gnueabihf \
+                binutils-aarch64-linux-gnu \
+                binutils-arm-linux-gnueabihf \
+                libc6-dev \
+                libc6-dev-arm64-cross \
+                libc6-dev-armhf-cross 2>/dev/null || true
+        fi
+
+        log_success "Cross-compilers installation complete"
+
     elif [ -f /etc/redhat-release ]; then
         log_info "Detected RedHat/CentOS/Fedora system"
         sudo yum install -y gcc gcc-mips64-linux-gnu gcc-aarch64-linux-gnu gcc-arm-linux-gnu glibc-static || \
         sudo dnf install -y gcc gcc-mips64-linux-gnu gcc-aarch64-linux-gnu gcc-arm-linux-gnu glibc-static
         log_success "Cross-compilers and dependencies installed"
+
     elif [ -f /etc/arch-release ]; then
         log_info "Detected Arch Linux system"
         sudo pacman -S --needed gcc mips-linux-gnu-gcc aarch64-linux-gnu-gcc arm-linux-gnueabihf-gcc
         log_success "Cross-compilers and dependencies installed"
+
     else
         log_error "Unsupported distribution. Please install cross-compilers manually."
         exit 1
