@@ -138,6 +138,13 @@ add_first_client() {
         error_exit "Скрипт управления клиентами не найден"
     fi
 
+    local retries=0
+    while ! ip link show wg0 >/dev/null 2>&1; do
+        retries=$((retries + 1))
+        [ "$retries" -ge 15 ] && error_exit "Интерфейс wg0 не поднялся"
+        sleep 1
+    done
+
     log_message "Создание клиента $FIRST_CLIENT..."
     "$CLIENT_SCRIPT" add "$FIRST_CLIENT" || error_exit "Ошибка создания клиента"
     log_message "Клиент $FIRST_CLIENT создан"
