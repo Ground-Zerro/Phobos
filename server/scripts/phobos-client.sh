@@ -55,13 +55,7 @@ action_add() {
       fi
     done
 
-    if [[ -f "$WG_CONFIG" ]]; then
-      while read -r ip_suffix; do
-        [[ -n "$ip_suffix" ]] && used_ips["${ipv4_prefix_main}.${ip_suffix}"]=1
-      done < <(grep -oP "AllowedIPs\s*=\s*${ipv4_prefix_main//./\.}\.\K\d+\.\d+" "$WG_CONFIG" || true)
-
-      used_ips["${ipv4_prefix_main}.0.1"]=1
-    fi
+    used_ips["${ipv4_prefix_main}.0.1"]=1
     
     local found=false
     for oct3 in {0..255}; do
@@ -173,10 +167,10 @@ action_remove() {
   
   if [[ -f "$dir/client_public.key" ]]; then
     local pub=$(cat "$dir/client_public.key")
-    if grep -q "$pub" "$WG_CONFIG"; then
+    if grep -qF "$pub" "$WG_CONFIG"; then
        awk -v key="$pub" '
          BEGIN {RS=""; ORS="\n\n"}
-         $0 !~ key {print $0}
+         index($0, key) == 0 {print $0}
        ' "$WG_CONFIG" > "$WG_CONFIG.tmp" && mv "$WG_CONFIG.tmp" "$WG_CONFIG"
 
        sed -i '/^$/N;/^\n$/D' "$WG_CONFIG"
