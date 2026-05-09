@@ -17,16 +17,22 @@ ARG S6_OVERLAY_VERSION=3.2.0.2
 ARG TARGETARCH
 
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp/
-RUN case "$TARGETARCH" in \
+RUN set -eu; \
+    TA="${TARGETARCH:-}"; \
+    [ -n "$TA" ] || case "$(uname -m)" in \
+      x86_64) TA=amd64 ;; aarch64|arm64) TA=arm64 ;; \
+      *) echo "Unsupported uname -m: $(uname -m)" >&2; exit 1 ;; \
+    esac; \
+    case "$TA" in \
       amd64) S6_ARCH="x86_64" ;; \
       arm64) S6_ARCH="aarch64" ;; \
-      *) echo "Unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
-    esac && \
+      *) echo "Unsupported arch mapping: ${TA:-empty}" >&2; exit 1 ;; \
+    esac; \
     wget -qO "/tmp/s6-overlay-${S6_ARCH}.tar.xz" \
-      "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" && \
-    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
-    tar -C / -Jxpf "/tmp/s6-overlay-${S6_ARCH}.tar.xz" && \
-    rm /tmp/s6-overlay-*.tar.xz
+      "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz"; \
+    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz; \
+    tar -C / -Jxpf "/tmp/s6-overlay-${S6_ARCH}.tar.xz"; \
+    rm -f /tmp/s6-overlay-*.tar.xz
 
 COPY --from=build /app/.output /app
 COPY --from=build /app/server/database/migrations /app/server/database/migrations
@@ -48,20 +54,22 @@ RUN set -eux; \
     LIBSQL_ROOT="/app/server/node_modules/@libsql"; \
     GNU_JSON="${LIBSQL_ROOT}/${PREFERRED_GNU}/package.json"; \
     if [ ! -f "$GNU_JSON" ]; then \
-      GNU_JSON="$(find "$LIBSQL_ROOT" -maxdepth 2 -type f -path '*/linux-*-gnu/package.json' | head -n1)"; \
+      GNU_JSON="$(find "$LIBSQL_ROOT" -maxdepth 3 -type f -path '*/linux-*-gnu/package.json' 2>/dev/null | head -n1)"; \
     fi; \
     if [ ! -f "$GNU_JSON" ]; then \
       echo "No @libsql linux-*-gnu package.json under $LIBSQL_ROOT" >&2; \
       ls -la "$LIBSQL_ROOT" 2>&1 || true; \
       exit 1; \
     fi; \
-    LIBSQL_VER="$(node -p "require(\"${GNU_JSON}\").version")"; \
+    LIBSQL_VER="$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).version)" "$GNU_JSON")"; \
     MUSL_TGZ_URL="https://registry.npmjs.org/@libsql/${MUSL_PKG}/-/${MUSL_PKG}-${LIBSQL_VER}.tgz"; \
     mkdir -p "${LIBSQL_ROOT}/${MUSL_PKG}"; \
     wget -O /tmp/libsql-musl.tgz "$MUSL_TGZ_URL" || \
       { echo "wget failed: $MUSL_TGZ_URL (LIBSQL_VER=$LIBSQL_VER from $GNU_JSON)" >&2; exit 1; }; \
-    tar -xzf /tmp/libsql-musl.tgz -C "${LIBSQL_ROOT}/${MUSL_PKG}" --strip-components=1; \
+    tar -xz -f /tmp/libsql-musl.tgz -C "${LIBSQL_ROOT}/${MUSL_PKG}" --strip-components=1; \
     rm -f /tmp/libsql-musl.tgz; \
+    test -f "${LIBSQL_ROOT}/${MUSL_PKG}/package.json" \
+      || { echo "Musl unpack failed — no package.json under ${LIBSQL_ROOT}/${MUSL_PKG}" >&2; exit 1; }; \
     ls -la "$LIBSQL_ROOT"/
 
 COPY --from=build /app/cli/cli.sh /usr/local/bin/cli
