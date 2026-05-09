@@ -99,7 +99,6 @@ HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=5 CMD \
     /usr/bin/timeout 8s /bin/sh -c \
     'curl -fsSk https://localhost:${PORT:-51821}/ >/dev/null 2>&1 || curl -fsS http://localhost:${PORT:-51821}/ >/dev/null 2>&1'
 
-ENV DEBUG=Server,WireGuard,Database,CMD,Obfuscator,PhobosPackage
 ENV PORT=51821
 ENV HOST=0.0.0.0
 ENV INSECURE=false

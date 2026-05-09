@@ -15,6 +15,11 @@ const CERT_ROOT = '/app/certs';
 const ACME_TIMEOUT_MS = 180_000;
 const ACME_HTTP_PORT_HINT_PATH = join(CERT_ROOT, 'acme-http-port');
 
+function acmeEnv(home: string): NodeJS.ProcessEnv {
+  const { DEBUG: _debug, ...rest } = process.env;
+  return { ...rest, HOME: home };
+}
+
 function isIp(host: string): boolean {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || /^[0-9a-fA-F:]+$/.test(host);
 }
@@ -86,7 +91,7 @@ function ensureAcme(acmeSh: string, home: string) {
       execSync('curl -s https://get.acme.sh | sh -s --', {
         stdio: 'pipe',
         timeout: ACME_TIMEOUT_MS,
-        env: { ...process.env, HOME: home },
+        env: acmeEnv(home),
       });
     } catch (error) {
       throw new Error(formatAcmeError(error, 'Failed to install acme.sh'));
@@ -169,7 +174,7 @@ function runAcme(acmeSh: string, args: string[], home: string, fallback: string)
       stdio: 'pipe',
       timeout: ACME_TIMEOUT_MS,
       maxBuffer: 1024 * 1024 * 8,
-      env: { ...process.env, HOME: home },
+      env: acmeEnv(home),
     });
   } catch (error) {
     throw new Error(formatAcmeError(error, fallback));

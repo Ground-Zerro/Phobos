@@ -3,7 +3,7 @@
     <p class="text-center text-lg">
       {{ $t('setup.createAdminDesc') }}
     </p>
-    <div class="mt-8 flex flex-col gap-3">
+    <form class="mt-8 flex flex-col gap-3" @submit.prevent="submit">
       <div class="flex flex-col">
         <FormNullTextField
           id="username"
@@ -29,11 +29,11 @@
         />
       </div>
       <div class="mt-4 flex justify-center">
-        <BasePrimaryButton @click="submit">
+        <BasePrimaryButton type="submit">
           {{ $t('setup.createAccount') }}
         </BasePrimaryButton>
       </div>
-    </div>
+    </form>
   </div>
 </template>
 
