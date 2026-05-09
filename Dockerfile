@@ -35,19 +35,17 @@ COPY src/phobos-obfuscator/bin /app/phobos/bin
 COPY src/server/phobos/templates /app/phobos/templates
 
 RUN case "$TARGETARCH" in \
-      amd64) PKG="linux-x64-musl" ;; \
-      arm64) PKG="linux-arm64-musl" ;; \
+      amd64) GNU_PKG="linux-x64-gnu"; MUSL_PKG="linux-x64-musl" ;; \
+      arm64) GNU_PKG="linux-arm64-gnu"; MUSL_PKG="linux-arm64-musl" ;; \
       *) echo "Unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
     esac && \
-    LIBSQL_VER=$(PKG="$PKG" node -pe "const c=require('/app/server/node_modules/@libsql/client/package.json'); const v=(c.optionalDependencies||{})['@libsql/'+process.env.PKG]; v ? v.replace(/^[^0-9]*/, '') : ''" 2>/dev/null || true) && \
-    if [ -n "$LIBSQL_VER" ]; then \
-      mkdir -p "/app/server/node_modules/@libsql/$PKG" && \
-      wget -qO- "https://registry.npmjs.org/@libsql/$PKG/-/$PKG-$LIBSQL_VER.tgz" \
-        | tar xz -C "/app/server/node_modules/@libsql/$PKG" --strip-components=1; \
-    else \
-      echo "Skipping @libsql musl override for $PKG"; \
-    fi && \
-    ls /app/server/node_modules/@libsql/ || true
+    GNU_JSON="/app/server/node_modules/@libsql/${GNU_PKG}/package.json" && \
+    test -f "$GNU_JSON" || { echo "Missing $GNU_JSON" >&2; exit 1; } && \
+    LIBSQL_VER=$(GNU_PKG="$GNU_PKG" node -pe "require('/app/server/node_modules/@libsql/' + process.env.GNU_PKG + '/package.json').version") && \
+    mkdir -p "/app/server/node_modules/@libsql/${MUSL_PKG}" && \
+    wget -qO- "https://registry.npmjs.org/@libsql/${MUSL_PKG}/-/${MUSL_PKG}-${LIBSQL_VER}.tgz" \
+      | tar xz -C "/app/server/node_modules/@libsql/${MUSL_PKG}" --strip-components=1 && \
+    ls "/app/server/node_modules/@libsql/"
 
 COPY --from=build /app/cli/cli.sh /usr/local/bin/cli
 RUN chmod +x /usr/local/bin/cli
@@ -94,6 +92,6 @@ ENV DISABLE_IPV6=false
 ENV S6_KEEP_ENV=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=30000
 
-LABEL org.opencontainers.image.source=https://github.com/wg-easy/wg-easy
+LABEL org.opencontainers.image.source=https://github.com/Ground-Zerro/Phobos
 
 ENTRYPOINT ["/init"]

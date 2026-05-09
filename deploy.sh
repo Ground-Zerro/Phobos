@@ -112,7 +112,7 @@ download_stack_files() {
 wait_healthy() {
   local ctr="${WAIT_HEALTHY_CONTAINER:-wg-easy}"
   local poll_s="${WAIT_HEALTHY_POLL_SEC:-2}"
-  local timeout_s="${WAIT_HEALTHY_TIMEOUT_SEC:-240}"
+  local timeout_s="${WAIT_HEALTHY_TIMEOUT_SEC:-360}"
   local start_ts now_ts elapsed i=0 status
   start_ts=$(date +%s)
 

@@ -11,6 +11,10 @@ services:
     environment:
       - OBF_PORT=${OBF_PORT:-51822}
       - WG_HOST=${WG_HOST:-}
+      - INIT_ENABLED=${INIT_ENABLED:-false}
+      - INIT_USERNAME=${INIT_USERNAME:-}
+      - INIT_PASSWORD=${INIT_PASSWORD:-}
+      - INIT_HOST=${INIT_HOST:-}
     networks:
       wg:
         ipv4_address: 10.42.42.42
