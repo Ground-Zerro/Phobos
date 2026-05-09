@@ -1,8 +1,7 @@
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate as drizzleMigrate } from 'drizzle-orm/libsql/migrator';
 import { createClient } from '@libsql/client';
-import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import debug from 'debug';
@@ -84,7 +83,7 @@ async function hasTable(name: string): Promise<boolean> {
   return Array.isArray(row.rows) && row.rows.length > 0;
 }
 
-async function seedMigrationTracking(migrationsFolder: string) {
+async function seedMigrationTracking() {
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS __drizzle_migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,28 +91,15 @@ async function seedMigrationTracking(migrationsFolder: string) {
       created_at NUMERIC
     )
   `);
-
-  const files = readdirSync(migrationsFolder)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-
-  const now = Date.now();
-  for (const file of files) {
-    const content = readFileSync(join(migrationsFolder, file), 'utf8');
-    const statements = content
-      .split('--> statement-breakpoint')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const hash = createHash('sha256').update(statements.join('')).digest('hex');
-    await db.run(
-      sql`INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (${hash}, ${now})`,
-    );
-  }
-
+  await db.run(
+    sql`INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES ('bootstrapped', ${Date.now()})`,
+  );
   DB_DEBUG('Migration tracking seeded for bootstrapped database');
 }
 
 async function migrate() {
+  await db.run(sql`PRAGMA journal_mode=WAL`);
+
   const migrationsFolder = resolveMigrationsFolder();
 
   const hasInterfaces = await hasTable('interfaces_table');
@@ -121,18 +107,12 @@ async function migrate() {
 
   if (hasInterfaces && !hasMigrations) {
     DB_DEBUG('Bootstrapped database detected: seeding migration tracking...');
-    await seedMigrationTracking(migrationsFolder);
+    await seedMigrationTracking();
   }
 
-  try {
-    DB_DEBUG('Migrating database...');
-    await drizzleMigrate(db, { migrationsFolder });
-    DB_DEBUG('Migration complete');
-  } catch (e) {
-    if (e instanceof Error) {
-      DB_DEBUG('Failed to migrate database:', e.message);
-    }
-  }
+  DB_DEBUG('Migrating database...');
+  await drizzleMigrate(db, { migrationsFolder });
+  DB_DEBUG('Migration complete');
 }
 
 async function initialSetup(db: DBServiceType) {

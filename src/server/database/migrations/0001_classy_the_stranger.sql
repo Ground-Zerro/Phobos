@@ -1,4 +1,3 @@
-PRAGMA journal_mode=WAL;--> statement-breakpoint
 INSERT INTO `general_table` (`setup_step`, `session_password`, `session_timeout`, `metrics_prometheus`, `metrics_json`)
 VALUES (1, hex(randomblob(256)), 3600, 0, 0);
 --> statement-breakpoint
