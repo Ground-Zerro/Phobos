@@ -35,11 +35,11 @@ COPY src/phobos-obfuscator/bin /app/phobos/bin
 COPY src/server/phobos/templates /app/phobos/templates
 
 RUN case "$TARGETARCH" in \
-      amd64) LIBSQL_GNU_PKG="linux-x64-gnu"; PKG="linux-x64-musl" ;; \
-      arm64) LIBSQL_GNU_PKG="linux-arm64-gnu"; PKG="linux-arm64-musl" ;; \
+      amd64) PKG="linux-x64-musl" ;; \
+      arm64) PKG="linux-arm64-musl" ;; \
       *) echo "Unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
     esac && \
-    LIBSQL_VER=$(node -pe "require('/app/server/node_modules/@libsql/$LIBSQL_GNU_PKG/package.json').version") && \
+    LIBSQL_VER=$(PKG="$PKG" node -pe "const c=require('/app/server/node_modules/@libsql/client/package.json'); const v=(c.optionalDependencies||{})['@libsql/'+process.env.PKG]; if(!v){process.exit(1)}; v.replace(/^[^0-9]*/, '')") && \
     mkdir -p "/app/server/node_modules/@libsql/$PKG" && \
     wget -qO- "https://registry.npmjs.org/@libsql/$PKG/-/$PKG-$LIBSQL_VER.tgz" \
       | tar xz -C "/app/server/node_modules/@libsql/$PKG" --strip-components=1 && \
