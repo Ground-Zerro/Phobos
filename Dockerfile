@@ -11,6 +11,28 @@ RUN pnpm install --frozen-lockfile
 COPY src ./
 RUN pnpm build
 
+RUN node -e " \
+const path = require('path'); \
+const {cpSync, mkdirSync, existsSync} = require('fs'); \
+const arch = process.arch === 'x64' ? 'x64' : process.arch === 'arm64' ? 'arm64' : null; \
+if (!arch) { console.error('Unsupported arch:', process.arch); process.exit(1); } \
+const pkg = '@libsql/linux-' + arch + '-musl'; \
+const out = '/tmp/libsql-native/linux-' + arch + '-musl'; \
+let pkgPath; \
+try { pkgPath = path.dirname(require.resolve(pkg + '/package.json')); } \
+catch(e) { \
+  const base = '/app/node_modules/.pnpm'; \
+  const {readdirSync} = require('fs'); \
+  const prefix = '@libsql+linux-' + arch + '-musl@'; \
+  const entry = readdirSync(base).find(d => d.startsWith(prefix)); \
+  if (!entry) { console.error('Cannot find', pkg); process.exit(1); } \
+  pkgPath = path.join(base, entry, 'node_modules', '@libsql', 'linux-' + arch + '-musl'); \
+} \
+mkdirSync('/tmp/libsql-native', {recursive: true}); \
+cpSync(pkgPath, out, {recursive: true}); \
+console.log('Exported', pkg, 'from', pkgPath); \
+"
+
 FROM docker.io/library/node:lts-alpine
 WORKDIR /app
 
@@ -41,9 +63,7 @@ COPY --from=build /app/server/database/bootstrap.sql /app/server/database/bootst
 COPY src/phobos-obfuscator/bin /app/phobos/bin
 COPY src/server/phobos/templates /app/phobos/templates
 RUN apk add --no-cache curl
-COPY docker/read-libsql-version.js /tmp/read-libsql-version.js
-COPY docker/setup-libsql.sh /tmp/setup-libsql.sh
-RUN /bin/sh /tmp/setup-libsql.sh && rm -f /tmp/setup-libsql.sh /tmp/read-libsql-version.js
+COPY --from=build /tmp/libsql-native /app/server/node_modules/@libsql/
 
 COPY --from=build /app/cli/cli.sh /usr/local/bin/cli
 RUN chmod +x /usr/local/bin/cli
