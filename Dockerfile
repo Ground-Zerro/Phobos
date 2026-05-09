@@ -39,38 +39,10 @@ COPY --from=build /app/server/database/migrations /app/server/database/migration
 COPY --from=build /app/server/database/bootstrap.sql /app/server/database/bootstrap.sql
 COPY src/phobos-obfuscator/bin /app/phobos/bin
 COPY src/server/phobos/templates /app/phobos/templates
-
-RUN set -eux; \
-    TA="${TARGETARCH:-}"; \
-    [ -n "$TA" ] || case "$(uname -m)" in \
-      x86_64) TA=amd64 ;; aarch64|arm64) TA=arm64 ;; \
-      *) echo "Unsupported uname -m: $(uname -m)" >&2; exit 1 ;; \
-    esac; \
-    case "$TA" in \
-      amd64) MUSL_PKG=linux-x64-musl; PREFERRED_GNU=linux-x64-gnu ;; \
-      arm64) MUSL_PKG=linux-arm64-musl; PREFERRED_GNU=linux-arm64-gnu ;; \
-      *) echo "Unsupported TARGETARCH/uname mapping: ${TA:-empty}" >&2; exit 1 ;; \
-    esac; \
-    LIBSQL_ROOT="/app/server/node_modules/@libsql"; \
-    GNU_JSON="${LIBSQL_ROOT}/${PREFERRED_GNU}/package.json"; \
-    if [ ! -f "$GNU_JSON" ]; then \
-      GNU_JSON="$(find "$LIBSQL_ROOT" -maxdepth 3 -type f -path '*/linux-*-gnu/package.json' 2>/dev/null | head -n1)"; \
-    fi; \
-    if [ ! -f "$GNU_JSON" ]; then \
-      echo "No @libsql linux-*-gnu package.json under $LIBSQL_ROOT" >&2; \
-      ls -la "$LIBSQL_ROOT" 2>&1 || true; \
-      exit 1; \
-    fi; \
-    LIBSQL_VER="$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).version)" "$GNU_JSON")"; \
-    MUSL_TGZ_URL="https://registry.npmjs.org/@libsql/${MUSL_PKG}/-/${MUSL_PKG}-${LIBSQL_VER}.tgz"; \
-    mkdir -p "${LIBSQL_ROOT}/${MUSL_PKG}"; \
-    wget -O /tmp/libsql-musl.tgz "$MUSL_TGZ_URL" || \
-      { echo "wget failed: $MUSL_TGZ_URL (LIBSQL_VER=$LIBSQL_VER from $GNU_JSON)" >&2; exit 1; }; \
-    tar -xz -f /tmp/libsql-musl.tgz -C "${LIBSQL_ROOT}/${MUSL_PKG}" --strip-components=1; \
-    rm -f /tmp/libsql-musl.tgz; \
-    test -f "${LIBSQL_ROOT}/${MUSL_PKG}/package.json" \
-      || { echo "Musl unpack failed — no package.json under ${LIBSQL_ROOT}/${MUSL_PKG}" >&2; exit 1; }; \
-    ls -la "$LIBSQL_ROOT"/
+RUN apk add --no-cache curl
+COPY docker/read-libsql-version.js /tmp/read-libsql-version.js
+COPY docker/setup-libsql.sh /tmp/setup-libsql.sh
+RUN /bin/sh /tmp/setup-libsql.sh && rm -f /tmp/setup-libsql.sh /tmp/read-libsql-version.js
 
 COPY --from=build /app/cli/cli.sh /usr/local/bin/cli
 RUN chmod +x /usr/local/bin/cli
@@ -86,7 +58,6 @@ RUN apk add --no-cache \
     wireguard-tools \
     procps-ng \
     openssl \
-    curl \
     socat
 
 RUN update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 10 --slave /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save
