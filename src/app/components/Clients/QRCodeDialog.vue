@@ -135,35 +135,66 @@ async function downloadPng() {
   }
 }
 
+function copyImageViaSelection(target: HTMLElement): boolean {
+  const activeElement =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
+  const sel = window.getSelection();
+  const previousRanges: Range[] = [];
+  if (sel) {
+    for (let i = 0; i < sel.rangeCount; i++) {
+      previousRanges.push(sel.getRangeAt(i).cloneRange());
+    }
+  }
+
+  let ok = false;
+  try {
+    const range = document.createRange();
+    range.selectNode(target);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  } finally {
+    sel?.removeAllRanges();
+    previousRanges.forEach((r) => sel?.addRange(r));
+    activeElement?.focus({ preventScroll: true });
+  }
+  return ok;
+}
+
 async function copyPng() {
-  const blob = await svgToPng().catch((e) => {
-    console.error('failed to convert svg to png', e);
-    toast.showToast({
-      type: 'error',
-      message: $t('toast.unknown'),
-    });
-  });
-  if (!blob) {
+  const secureWrite =
+    typeof window !== 'undefined' &&
+    window.isSecureContext &&
+    !!navigator.clipboard?.write &&
+    typeof ClipboardItem !== 'undefined';
+
+  if (secureWrite) {
+    try {
+      const blob = await svgToPng();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob }),
+      ]);
+      toast.showToast({ type: 'success', message: t('copy.copied') });
+      return;
+    } catch (e) {
+      console.error('clipboard.write failed, falling back to selection', e);
+    }
+  }
+
+  if (!img.value || !img.value.complete || img.value.naturalWidth === 0) {
+    toast.showToast({ type: 'error', message: t('copy.failed') });
     return;
   }
 
-  try {
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        [blob.type]: blob,
-      }),
-    ]);
-
-    toast.showToast({
-      type: 'success',
-      message: $t('copy.copied'),
-    });
-  } catch (e) {
-    console.error('failed to copy png', e);
-    toast.showToast({
-      type: 'error',
-      message: $t('copy.failed'),
-    });
+  if (copyImageViaSelection(img.value)) {
+    toast.showToast({ type: 'success', message: t('copy.copied') });
+  } else {
+    toast.showToast({ type: 'error', message: t('copy.failed') });
   }
 }
 </script>

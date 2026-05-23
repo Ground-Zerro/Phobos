@@ -180,7 +180,7 @@ class WireGuard {
       this.getClientConfiguration({ clientId }),
       Database.interfaces.get(),
     ]);
-    return `${wgConfig}\n${Obfuscator.buildClientObfConf(iface)}`;
+    return `${wgConfig.replace(/\s+$/, '')}\n\n${Obfuscator.buildClientObfConf(iface)}`;
   }
 
   async getClientQRCodeSVG({ clientId }: { clientId: ID }) {
