@@ -4,23 +4,13 @@ const ORIGIN_PATH = '/app/certs/active/origin';
 const FULLCHAIN_PATH = '/app/certs/active/fullchain.pem';
 const PRIVKEY_PATH = '/app/certs/active/privkey.pem';
 
-export type TlsOrigin =
-  | 'letsencrypt'
-  | 'letsencrypt-ip'
-  | 'self-signed'
-  | 'imported'
-  | 'none';
+export type TlsOrigin = 'self-signed' | 'imported' | 'none';
 
 export function readTlsOrigin(): TlsOrigin {
   if (!existsSync(ORIGIN_PATH)) return 'none';
   try {
     const v = readFileSync(ORIGIN_PATH, 'utf8').trim();
-    if (
-      v === 'letsencrypt' ||
-      v === 'letsencrypt-ip' ||
-      v === 'self-signed' ||
-      v === 'imported'
-    ) {
+    if (v === 'self-signed' || v === 'imported') {
       return v;
     }
     return 'none';

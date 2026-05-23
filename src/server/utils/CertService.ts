@@ -1,5 +1,4 @@
-import { execFileSync, execSync } from 'node:child_process';
-import { createServer } from 'node:net';
+import { execFileSync } from 'node:child_process';
 import {
   writeFileSync,
   mkdirSync,
@@ -8,19 +7,10 @@ import {
   readFileSync,
   symlinkSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const CERT_ROOT = '/app/certs';
-const ACME_TIMEOUT_MS = 180_000;
-const ACME_PORT_MIN = 49152;
-const ACME_PORT_MAX = 65535;
-const ACME_PORT_DEFAULT = 51823;
-
-function acmeEnv(home: string): NodeJS.ProcessEnv {
-  const { DEBUG: _debug, ...rest } = process.env;
-  return { ...rest, HOME: home };
-}
 
 function isIp(host: string): boolean {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || /^[0-9a-fA-F:]+$/.test(host);
@@ -87,198 +77,26 @@ export function importCert(certPem: string, keyPem: string) {
   activateCert(name);
 }
 
-function ensureAcme(acmeSh: string, home: string) {
-  if (!existsSync(acmeSh)) {
-    try {
-      execSync('curl -s https://get.acme.sh | sh -s --', {
-        stdio: 'pipe',
-        timeout: ACME_TIMEOUT_MS,
-        env: acmeEnv(home),
-      });
-    } catch (error) {
-      throw new Error(formatAcmeError(error, 'Failed to install acme.sh'));
-    }
+function readPemFile(path: string, kind: 'certificate' | 'key'): string {
+  if (!isAbsolute(path)) {
+    throw new Error(`${kind} path must be absolute: ${path}`);
   }
-}
-
-function isPortFree(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = createServer();
-    server.once('error', () => resolve(false));
-    server.once('listening', () => {
-      server.close(() => resolve(true));
-    });
-    server.listen(port, '0.0.0.0');
-  });
-}
-
-function configuredAcmePort(): number {
-  const raw = Number.parseInt(process.env.ACME_HTTP_PORT ?? '', 10);
-  if (Number.isInteger(raw) && raw >= ACME_PORT_MIN && raw <= ACME_PORT_MAX) {
-    return raw;
+  if (!existsSync(path)) {
+    throw new Error(`${kind} file not found: ${path}`);
   }
-  return ACME_PORT_DEFAULT;
-}
-
-async function pickAcmeHttpPort(): Promise<number> {
-  const preferred = configuredAcmePort();
-  if (await isPortFree(preferred)) {
-    return preferred;
-  }
-
-  for (let port = ACME_PORT_MIN; port <= ACME_PORT_MAX; port++) {
-    if (port === preferred) continue;
-    // eslint-disable-next-line no-await-in-loop
-    if (await isPortFree(port)) {
-      return port;
-    }
-  }
-
-  throw new Error(
-    `No free TCP port available for ACME standalone challenge in ${ACME_PORT_MIN}-${ACME_PORT_MAX}`
-  );
-}
-
-function formatAcmeError(error: unknown, fallback: string): string {
-  if (error && typeof error === 'object') {
-    const err = error as {
-      message?: string;
-      stderr?: Buffer | string;
-      stdout?: Buffer | string;
-      signal?: string;
-      killed?: boolean;
-    };
-
-    if (err.signal === 'SIGTERM' || err.killed) {
-      return 'Let\'s Encrypt operation timed out. Check DNS and that the configured ACME HTTP port is reachable from the internet.';
-    }
-
-    const stderr = err.stderr
-      ? Buffer.isBuffer(err.stderr)
-        ? err.stderr.toString('utf8')
-        : String(err.stderr)
-      : '';
-    const stdout = err.stdout
-      ? Buffer.isBuffer(err.stdout)
-        ? err.stdout.toString('utf8')
-        : String(err.stdout)
-      : '';
-    const details = [stderr, stdout, err.message ?? '']
-      .map((s) => s.trim())
-      .find((s) => s.length > 0);
-    if (details) {
-      return details.split('\n')[0] ?? fallback;
-    }
-  }
-
-  return fallback;
-}
-
-function runAcme(acmeSh: string, args: string[], home: string, fallback: string) {
   try {
-    execFileSync(acmeSh, args, {
-      stdio: 'pipe',
-      timeout: ACME_TIMEOUT_MS,
-      maxBuffer: 1024 * 1024 * 8,
-      env: acmeEnv(home),
-    });
-  } catch (error) {
-    throw new Error(formatAcmeError(error, fallback));
-  }
-}
-
-function acmeInstallCert(
-  acmeSh: string,
-  domain: string,
-  certPath: string,
-  keyPath: string,
-  home: string
-) {
-  runAcme(acmeSh, [
-    '--installcert', '-d', domain,
-    '--fullchain-file', certPath,
-    '--key-file', keyPath,
-    '--reloadcmd', 'kill 1',
-  ], home, 'Failed to install certificate files from acme.sh');
-
-  runAcme(
-    acmeSh,
-    ['--upgrade', '--auto-upgrade'],
-    home,
-    'Failed to enable acme.sh auto-upgrade'
-  );
-}
-
-export async function issueLetsEncrypt(domain: string) {
-  const home = process.env.HOME ?? '/root';
-  const acmeSh = `${home}/.acme.sh/acme.sh`;
-  ensureAcme(acmeSh, home);
-
-  const tmp = tmpdir();
-  const certPath = join(tmp, `le-${domain}-cert.pem`);
-  const keyPath = join(tmp, `le-${domain}-key.pem`);
-
-  const httpPort = await pickAcmeHttpPort();
-
-  runAcme(
-    acmeSh,
-    ['--set-default-ca', '--server', 'letsencrypt', '--force'],
-    home,
-    'Failed to set Let\'s Encrypt as default ACME CA'
-  );
-  runAcme(acmeSh, [
-    '--issue', '-d', domain,
-    '--standalone', '--httpport', String(httpPort), '--force',
-  ], home, `Let's Encrypt domain issuance failed (port ${httpPort}; check DNS and TCP/${httpPort} reachability)`);
-
-  acmeInstallCert(acmeSh, domain, certPath, keyPath, home);
-
-  const cert = readFileSync(certPath, 'utf8');
-  const key = readFileSync(keyPath, 'utf8');
-  const name = domain.replace(/[^a-zA-Z0-9.\-]/g, '_');
-
-  storeCert(name, cert, key, 'letsencrypt');
-  activateCert(name);
-}
-
-export async function issueLetsEncryptIp(ip: string) {
-  if (!isIp(ip)) {
+    return readFileSync(path, 'utf8');
+  } catch (e) {
     throw new Error(
-      `Let\'s Encrypt IP mode requires an IP in host settings, got "${ip}".`
+      `Failed to read ${kind} file at ${path}: ${(e as Error).message}`
     );
   }
+}
 
-  const httpPort = await pickAcmeHttpPort();
-
-  const home = process.env.HOME ?? '/root';
-  const acmeSh = `${home}/.acme.sh/acme.sh`;
-  ensureAcme(acmeSh, home);
-
-  const tmp = tmpdir();
-  const certPath = join(tmp, `le-${ip}-cert.pem`);
-  const keyPath = join(tmp, `le-${ip}-key.pem`);
-
-  runAcme(
-    acmeSh,
-    ['--set-default-ca', '--server', 'letsencrypt', '--force'],
-    home,
-    'Failed to set Let\'s Encrypt as default ACME CA'
-  );
-  runAcme(acmeSh, [
-    '--issue', '-d', ip,
-    '--standalone', '--httpport', String(httpPort),
-    '--certificate-profile', 'shortlived', '--days', '6',
-    '--force',
-  ], home, `Let's Encrypt IP issuance failed (port ${httpPort}; check TCP/${httpPort} reachability and IP certificate availability)`);
-
-  acmeInstallCert(acmeSh, ip, certPath, keyPath, home);
-
-  const cert = readFileSync(certPath, 'utf8');
-  const key = readFileSync(keyPath, 'utf8');
-  const name = `ip-${ip.replace(/[^a-zA-Z0-9.\-]/g, '_')}`;
-
-  storeCert(name, cert, key, 'letsencrypt-ip');
-  activateCert(name);
+export function importCertFromPath(certPath: string, keyPath: string) {
+  const certPem = readPemFile(certPath, 'certificate');
+  const keyPem = readPemFile(keyPath, 'key');
+  importCert(certPem, keyPem);
 }
 
 export function scheduleNodeRestart() {

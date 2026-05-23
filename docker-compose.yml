@@ -4,7 +4,6 @@ volumes:
   phobos_etc_wireguard:
   phobos_sqlite_data:
   phobos_certs_data:
-  phobos_acme_data:
 
 services:
   phobos:
@@ -13,7 +12,6 @@ services:
     environment:
       - OBF_PORT=${OBF_PORT:-51822}
       - WG_HOST=${WG_HOST:-}
-      - ACME_HTTP_PORT=${ACME_HTTP_PORT:-51823}
       - INIT_ENABLED=${INIT_ENABLED:-false}
       - INIT_USERNAME=${INIT_USERNAME:-}
       - INIT_PASSWORD=${INIT_PASSWORD:-}
@@ -26,10 +24,8 @@ services:
       - phobos_etc_wireguard:/etc/wireguard
       - phobos_sqlite_data:/app/server/data
       - phobos_certs_data:/app/certs
-      - phobos_acme_data:/root/.acme.sh
       - /lib/modules:/lib/modules:ro
     ports:
-      - "${ACME_HTTP_PORT:-51823}:${ACME_HTTP_PORT:-51823}"
       - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
       - "51831:51831/tcp"
     restart: unless-stopped

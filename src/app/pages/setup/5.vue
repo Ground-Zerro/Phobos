@@ -48,18 +48,31 @@
         </div>
       </div>
 
-      <div v-if="mode === 'letsencrypt'" class="flex flex-col gap-1">
-        <label class="text-sm text-gray-500 dark:text-neutral-300">
-          {{ $t('setup.tls.domainLabel') }}
-        </label>
-        <BaseInput
-          v-model="leDomain"
-          type="text"
-          class="w-full"
-          placeholder="vpn.example.com"
-        />
+      <div v-if="mode === 'import-path'" class="flex flex-col gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-gray-500 dark:text-neutral-300">
+            {{ $t('setup.tls.certPathLabel') }}
+          </label>
+          <BaseInput
+            v-model.trim="importCertPath"
+            type="text"
+            class="w-full"
+            placeholder="/etc/letsencrypt/live/example.com/fullchain.pem"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-gray-500 dark:text-neutral-300">
+            {{ $t('setup.tls.keyPathLabel') }}
+          </label>
+          <BaseInput
+            v-model.trim="importKeyPath"
+            type="text"
+            class="w-full"
+            placeholder="/etc/letsencrypt/live/example.com/privkey.pem"
+          />
+        </div>
         <p class="text-xs text-amber-600 dark:text-amber-400">
-          {{ $t('setup.tls.lePort80Warning') }}
+          {{ $t('setup.tls.importPathHint') }}
         </p>
       </div>
 
@@ -116,31 +129,31 @@ setupStore.setStep(5);
 const { t } = useI18n();
 const toast = useToast();
 
-type Mode = 'self-signed' | 'import' | 'letsencrypt' | 'letsencrypt-ip' | 'skip';
+type Mode = 'self-signed' | 'import' | 'import-path' | 'skip';
 
 const mode = ref<Mode>('self-signed');
 const importCert = ref('');
 const importKey = ref('');
-const leDomain = ref('');
+const importCertPath = ref('');
+const importKeyPath = ref('');
 const submitting = ref(false);
 const restarting = ref(false);
 const httpsUrl = ref('');
 const countdown = ref(0);
 
 const modes = computed<{ value: Mode; label: string; desc: string }[]>(() => [
-  { value: 'self-signed',    label: t('setup.tls.selfSigned'),     desc: t('setup.tls.selfSignedDesc') },
-  { value: 'import',         label: t('setup.tls.import'),         desc: t('setup.tls.importDesc') },
-  { value: 'letsencrypt',    label: t('setup.tls.letsencrypt'),    desc: t('setup.tls.letsencryptDesc') },
-  { value: 'letsencrypt-ip', label: t('setup.tls.letsencryptIp'), desc: t('setup.tls.letsencryptIpDesc') },
-  { value: 'skip',           label: t('setup.tls.skip'),           desc: t('setup.tls.skipDesc') },
+  { value: 'self-signed', label: t('setup.tls.selfSigned'), desc: t('setup.tls.selfSignedDesc') },
+  { value: 'import',      label: t('setup.tls.import'),     desc: t('setup.tls.importDesc') },
+  { value: 'import-path', label: t('setup.tls.importPath'), desc: t('setup.tls.importPathDesc') },
+  { value: 'skip',        label: t('setup.tls.skip'),       desc: t('setup.tls.skipDesc') },
 ]);
 
 const canSubmit = computed(() => {
   if (mode.value === 'import') {
     return importCert.value.trim().length > 0 && importKey.value.trim().length > 0;
   }
-  if (mode.value === 'letsencrypt') {
-    return leDomain.value.trim().length > 0;
+  if (mode.value === 'import-path') {
+    return importCertPath.value.trim().length > 0 && importKeyPath.value.trim().length > 0;
   }
   return true;
 });
@@ -162,12 +175,22 @@ async function submit() {
   submitting.value = true;
 
   try {
-    const body: Record<string, string> =
-      mode.value === 'import'
-        ? { mode: 'import', cert: importCert.value.trim(), key: importKey.value.trim() }
-        : mode.value === 'letsencrypt'
-          ? { mode: 'letsencrypt', domain: leDomain.value.trim() }
-          : { mode: mode.value };
+    let body: Record<string, string>;
+    if (mode.value === 'import') {
+      body = {
+        mode: 'import',
+        cert: importCert.value.trim(),
+        key: importKey.value.trim(),
+      };
+    } else if (mode.value === 'import-path') {
+      body = {
+        mode: 'import-path',
+        certPath: importCertPath.value.trim(),
+        keyPath: importKeyPath.value.trim(),
+      };
+    } else {
+      body = { mode: mode.value };
+    }
 
     const result = await $fetch<{ success: boolean; httpsUrl: string | null }>(
       '/api/setup/tls',

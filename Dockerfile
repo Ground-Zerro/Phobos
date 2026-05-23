@@ -77,8 +77,7 @@ RUN apk add --no-cache \
     wireguard-go \
     wireguard-tools \
     procps-ng \
-    openssl \
-    socat
+    openssl
 
 RUN update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 10 --slave /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save
 RUN update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 10 --slave /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore --slave /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save
@@ -91,8 +90,7 @@ COPY docker/s6-rc.d /etc/s6-overlay/s6-rc.d
 RUN chmod +x /etc/s6-overlay/s6-rc.d/node/run \
     /etc/s6-overlay/s6-rc.d/node/finish \
     /etc/s6-overlay/s6-rc.d/wg-obfuscator/run \
-    /etc/s6-overlay/s6-rc.d/wg-obfuscator/finish \
-    /etc/s6-overlay/s6-rc.d/acme-renew/run
+    /etc/s6-overlay/s6-rc.d/wg-obfuscator/finish
 
 HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=5 CMD \
     /usr/bin/timeout 8s /bin/sh -c \

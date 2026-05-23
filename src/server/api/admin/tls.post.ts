@@ -4,7 +4,7 @@ import {
   isExternalTlsManaged,
 } from '~~/server/utils/TlsInfo';
 
-const TlsSetupSchema = z.discriminatedUnion('mode', [
+const TlsUpdateSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('self-signed') }),
   z.object({
     mode: z.literal('import'),
@@ -19,26 +19,25 @@ const TlsSetupSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('skip') }),
 ]);
 
-export default defineSetupEventHandler('tls', async ({ event }) => {
-  const body = await readValidatedBody(event, validateZod(TlsSetupSchema, event));
+export default definePermissionEventHandler('admin', 'any', async ({ event }) => {
+  const body = await readValidatedBody(event, validateZod(TlsUpdateSchema, event));
 
   if (isExternalTlsManaged()) {
     if (!hasActiveTlsCert() && body.mode !== 'skip') {
       throw createError({
         statusCode: 400,
         statusMessage:
-          'TLS is managed by the external reverse proxy. Issue or activate the certificate on the host, then continue setup.',
+          'TLS is managed by the external reverse proxy. Issue or activate the certificate on the host first.',
       });
     }
 
     await Database.general.setAllowInsecureHttpLogin(false);
-    await Database.general.setSetupStep(0);
     return { success: true, httpsUrl: null };
   }
 
   if (body.mode === 'skip') {
     await Database.general.setAllowInsecureHttpLogin(true);
-    await Database.general.setSetupStep(0);
+    scheduleNodeRestart();
     return { success: true, httpsUrl: null };
   }
 
@@ -61,8 +60,6 @@ export default defineSetupEventHandler('tls', async ({ event }) => {
     const firstLine = raw.split('\n').find((l) => l.trim().length > 0) ?? raw;
     throw createError({ statusCode: 400, statusMessage: firstLine });
   }
-
-  await Database.general.setSetupStep(0);
 
   scheduleNodeRestart();
 

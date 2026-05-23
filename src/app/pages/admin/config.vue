@@ -54,6 +54,8 @@
         <FormSecondaryActionField :label="$t('form.revert')" @click="revert" />
       </FormGroup>
     </FormElement>
+
+    <AdminTlsSection />
   </main>
 </template>
 

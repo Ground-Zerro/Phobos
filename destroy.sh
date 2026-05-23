@@ -21,7 +21,7 @@ else
 fi
 
 CONTAINER_NAMES=(phobos phobos-caddy phobos-dev)
-VOLUME_KEYS_RE='etc_wireguard|sqlite_data|certs_data|acme_data|caddy_data|caddy_config'
+VOLUME_KEYS_RE='etc_wireguard|sqlite_data|certs_data|caddy_data|caddy_config'
 VOLUME_RE="(^|_)phobos_(${VOLUME_KEYS_RE})$"
 NETWORK_RE='^(phobos|phoboswg)_(wg|default)$'
 IMAGE_RE='^(ghcr\.io/)?ground-zerro/phobos(:|@)'

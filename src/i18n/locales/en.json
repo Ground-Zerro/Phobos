@@ -61,22 +61,21 @@
       "selfSignedDesc": "Generated instantly for your host. Browser will show a security warning — click Advanced → Proceed.",
       "import": "Import existing certificate",
       "importDesc": "Paste your own PEM certificate and private key.",
-      "letsencrypt": "Let's Encrypt (domain)",
-      "letsencryptDesc": "Free trusted certificate for a domain name. Requires port 80 to be accessible.",
-      "letsencryptIp": "Let's Encrypt (IP address)",
-      "letsencryptIpDesc": "Short-lived 6-day certificate for an IP address, auto-renewed every 6 days. Requires port 80 to be accessible.",
+      "importPath": "Import certificate from file paths",
+      "importPathDesc": "Provide absolute paths to existing certificate and key files on disk (e.g. /etc/letsencrypt/live/example.com/*.pem). Files must be readable from inside the container.",
+      "certPathLabel": "Certificate file path (PEM fullchain)",
+      "keyPathLabel": "Private key file path (PEM)",
+      "importPathHint": "Files are read once and copied into the certificate store. If you renew them on the host later, re-apply this section to refresh.",
       "skip": "Skip (no HTTPS)",
       "skipDesc": "Stay on HTTP. Login requires the INSECURE=true environment variable.",
       "certLabel": "Certificate (PEM fullchain)",
       "keyLabel": "Private key (PEM)",
-      "domainLabel": "Domain name",
       "generate": "Generate certificate",
       "apply": "Apply",
       "restarting": "Certificate applied. Server is restarting with HTTPS...",
       "redirectPrompt": "Open the secure version:",
       "openLink": "Open HTTPS",
       "skipWarning": "Without a TLS certificate the web interface is only accessible over HTTP. Login over HTTP is enabled automatically for this choice (same effect as INSECURE=true).",
-      "lePort80Warning": "Port 80 must be publicly accessible for the HTTP-01 challenge.",
       "errorCert": "Certificate validation failed",
       "errorKey": "Private key validation failed"
     }
@@ -188,6 +187,20 @@
       "dnsDesc": "DNS server clients will use (global config)",
       "mtuDesc": "MTU clients will use (only for new clients)",
       "persistentKeepaliveDesc": "Interval in seconds to send keepalives to the server. 0 = disabled (only for new clients)"
+    },
+    "tls": {
+      "title": "TLS Certificate",
+      "desc": "Replace the active HTTPS certificate or switch to plain HTTP.",
+      "current": "Active certificate",
+      "apply": "Apply TLS configuration",
+      "applied": "TLS configuration applied. Server is restarting.",
+      "appliedRestart": "TLS configuration applied. Server is restarting; reopen {url} in a few seconds.",
+      "externalManaged": "TLS is managed by an external reverse proxy (TLS_TERMINATION=external). The certificate must be issued and rotated outside of PhobosWG.",
+      "origin": {
+        "self-signed": "Self-signed",
+        "imported": "Imported",
+        "none": "None (HTTP)"
+      }
     },
     "interface": {
       "cidrSuccess": "Changed CIDR",
