@@ -9,6 +9,8 @@ WG_HOST="${WG_HOST:-}"
 WG_EASY_IMAGE="${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}"
 REPO_RAW_BASE="${REPO_RAW_BASE:-https://raw.githubusercontent.com/Ground-Zerro/Phobos/ph-wg-easy}"
 COMPOSE_FILE="docker-compose.yml"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-phoboswg}"
+export COMPOSE_PROJECT_NAME
 INIT_ENABLED="${INIT_ENABLED:-false}"
 INIT_USERNAME="${INIT_USERNAME:-admin}"
 INIT_PASSWORD="${INIT_PASSWORD:-}"

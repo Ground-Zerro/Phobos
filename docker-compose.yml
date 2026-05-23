@@ -1,3 +1,5 @@
+name: phoboswg
+
 volumes:
   phobos_etc_wireguard:
   phobos_sqlite_data:
