@@ -1,5 +1,5 @@
 services:
-  wg-easy:
+  phobos-dev:
     build:
       dockerfile: ./Dockerfile.dev
     command: dev
@@ -10,11 +10,12 @@ services:
       - /lib/modules:/lib/modules:ro
     ports:
       - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
-      - "51821:51821/tcp"
+      - "51831:51831/tcp"
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
     environment:
+      - PORT=51831
       - INIT_ENABLED=true
       - INIT_HOST=test
       - INIT_USERNAME=testtest

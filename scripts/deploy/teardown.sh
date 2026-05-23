@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Stop and remove the wg-easy stack on a remote host.
+# Stop and remove the PhobosWG stack on a remote host.
 # With --purge also deletes volumes (sqlite DB, wireguard keys) AND the repo dir.
 #
 # Usage:
 #   scripts/deploy/teardown.sh <user@host> [--path <remote-dir>] [--purge]
 
 REMOTE=""
-REMOTE_PATH="/opt/wg-easy"
+REMOTE_PATH="/opt/phoboswg"
 PURGE=0
 
 while [ $# -gt 0 ]; do
@@ -31,7 +31,7 @@ if [ $PURGE -eq 1 ]; then
       docker compose -f docker-compose.https.yml down -v --remove-orphans 2>/dev/null || true
       docker compose down -v --remove-orphans 2>/dev/null || true
     }
-    docker rmi wg-easy:local ghcr.io/ground-zerro/phobos:latest 2>/dev/null || true
+    docker rmi phobos:local ghcr.io/ground-zerro/phobos:latest 2>/dev/null || true
     rm -rf $REMOTE_PATH
   "
   echo "Purged container, volumes, and $REMOTE_PATH."

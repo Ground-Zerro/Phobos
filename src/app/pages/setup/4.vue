@@ -5,13 +5,19 @@
     </p>
     <div class="mt-8 flex flex-col gap-3">
       <div class="flex flex-col">
-        <FormHostField
+        <div class="flex items-center">
+          <FormLabel for="host">{{ $t('general.host') }}</FormLabel>
+          <BaseTooltip :text="$t('setup.hostDesc')">
+            <IconsInfo class="size-4" />
+          </BaseTooltip>
+        </div>
+        <BaseInput
           id="host"
-          v-model="host"
-          :label="$t('general.host')"
+          v-model.trim="host"
+          name="host"
+          type="text"
+          class="w-full"
           placeholder="vpn.example.com"
-          :description="$t('setup.hostDesc')"
-          url="/api/setup/4"
         />
       </div>
       <div class="mt-4 flex justify-center">
@@ -31,7 +37,7 @@ definePageMeta({
 const setupStore = useSetupStore();
 setupStore.setStep(4);
 
-const host = ref<null | string>(null);
+const host = ref<string | null>(null);
 
 const _submit = useSubmit(
   '/api/setup/4',
@@ -49,6 +55,7 @@ const _submit = useSubmit(
 );
 
 function submit() {
-  return _submit({ host: host.value });
+  const value = host.value?.trim();
+  return _submit({ host: value ? value : null });
 }
 </script>

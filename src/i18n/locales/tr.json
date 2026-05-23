@@ -164,9 +164,7 @@
       "allowedIpsDesc": "Genel Allowed IPs (izin verilen IP'ler)",
       "dnsDesc": "Global DNS",
       "mtuDesc": "Varsayılan MTU (yeni istemciler için)",
-      "persistentKeepaliveDesc": "Varsayılan Keepalive (yeni istemciler için)",
-      "suggest": "Öner",
-      "suggestDesc": "Host alanı için bir IP veya Hostname öner"
+      "persistentKeepaliveDesc": "Varsayılan Keepalive (yeni istemciler için)"
     },
     "interface": {
       "cidrSuccess": "CIDR güncellendi",

@@ -159,9 +159,7 @@
       "allowedIpsDesc": "Povolené IP adresy, které budou klienti používat (globální nastavení)",
       "dnsDesc": "DNS server, který budou klienti používat (globální nastavení)",
       "mtuDesc": "MTU, které budou klienti používat (pouze pro nové klienty)",
-      "persistentKeepaliveDesc": "Interval v sekundách pro odesílání udržovacích paketů na server. 0 = vypnuto (pouze pro nové klienty)",
-      "suggest": "Navrhnout",
-      "suggestDesc": "Vyberte IP adresu nebo název hostitele pro pole Hostitel"
+      "persistentKeepaliveDesc": "Interval v sekundách pro odesílání udržovacích paketů na server. 0 = vypnuto (pouze pro nové klienty)"
     },
     "interface": {
       "cidrSuccess": "CIDR změněn",

@@ -164,9 +164,7 @@
       "allowedIpsDesc": "Erlaubte IP-Adressen, die die Clients nutzen werden (Globale Konfiguration)",
       "dnsDesc": "DNS-Server, den die Clients nutzen werden (Globale Konfiguration)",
       "mtuDesc": "MTU, den die Clients benutzen werden (nur für neue Clients)",
-      "persistentKeepaliveDesc": "Intervall in Sekunden, in dem Keepalive-Pakete an den Server gesendet werden. 0 = deaktiviert (nur für neue Clients)",
-      "suggest": "Vorschlagen",
-      "suggestDesc": "Wählen Sie eine IP-Adresse oder einen Hostnamen für das Host-Feld aus"
+      "persistentKeepaliveDesc": "Intervall in Sekunden, in dem Keepalive-Pakete an den Server gesendet werden. 0 = deaktiviert (nur für neue Clients)"
     },
     "interface": {
       "cidrSuccess": "CIDR wurde geändert",

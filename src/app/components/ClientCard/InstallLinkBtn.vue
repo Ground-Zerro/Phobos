@@ -19,6 +19,7 @@ const props = defineProps<{ client: LocalClient }>();
 const { t } = useI18n();
 const toast = useToast();
 const globalStore = useGlobalStore();
+const copy = useCopyToClipboard();
 
 const expiresAt = ref<number>(0);
 
@@ -62,18 +63,7 @@ async function copyInstallLink() {
     const curlFlags = untrusted ? '-ksL' : '-sL';
     const command = `curl ${curlFlags} ${window.location.origin}/api/install/${token} | sh`;
 
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(command);
-    } else {
-      const ta = document.createElement('textarea');
-      ta.value = command;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
+    await copy(command);
 
     toast.showToast({
       type: 'success',

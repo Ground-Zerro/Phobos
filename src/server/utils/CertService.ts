@@ -13,7 +13,9 @@ import { tmpdir } from 'node:os';
 
 const CERT_ROOT = '/app/certs';
 const ACME_TIMEOUT_MS = 180_000;
-const ACME_HTTP_PORT_HINT_PATH = join(CERT_ROOT, 'acme-http-port');
+const ACME_PORT_MIN = 49152;
+const ACME_PORT_MAX = 65535;
+const ACME_PORT_DEFAULT = 51823;
 
 function acmeEnv(home: string): NodeJS.ProcessEnv {
   const { DEBUG: _debug, ...rest } = process.env;
@@ -110,27 +112,31 @@ function isPortFree(port: number): Promise<boolean> {
   });
 }
 
-async function pickAcmeHttpPort(preferred = 80): Promise<number> {
+function configuredAcmePort(): number {
+  const raw = Number.parseInt(process.env.ACME_HTTP_PORT ?? '', 10);
+  if (Number.isInteger(raw) && raw >= ACME_PORT_MIN && raw <= ACME_PORT_MAX) {
+    return raw;
+  }
+  return ACME_PORT_DEFAULT;
+}
+
+async function pickAcmeHttpPort(): Promise<number> {
+  const preferred = configuredAcmePort();
   if (await isPortFree(preferred)) {
     return preferred;
   }
 
-  for (let port = 8080; port <= 65535; port++) {
+  for (let port = ACME_PORT_MIN; port <= ACME_PORT_MAX; port++) {
+    if (port === preferred) continue;
     // eslint-disable-next-line no-await-in-loop
     if (await isPortFree(port)) {
       return port;
     }
   }
 
-  throw new Error('No free TCP port available for ACME standalone challenge');
-}
-
-function storeAcmeHttpPortHint(port: number) {
-  try {
-    writeFileSync(ACME_HTTP_PORT_HINT_PATH, `${port}\n`, { mode: 0o644 });
-  } catch {
-    // non-fatal metadata write
-  }
+  throw new Error(
+    `No free TCP port available for ACME standalone challenge in ${ACME_PORT_MIN}-${ACME_PORT_MAX}`
+  );
 }
 
 function formatAcmeError(error: unknown, fallback: string): string {
@@ -144,7 +150,7 @@ function formatAcmeError(error: unknown, fallback: string): string {
     };
 
     if (err.signal === 'SIGTERM' || err.killed) {
-      return 'Let\'s Encrypt operation timed out. Check DNS and that TCP/80 is reachable from the internet.';
+      return 'Let\'s Encrypt operation timed out. Check DNS and that the configured ACME HTTP port is reachable from the internet.';
     }
 
     const stderr = err.stderr
@@ -212,8 +218,7 @@ export async function issueLetsEncrypt(domain: string) {
   const certPath = join(tmp, `le-${domain}-cert.pem`);
   const keyPath = join(tmp, `le-${domain}-key.pem`);
 
-  const httpPort = await pickAcmeHttpPort(80);
-  storeAcmeHttpPortHint(httpPort);
+  const httpPort = await pickAcmeHttpPort();
 
   runAcme(
     acmeSh,
@@ -224,7 +229,7 @@ export async function issueLetsEncrypt(domain: string) {
   runAcme(acmeSh, [
     '--issue', '-d', domain,
     '--standalone', '--httpport', String(httpPort), '--force',
-  ], home, `Let's Encrypt domain issuance failed (port ${httpPort}; check DNS and TCP/80 reachability)`);
+  ], home, `Let's Encrypt domain issuance failed (port ${httpPort}; check DNS and TCP/${httpPort} reachability)`);
 
   acmeInstallCert(acmeSh, domain, certPath, keyPath, home);
 
@@ -243,8 +248,7 @@ export async function issueLetsEncryptIp(ip: string) {
     );
   }
 
-  const httpPort = await pickAcmeHttpPort(80);
-  storeAcmeHttpPortHint(httpPort);
+  const httpPort = await pickAcmeHttpPort();
 
   const home = process.env.HOME ?? '/root';
   const acmeSh = `${home}/.acme.sh/acme.sh`;
@@ -265,7 +269,7 @@ export async function issueLetsEncryptIp(ip: string) {
     '--standalone', '--httpport', String(httpPort),
     '--certificate-profile', 'shortlived', '--days', '6',
     '--force',
-  ], home, `Let's Encrypt IP issuance failed (port ${httpPort}; check TCP/80 reachability and IP certificate availability)`);
+  ], home, `Let's Encrypt IP issuance failed (port ${httpPort}; check TCP/${httpPort} reachability and IP certificate availability)`);
 
   acmeInstallCert(acmeSh, ip, certPath, keyPath, home);
 

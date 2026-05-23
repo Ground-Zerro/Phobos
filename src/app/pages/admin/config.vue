@@ -3,12 +3,19 @@
     <FormElement @submit.prevent="submit">
       <FormGroup>
         <FormHeading>{{ $t('admin.config.connection') }}</FormHeading>
-        <FormHostField
+        <div class="flex items-center">
+          <FormLabel for="host">{{ $t('general.host') }}</FormLabel>
+          <BaseTooltip :text="$t('admin.config.hostDesc')">
+            <IconsInfo class="size-4" />
+          </BaseTooltip>
+        </div>
+        <BaseInput
           id="host"
-          v-model="data.host"
-          :label="$t('general.host')"
-          :description="$t('admin.config.hostDesc')"
-          url="/api/admin/ip-info"
+          v-model.trim="data.host"
+          name="host"
+          type="text"
+          class="w-full"
+          placeholder="vpn.example.com"
         />
       </FormGroup>
       <FormGroup>

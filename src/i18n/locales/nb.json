@@ -159,9 +159,7 @@
       "allowedIpsDesc": "Tillatte IP-er klienter vil bruke (global konfig)",
       "dnsDesc": "DNS-server klienter vil bruke (global konfig)",
       "mtuDesc": "MTU klienter vil bruke (kun for nye klienter)",
-      "persistentKeepaliveDesc": "Intervall i sekunder for å sende keepalives til serveren. 0 = deaktivert (kun for nye klienter)",
-      "suggest": "Foreslå",
-      "suggestDesc": "Velg en IP-adresse eller et vertsnavn for Vert-feltet"
+      "persistentKeepaliveDesc": "Intervall i sekunder for å sende keepalives til serveren. 0 = deaktivert (kun for nye klienter)"
     },
     "interface": {
       "cidrSuccess": "CIDR endret",

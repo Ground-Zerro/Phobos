@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-command multi-arch build and push for wg-easy image.
+# One-command multi-arch build and push for PhobosWG image.
 #
 # Example (GHCR):
 #   REGISTRY=ghcr.io \
-#   IMAGE_REPO=my-org/wg-easy \
+#   IMAGE_REPO=my-org/phobos \
 #   VERSION_TAG=15.3.0-phobos \
 #   ./scripts/buildx-push.sh
 #
 # Example (Docker Hub):
 #   REGISTRY=docker.io \
-#   IMAGE_REPO=my-user/wg-easy \
+#   IMAGE_REPO=my-user/phobos \
 #   VERSION_TAG=15.3.0-phobos \
 #   ./scripts/buildx-push.sh
 
@@ -20,7 +20,7 @@ IMAGE_REPO="${IMAGE_REPO:-ground-zerro/phobos}"
 VERSION_TAG="${VERSION_TAG:-}"
 PUSH_LATEST="${PUSH_LATEST:-true}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
-BUILDER_NAME="${BUILDER_NAME:-wg-easy-multiarch}"
+BUILDER_NAME="${BUILDER_NAME:-phoboswg-multiarch}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 CONTEXT_DIR="${CONTEXT_DIR:-.}"
 

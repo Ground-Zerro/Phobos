@@ -3,7 +3,7 @@ set -euo pipefail
 
 REMOTE=""
 OBF_PORT="51822"
-REMOTE_PATH="/opt/wg-easy"
+REMOTE_PATH="/opt/phoboswg"
 HTTPS=0
 IMAGE_TAG="ghcr.io/ground-zerro/phobos:latest"
 PLATFORMS="linux/amd64"
@@ -117,7 +117,7 @@ timeout_s="${WAIT_HEALTHY_TIMEOUT_SEC:-240}"
 start_ts=$(date +%s)
 i=0
 while true; do
-  status=$(ssh "$REMOTE" 'docker inspect wg-easy --format "{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}"' 2>/dev/null || echo "missing")
+  status=$(ssh "$REMOTE" 'docker inspect phobos --format "{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}"' 2>/dev/null || echo "missing")
   now_ts=$(date +%s)
   elapsed=$((now_ts - start_ts))
   case "$status" in
@@ -127,7 +127,7 @@ while true; do
       ;;
     unhealthy)
       echo "    container reported unhealthy after ${elapsed}s"
-      ssh "$REMOTE" 'docker logs --tail 80 wg-easy'
+      ssh "$REMOTE" 'docker logs --tail 80 phobos'
       exit 1
       ;;
     missing)
@@ -142,7 +142,7 @@ while true; do
   esac
   if [ "$elapsed" -ge "$timeout_s" ]; then
     echo "    timeout after ${timeout_s}s"
-    ssh "$REMOTE" 'docker logs --tail 120 wg-easy'
+    ssh "$REMOTE" 'docker logs --tail 120 phobos'
     exit 1
   fi
   i=$((i + 1))

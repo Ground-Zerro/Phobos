@@ -3,6 +3,8 @@ import packageJson from '@@/package.json';
 
 export const RELEASE = 'v' + packageJson.version;
 
+export const TOTP_ISSUER = 'PhobosWG';
+
 export const SERVER_DEBUG = debug('Server');
 
 export const OLD_ENV = {

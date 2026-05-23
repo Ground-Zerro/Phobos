@@ -164,9 +164,7 @@
       "allowedIpsDesc": "客户端使用的全局允许的IP范围",
       "dnsDesc": "客户端使用的全局DNS设置",
       "mtuDesc": "新客户端将使用的MTU（仅影响新客户端）",
-      "persistentKeepaliveDesc": "向服务器发送保活数据包的间隔秒数。0表示禁用（仅影响新客户端）",
-      "suggest": "检测",
-      "suggestDesc": "为'主机'字段选择IP地址或主机名"
+      "persistentKeepaliveDesc": "向服务器发送保活数据包的间隔秒数。0表示禁用（仅影响新客户端）"
     },
     "interface": {
       "cidrSuccess": "CIDR修改成功",

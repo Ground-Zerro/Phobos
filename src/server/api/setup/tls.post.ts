@@ -52,7 +52,7 @@ export default defineSetupEventHandler('tls', async ({ event }) => {
 
   const userConfig = await Database.userConfigs.get();
   const host = userConfig.host;
-  const port = process.env.PORT ?? '51821';
+  const port = process.env.PORT ?? '51831';
 
   try {
     if (body.mode === 'self-signed') {

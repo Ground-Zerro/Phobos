@@ -31,13 +31,11 @@
 const props = defineProps<{ triggerClass?: string; clientId: number }>();
 
 const toast = useToast();
-const { copied, copy, isSupported } = useClipboard({
-  // fallback does not work
-  legacy: false,
-});
+const { t } = useI18n();
+const copy = useCopyToClipboard();
 
 const { data: config, status } = useFetch(
-  `/api/client/${props.clientId}/configuration`,
+  `/api/client/${props.clientId}/config`,
   {
     responseType: 'text',
     server: false,
@@ -49,26 +47,12 @@ async function copyCode() {
     return;
   }
 
-  if (!isSupported.value) {
-    toast.showToast({
-      type: 'error',
-      message: $t('copy.notSupported'),
-    });
-    return;
-  }
-
-  await copy(config.value ?? '');
-
-  if (copied.value) {
-    toast.showToast({
-      type: 'success',
-      message: $t('copy.copied'),
-    });
-  } else {
-    toast.showToast({
-      type: 'error',
-      message: $t('copy.failed'),
-    });
+  try {
+    await copy(config.value ?? '');
+    toast.showToast({ type: 'success', message: t('copy.copied') });
+  } catch (e) {
+    console.error('failed to copy config', e);
+    toast.showToast({ type: 'error', message: t('copy.failed') });
   }
 }
 </script>

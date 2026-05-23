@@ -26,7 +26,7 @@ export default definePermissionEventHandler(
       const key = new Secret({ size: 20 });
 
       const totp = new TOTP({
-        issuer: 'wg-easy',
+        issuer: TOTP_ISSUER,
         label: user.username,
         algorithm: 'SHA1',
         digits: 6,

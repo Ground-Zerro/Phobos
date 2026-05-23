@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEPLOY_DIR="${DEPLOY_DIR:-/opt/wg-easy}"
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/phoboswg}"
 OBF_PORT="${OBF_PORT:-51822}"
+ACME_HTTP_PORT="${ACME_HTTP_PORT:-51823}"
+UI_PORT="${UI_PORT:-51831}"
 WG_HOST="${WG_HOST:-}"
 WG_EASY_IMAGE="${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}"
 REPO_RAW_BASE="${REPO_RAW_BASE:-https://raw.githubusercontent.com/Ground-Zerro/Phobos/ph-wg-easy}"
@@ -172,6 +174,7 @@ if [ "$INIT_ENABLED" = "true" ]; then
   cat > "${DEPLOY_DIR}/.env" <<EOF
 WG_HOST=${WG_HOST}
 OBF_PORT=${OBF_PORT}
+ACME_HTTP_PORT=${ACME_HTTP_PORT}
 WG_EASY_IMAGE=${WG_EASY_IMAGE}
 INIT_ENABLED=true
 INIT_USERNAME=${INIT_USERNAME}
@@ -182,6 +185,7 @@ else
   cat > "${DEPLOY_DIR}/.env" <<EOF
 WG_HOST=${WG_HOST}
 OBF_PORT=${OBF_PORT}
+ACME_HTTP_PORT=${ACME_HTTP_PORT}
 WG_EASY_IMAGE=${WG_EASY_IMAGE}
 INIT_ENABLED=false
 EOF
@@ -192,21 +196,21 @@ log "Pulling image"
 docker compose -f "$COMPOSE_FILE" pull
 ok "Image pulled"
 
-log "Starting stack (compose=$COMPOSE_FILE, OBF_PORT=$OBF_PORT)"
-OBF_PORT="$OBF_PORT" docker compose -f "$COMPOSE_FILE" up -d --force-recreate
+log "Starting stack (compose=$COMPOSE_FILE, OBF_PORT=$OBF_PORT, ACME_HTTP_PORT=$ACME_HTTP_PORT)"
+OBF_PORT="$OBF_PORT" ACME_HTTP_PORT="$ACME_HTTP_PORT" docker compose -f "$COMPOSE_FILE" up -d --force-recreate
 ok "Stack started"
 
 wait_healthy
 
 printf '\n'
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'
-printf '\e[1;32m  Phobos deployed successfully\e[0m\n'
+printf '\e[1;32m  PhobosWG deployed successfully\e[0m\n'
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'
 printf '\n'
 
 if [ "$INIT_ENABLED" = "true" ]; then
   printf '\e[1;33m  >>> Open in browser to log in: <<<\e[0m\n'
-  printf '\e[1;37m  http://%s:51821/\e[0m\n' "$WG_HOST"
+  printf '\e[1;37m  http://%s:%s/\e[0m\n' "$WG_HOST" "$UI_PORT"
   printf '\n'
   printf '  Username    : %s\n' "$INIT_USERNAME"
   printf '  Password    : %s\n' "$INIT_PASSWORD"
@@ -216,18 +220,20 @@ if [ "$INIT_ENABLED" = "true" ]; then
   printf '\e[0;33m  Credentials above apply on first deploy only (new database).\e[0m\n'
 else
   printf '\e[1;33m  >>> Open in browser to complete initial setup: <<<\e[0m\n'
-  printf '\e[1;37m  http://%s:51821/\e[0m\n' "$WG_HOST"
+  printf '\e[1;37m  http://%s:%s/\e[0m\n' "$WG_HOST" "$UI_PORT"
   printf '\n'
   printf '  The setup wizard will guide you through:\n'
   printf '    1. Create admin account (username + password)\n'
   printf '    2. Set server host (IP address or domain name)\n'
   printf '    3. Configure TLS certificate (self-signed / Let'\''s Encrypt / skip)\n'
   printf '\n'
-  printf '\e[0;33m  Make sure port 80 is open for Let'\''s Encrypt HTTP challenge.\e[0m\n'
+  printf '\e[0;33m  For Let'\''s Encrypt, open TCP/%s on firewall (ACME HTTP-01 challenge).\e[0m\n' "$ACME_HTTP_PORT"
 fi
 
 printf '\n'
+printf '  Admin UI    : %s:%s\n' "$WG_HOST" "$UI_PORT"
 printf '  Obfuscator  : UDP %s:%s\n' "$WG_HOST" "$OBF_PORT"
+printf '  ACME port   : TCP %s\n' "$ACME_HTTP_PORT"
 printf '  Image       : %s\n' "$WG_EASY_IMAGE"
 printf '  Deploy dir  : %s\n' "$DEPLOY_DIR"
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'

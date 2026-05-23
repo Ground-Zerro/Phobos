@@ -155,9 +155,7 @@
       "allowedIpsDesc": "클라이언트가 사용할 수 있는 허용된 IP(전역 설정)",
       "dnsDesc": "클라이언트가 사용할 DNS 서버(전역 설정)",
       "mtuDesc": "MTU 클라이언트가 사용할 (신규 클라이언트 전용)",
-      "persistentKeepaliveDesc": "서버에 유지 신호를 보내기 위한 간격(초). 0 = 비활성화(새 클라이언트 전용)",
-      "suggest": "제안",
-      "suggestDesc": "호스트 필드에 사용할 IP 주소 또는 호스트 이름을 선택하세요."
+      "persistentKeepaliveDesc": "서버에 유지 신호를 보내기 위한 간격(초). 0 = 비활성화(새 클라이언트 전용)"
     },
     "interface": {
       "cidrSuccess": "CIDR가 변경되었습니다.",

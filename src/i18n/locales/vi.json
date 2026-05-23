@@ -164,9 +164,7 @@
       "allowedIpsDesc": "Các IP được cho phép mà người dùng sẽ sử dụng (cấu hình chung)",
       "dnsDesc": "Máy chủ DNS mà người dùng sẽ sử dụng (cấu hình chung)",
       "mtuDesc": "MTU mà người dùng sẽ sử dụng (chỉ áp dụng cho người dùng mới)",
-      "persistentKeepaliveDesc": "Khoảng thời gian (giây) gửi keepalive đến máy chủ. 0 = tắt (chỉ áp dụng cho người dùng mới)",
-      "suggest": "Gợi ý",
-      "suggestDesc": "Chọn địa chỉ IP hoặc tên miền cho trường Host"
+      "persistentKeepaliveDesc": "Khoảng thời gian (giây) gửi keepalive đến máy chủ. 0 = tắt (chỉ áp dụng cho người dùng mới)"
     },
     "interface": {
       "cidrSuccess": "Đã thay đổi CIDR",

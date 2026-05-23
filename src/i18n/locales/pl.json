@@ -164,9 +164,7 @@
       "allowedIpsDesc": "Dozwolone adresy IP klientów (konfiguracja globalna)",
       "dnsDesc": "Serwer DNS klientów (konfiguracja globalna)",
       "mtuDesc": "MTU klientów (tylko dla nowych klientów)",
-      "persistentKeepaliveDesc": "Interwał wysyłania pakietów keepalive do serwera (sekundy). 0 = wyłączone (tylko dla nowych klientów)",
-      "suggest": "Sugeruj",
-      "suggestDesc": "Wybierz adres IP lub nazwę hosta dla pola Host"
+      "persistentKeepaliveDesc": "Interwał wysyłania pakietów keepalive do serwera (sekundy). 0 = wyłączone (tylko dla nowych klientów)"
     },
     "interface": {
       "cidrSuccess": "Zmieniono CIDR",

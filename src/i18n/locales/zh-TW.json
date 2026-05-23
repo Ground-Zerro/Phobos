@@ -164,9 +164,7 @@
       "allowedIpsDesc": "用戶端將使用的允許 IP (全域設定)",
       "dnsDesc": "用戶端將使用的 DNS 伺服器 (全域設定)",
       "mtuDesc": "用戶端使用的 MTU (僅適用於新用戶端)",
-      "persistentKeepaliveDesc": "傳送 keepalive 的間隔秒數。以 0 表示停用 (僅適用於新用戶端)",
-      "suggest": "建議",
-      "suggestDesc": "為主機欄位選擇 IP 位址或主機名稱"
+      "persistentKeepaliveDesc": "傳送 keepalive 的間隔秒數。以 0 表示停用 (僅適用於新用戶端)"
     },
     "interface": {
       "cidrSuccess": "已變更 CIDR",

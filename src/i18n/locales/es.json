@@ -163,9 +163,7 @@
       "allowedIpsDesc": "IPs permitidas que usarán los clientes (configuración global)",
       "dnsDesc": "Servidor DNS que usarán los clientes (configuración global)",
       "mtuDesc": "MTU que usarán los clientes (solo para nuevos clientes)",
-      "persistentKeepaliveDesc": "Intervalo en segundos para enviar keepalives al servidor. 0 = desactivado (solo para nuevos clientes)",
-      "suggest": "Sugerir",
-      "suggestDesc": "Elegir dirección IP o nombre de host para el campo Host"
+      "persistentKeepaliveDesc": "Intervalo en segundos para enviar keepalives al servidor. 0 = desactivado (solo para nuevos clientes)"
     },
     "interface": {
       "cidrSuccess": "CIDR cambiado",

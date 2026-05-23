@@ -1,41 +1,53 @@
 #!/command/with-contenv sh
 ACME="${HOME}/.acme.sh/acme.sh"
 ACME_HOME="${HOME}/.acme.sh"
-PORT_HINT="/app/certs/acme-http-port"
+PORT_MIN=49152
+PORT_MAX=65535
 
 is_port_free() {
   ! nc -z 127.0.0.1 "$1" 2>/dev/null
 }
 
+configured_port() {
+  case "${ACME_HTTP_PORT:-}" in
+    ''|*[!0-9]*)
+      echo 51823
+      ;;
+    *)
+      if [ "${ACME_HTTP_PORT}" -ge "$PORT_MIN" ] && [ "${ACME_HTTP_PORT}" -le "$PORT_MAX" ]; then
+        echo "${ACME_HTTP_PORT}"
+      else
+        echo 51823
+      fi
+      ;;
+  esac
+}
+
 pick_free_port() {
-  if is_port_free 80; then
-    echo 80
+  preferred=$(configured_port)
+  if is_port_free "$preferred"; then
+    echo "$preferred"
     return
   fi
-  port=8080
-  while [ "$port" -le 65535 ]; do
-    if is_port_free "$port"; then
+  port=$PORT_MIN
+  while [ "$port" -le "$PORT_MAX" ]; do
+    if [ "$port" -ne "$preferred" ] && is_port_free "$port"; then
       echo "$port"
       return
     fi
     port=$((port + 1))
   done
-  echo 80
+  echo "$preferred"
 }
 
 patch_acme_port() {
   free_port=$(pick_free_port)
-  patched=0
   for conf in "$ACME_HOME"/*/*.conf; do
     [ -f "$conf" ] || continue
     if grep -q "Le_Httpport=" "$conf" 2>/dev/null; then
       sed -i "s/Le_Httpport='[^']*'/Le_Httpport='$free_port'/" "$conf"
-      patched=1
     fi
   done
-  if [ "$patched" -eq 1 ]; then
-    echo "$free_port" > "$PORT_HINT"
-  fi
 }
 
 while true; do

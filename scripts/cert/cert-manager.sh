@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# wg-easy certificate manager.
+# PhobosWG certificate manager.
 #
 # Runs on the host where docker is running. Manages TLS certificates for the
 # Caddy sidecar (docker-compose.https.yml). Supports:
@@ -10,7 +10,7 @@
 #   - Import existing cert/key files
 #   - List / show / delete
 #
-# Storage layout (under CERT_ROOT, default /opt/wg-easy/certs):
+# Storage layout (under CERT_ROOT, default /opt/phoboswg/certs):
 #   <name>/fullchain.pem   full chain (leaf + intermediates)
 #   <name>/privkey.pem     private key (mode 0600)
 #   <name>/origin          type marker: letsencrypt | letsencrypt-ip | self-signed | imported
@@ -33,8 +33,8 @@
 
 set -euo pipefail
 
-CERT_ROOT="${CERT_ROOT:-/opt/wg-easy/certs}"
-CADDY_CONTAINER="${CADDY_CONTAINER:-wg-easy-caddy}"
+CERT_ROOT="${CERT_ROOT:-/opt/phoboswg/certs}"
+CADDY_CONTAINER="${CADDY_CONTAINER:-phobos-caddy}"
 
 red='\033[0;31m'
 green='\033[0;32m'
@@ -326,7 +326,7 @@ menu() {
   ensure_cert_root
   while true; do
     echo
-    echo -e "${green}wg-easy TLS certificate manager${plain} — store: $CERT_ROOT"
+    echo -e "${green}PhobosWG TLS certificate manager${plain} — store: $CERT_ROOT"
     echo -e "  ${green}1${plain}) Let's Encrypt for a domain"
     echo -e "  ${green}2${plain}) Let's Encrypt shortlived for this server's IP (auto-renew ~6 days)"
     echo -e "  ${green}3${plain}) Self-signed certificate (IP or hostname)"

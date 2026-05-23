@@ -96,9 +96,9 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/node/run \
 
 HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=5 CMD \
     /usr/bin/timeout 8s /bin/sh -c \
-    'curl -fsSk https://localhost:${PORT:-51821}/ >/dev/null 2>&1 || curl -fsS http://localhost:${PORT:-51821}/ >/dev/null 2>&1'
+    'curl -fsSk https://localhost:${PORT:-51831}/ >/dev/null 2>&1 || curl -fsS http://localhost:${PORT:-51831}/ >/dev/null 2>&1'
 
-ENV PORT=51821
+ENV PORT=51831
 ENV HOST=0.0.0.0
 ENV INSECURE=false
 ENV INIT_ENABLED=false

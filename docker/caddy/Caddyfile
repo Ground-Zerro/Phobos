@@ -6,7 +6,7 @@
 :443 {
 	tls /etc/caddy/certs/active/fullchain.pem /etc/caddy/certs/active/privkey.pem
 
-	reverse_proxy wg-easy:51821 {
+	reverse_proxy phobos:51831 {
 		header_up X-Forwarded-Proto https
 	}
 }

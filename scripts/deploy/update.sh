@@ -3,7 +3,7 @@ set -euo pipefail
 
 REMOTE=""
 OBF_PORT="51822"
-REMOTE_PATH="/opt/wg-easy"
+REMOTE_PATH="/opt/phoboswg"
 HTTPS=0
 IMAGE_TAG="ghcr.io/ground-zerro/phobos:latest"
 PLATFORMS="linux/amd64"
@@ -68,10 +68,10 @@ echo "==> Restarting (compose=$COMPOSE_FILE, volumes preserved)"
 ssh "$REMOTE" "cd $REMOTE_PATH && OBF_PORT=$OBF_PORT WG_EASY_IMAGE=$IMAGE_TAG docker compose -f $COMPOSE_FILE up -d --force-recreate"
 
 for i in $(seq 1 60); do
-  status=$(ssh "$REMOTE" 'docker inspect wg-easy --format "{{.State.Health.Status}}"' 2>/dev/null || echo unknown)
+  status=$(ssh "$REMOTE" 'docker inspect phobos --format "{{.State.Health.Status}}"' 2>/dev/null || echo unknown)
   case "$status" in
     healthy) echo "    healthy"; break ;;
-    unhealthy) ssh "$REMOTE" 'docker logs --tail 30 wg-easy'; exit 1 ;;
+    unhealthy) ssh "$REMOTE" 'docker logs --tail 30 phobos'; exit 1 ;;
     *) sleep 5 ;;
   esac
 done

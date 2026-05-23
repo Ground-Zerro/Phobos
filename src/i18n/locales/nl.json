@@ -164,9 +164,7 @@
       "allowedIpsDesc": "Toegestane IP's die cliënten zullen gebruiken (algemene configuratie)",
       "dnsDesc": "DNS-server die cliënten zullen gebruiken (algemene configuratie)",
       "mtuDesc": "MTU die cliënten zullen gebruiken (alleen voor nieuwe cliënten)",
-      "persistentKeepaliveDesc": "Interval in seconden om keepalives naar de server te sturen. 0 = uitgeschakeld (alleen voor nieuwe cliënten)",
-      "suggest": "Voorstellen",
-      "suggestDesc": "Kies een IP-adres of hostnaam voor het veld Host"
+      "persistentKeepaliveDesc": "Interval in seconden om keepalives naar de server te sturen. 0 = uitgeschakeld (alleen voor nieuwe cliënten)"
     },
     "interface": {
       "cidrSuccess": "CIDR gewijzigd",

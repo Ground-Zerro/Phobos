@@ -1,8 +1,8 @@
 volumes:
-  etc_wireguard:
-  sqlite_data:
-  certs_data:
-  acme_data:
+  phobos_etc_wireguard:
+  phobos_sqlite_data:
+  phobos_certs_data:
+  phobos_acme_data:
 
 services:
   phobos:
@@ -11,6 +11,7 @@ services:
     environment:
       - OBF_PORT=${OBF_PORT:-51822}
       - WG_HOST=${WG_HOST:-}
+      - ACME_HTTP_PORT=${ACME_HTTP_PORT:-51823}
       - INIT_ENABLED=${INIT_ENABLED:-false}
       - INIT_USERNAME=${INIT_USERNAME:-}
       - INIT_PASSWORD=${INIT_PASSWORD:-}
@@ -20,15 +21,15 @@ services:
         ipv4_address: 10.42.42.42
         ipv6_address: fdcc:ad94:bacf:61a3::2a
     volumes:
-      - etc_wireguard:/etc/wireguard
-      - sqlite_data:/app/server/data
-      - certs_data:/app/certs
-      - acme_data:/root/.acme.sh
+      - phobos_etc_wireguard:/etc/wireguard
+      - phobos_sqlite_data:/app/server/data
+      - phobos_certs_data:/app/certs
+      - phobos_acme_data:/root/.acme.sh
       - /lib/modules:/lib/modules:ro
     ports:
-      - "80:80"
+      - "${ACME_HTTP_PORT:-51823}:${ACME_HTTP_PORT:-51823}"
       - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
-      - "51821:51821/tcp"
+      - "51831:51831/tcp"
     restart: unless-stopped
     cap_add:
       - NET_ADMIN

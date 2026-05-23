@@ -153,9 +153,7 @@
       "allowedIpsDesc": "客戶端使用的IP白名單（全局配置）",
       "dnsDesc": "客戶端使用的域名系統伺服器（全局配置）",
       "mtuDesc": "客戶端使用的MTU（僅適用於新客戶端）",
-      "persistentKeepaliveDesc": "向伺服器發送保持連線封包的秒數間隔。0代表停用（僅適用於新客戶端）",
-      "suggest": "建議",
-      "suggestDesc": "選擇一個IP地址或主機名稱"
+      "persistentKeepaliveDesc": "向伺服器發送保持連線封包的秒數間隔。0代表停用（僅適用於新客戶端）"
     },
     "interface": {
       "cidrSuccess": "成功更改CIDR",

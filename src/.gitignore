@@ -25,4 +25,4 @@ logs
 
 coverage/
 
-wg-easy.db
+phobos.db

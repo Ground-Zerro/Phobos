@@ -42,22 +42,13 @@ const props = defineProps<{ qrCode: string; configUrl: string }>();
 const toast = useToast();
 const { t } = useI18n();
 const img = useTemplateRef('img');
+const copy = useCopyToClipboard();
 
 async function copyConfig() {
   try {
-    const config = await $fetch<string>(props.configUrl);
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(config);
-    } else {
-      const ta = document.createElement('textarea');
-      ta.value = config;
-      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
+    await copy(() =>
+      $fetch<string>(props.configUrl, { responseType: 'text' })
+    );
     toast.showToast({ type: 'success', message: t('copy.copied') });
   } catch (e) {
     console.error('failed to copy config', e);

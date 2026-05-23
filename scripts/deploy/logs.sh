@@ -20,4 +20,4 @@ done
 
 if [ ${#ARGS[@]} -eq 0 ]; then ARGS=(--tail 100); fi
 
-ssh -t "$REMOTE" "docker logs ${ARGS[*]} wg-easy"
+ssh -t "$REMOTE" "docker logs ${ARGS[*]} phobos"

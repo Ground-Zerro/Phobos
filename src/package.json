@@ -1,7 +1,7 @@
 {
-  "name": "wg-easy",
+  "name": "phoboswg",
   "version": "15.3.0-beta.2",
-  "description": "The easiest way to run WireGuard VPN + Web-based Admin UI.",
+  "description": "PhobosWG — WireGuard VPN + Web-based Admin UI with traffic obfuscation.",
   "private": true,
   "type": "module",
   "scripts": {

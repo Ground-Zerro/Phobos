@@ -1,13 +1,13 @@
 volumes:
-  etc_wireguard:
-  sqlite_data:
-  caddy_data:
-  caddy_config:
+  phobos_etc_wireguard:
+  phobos_sqlite_data:
+  phobos_caddy_data:
+  phobos_caddy_config:
 
 services:
-  wg-easy:
+  phobos:
     image: ${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}
-    container_name: wg-easy
+    container_name: phobos
     environment:
       - OBF_PORT=${OBF_PORT:-51822}
       - WG_HOST=${WG_HOST:-}
@@ -21,8 +21,8 @@ services:
         ipv4_address: 10.42.42.42
         ipv6_address: fdcc:ad94:bacf:61a3::2a
     volumes:
-      - etc_wireguard:/etc/wireguard
-      - sqlite_data:/app/server/data
+      - phobos_etc_wireguard:/etc/wireguard
+      - phobos_sqlite_data:/app/server/data
       - /lib/modules:/lib/modules:ro
       - ./certs:/app/certs:ro
     ports:
@@ -40,20 +40,20 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    container_name: wg-easy-caddy
+    container_name: phobos-caddy
     restart: unless-stopped
     depends_on:
-      - wg-easy
+      - phobos
     networks:
       - wg
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HTTP_REDIRECT_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/etc/caddy/certs:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - phobos_caddy_data:/data
+      - phobos_caddy_config:/config
 
 networks:
   wg:

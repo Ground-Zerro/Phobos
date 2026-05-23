@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEPLOY_DIR="${DEPLOY_DIR:-/opt/wg-easy}"
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/phoboswg}"
 COMPOSE_FILE="docker-compose.yml"
 
 log()  { printf '\e[1;34m==>\e[0m %s\n' "$*"; }
@@ -16,19 +16,18 @@ printf '┌───────────────────────
 printf '│  DESTRUCTIVE OPERATION — NO UNDO POSSIBLE   │\n'
 printf '│                                             │\n'
 printf '│  Will permanently remove:                   │\n'
-printf '│    • Phobos container                       │\n'
+printf '│    • PhobosWG container                     │\n'
 printf '│    • Docker volumes (wireguard keys, DB)    │\n'
-printf '│    • Docker networks phobos_wg / wg-easy_wg │\n'
+printf '│    • Docker network phobos_wg               │\n'
 printf '│    • Docker image ground-zerro/phobos       │\n'
-printf '│    • Deploy directory %s          │\n' "$DEPLOY_DIR"
-printf '│    • /var/log/wg-easy (if present)          │\n'
+printf '│    • Deploy directory %s         │\n' "$DEPLOY_DIR"
+printf '│    • /var/log/phoboswg (if present)         │\n'
 printf '└─────────────────────────────────────────────┘\n'
 printf '\e[0m'
 printf '\nType YES to continue: '
 read -r CONFIRM
 [ "$CONFIRM" = "YES" ] || { warn "Aborted."; exit 0; }
 
-# ── 1. Stop & remove container ──────────────────────────────────────────────
 log "Stopping container"
 if [ -d "$DEPLOY_DIR" ] && [ -f "$DEPLOY_DIR/$COMPOSE_FILE" ]; then
     docker compose -f "$DEPLOY_DIR/$COMPOSE_FILE" down \
@@ -39,27 +38,22 @@ else
     warn "No compose file found — stopped container directly"
 fi
 
-# ── 2. Remove Docker volumes ─────────────────────────────────────────────────
 log "Removing Docker volumes"
-for VOL in etc_wireguard sqlite_data certs_data acme_data; do
-    for CANDIDATE in "${VOL}" "wg-easy_${VOL}"; do
-        if docker volume inspect "$CANDIDATE" >/dev/null 2>&1; then
-            docker volume rm "$CANDIDATE"
-            ok "Volume removed: $CANDIDATE"
-        fi
-    done
+for VOL in phobos_etc_wireguard phobos_sqlite_data phobos_certs_data phobos_acme_data phobos_caddy_data phobos_caddy_config; do
+    if docker volume inspect "$VOL" >/dev/null 2>&1; then
+        docker volume rm "$VOL"
+        ok "Volume removed: $VOL"
+    fi
 done
 
-# ── 3. Remove Docker network ─────────────────────────────────────────────────
 log "Removing Docker network"
-for NET in phobos_wg wg-easy_wg wg_easy_wg; do
+for NET in phobos_wg phoboswg_wg; do
     if docker network inspect "$NET" >/dev/null 2>&1; then
         docker network rm "$NET"
         ok "Network removed: $NET"
     fi
 done
 
-# ── 4. Remove Docker images ──────────────────────────────────────────────────
 log "Removing Docker images"
 for IMG in "ghcr.io/ground-zerro/phobos:latest"; do
     if docker image inspect "$IMG" >/dev/null 2>&1; then
@@ -68,7 +62,6 @@ for IMG in "ghcr.io/ground-zerro/phobos:latest"; do
     fi
 done
 
-# ── 5. Remove deploy directory ───────────────────────────────────────────────
 log "Removing deploy directory: $DEPLOY_DIR"
 if [ -d "$DEPLOY_DIR" ]; then
     rm -rf "$DEPLOY_DIR"
@@ -77,17 +70,15 @@ else
     warn "Deploy directory not found, skipping"
 fi
 
-# ── 6. Remove logs ───────────────────────────────────────────────────────────
 log "Removing logs"
-for LOG_PATH in /var/log/wg-easy /var/log/wg-easy.log; do
+for LOG_PATH in /var/log/phoboswg /var/log/phoboswg.log; do
     if [ -e "$LOG_PATH" ]; then
         rm -rf "$LOG_PATH"
         ok "Removed $LOG_PATH"
     fi
 done
 
-# ── 7. Remove .env residuals in common locations ─────────────────────────────
-for ENV_FILE in /root/.wg-easy.env /etc/wg-easy.env; do
+for ENV_FILE in /root/.phoboswg.env /etc/phoboswg.env; do
     if [ -f "$ENV_FILE" ]; then
         rm -f "$ENV_FILE"
         ok "Removed $ENV_FILE"
@@ -95,5 +86,5 @@ for ENV_FILE in /root/.wg-easy.env /etc/wg-easy.env; do
 done
 
 printf '\n\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'
-printf '\e[1;32m  Phobos fully removed from this server\e[0m\n'
+printf '\e[1;32m  PhobosWG fully removed from this server\e[0m\n'
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n\n'

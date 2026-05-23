@@ -16,7 +16,7 @@ set -euo pipefail
 #   scripts/deploy/certs.sh root@host import my-cert /path/fullchain.pem /path/privkey.pem
 
 REMOTE=""
-REMOTE_PATH="/opt/wg-easy"
+REMOTE_PATH="/opt/phoboswg"
 ARGS=()
 
 while [ $# -gt 0 ]; do

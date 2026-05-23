@@ -155,9 +155,7 @@
       "allowedIpsDesc": "IP yang diizinkan untuk digunakan klien (konfigurasi global)",
       "dnsDesc": "Server DNS yang akan digunakan klien (konfigurasi global)",
       "mtuDesc": "MTU yang akan digunakan klien (hanya untuk klien baru)",
-      "persistentKeepaliveDesc": "Interval dalam detik untuk mengirim keepalive ke server. 0 = dinonaktifkan (hanya untuk klien baru)",
-      "suggest": "Menyarankan",
-      "suggestDesc": "Pilih alamat IP atau hostname untuk kolom Host"
+      "persistentKeepaliveDesc": "Interval dalam detik untuk mengirim keepalive ke server. 0 = dinonaktifkan (hanya untuk klien baru)"
     },
     "interface": {
       "cidrSuccess": "CIDR diperbarui",

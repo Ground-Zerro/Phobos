@@ -18,7 +18,7 @@ import { InstallLinkService } from './repositories/installLink/service';
 
 const DB_DEBUG = debug('Database');
 
-const client = createClient({ url: 'file:/etc/wireguard/wg-easy.db' });
+const client = createClient({ url: 'file:/etc/wireguard/phobos.db' });
 const db = drizzle({ client, schema });
 
 export async function connect() {
