@@ -1,6 +1,8 @@
 export default definePermissionEventHandler('admin', 'any', async () => {
   await WireGuard.Restart();
-  await Obfuscator.applyAll();
+
+  const iface = await Database.interfaces.get();
+  await Obfuscator.apply(iface);
   PhobosPackage.invalidate();
 
   return { success: true };

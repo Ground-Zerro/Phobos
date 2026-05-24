@@ -27,15 +27,23 @@ export default definePermissionEventHandler(
     }
 
     const prev = await Database.interfaces.get();
-    const publicIpChanged =
+
+    const obfuscatorChanged =
+      prev.obfuscatorExtPort !== data.obfuscatorExtPort ||
+      prev.obfuscatorKey !== data.obfuscatorKey ||
+      prev.obfuscatorMasking !== data.obfuscatorMasking ||
+      prev.obfuscatorIdle !== data.obfuscatorIdle ||
+      prev.obfuscatorDummy !== data.obfuscatorDummy ||
       prev.serverPublicIpV4 !== data.serverPublicIpV4 ||
-      prev.serverPublicIpV6 !== data.serverPublicIpV6;
+      prev.serverPublicIpV6 !== data.serverPublicIpV6 ||
+      prev.clientWgLocalPort !== data.clientWgLocalPort;
 
     await Database.interfaces.update(data);
     await WireGuard.saveConfig();
 
-    if (publicIpChanged) {
-      await Obfuscator.applyAll();
+    if (obfuscatorChanged) {
+      const updated = await Database.interfaces.get();
+      await Obfuscator.apply(updated);
     }
 
     PhobosPackage.invalidate();

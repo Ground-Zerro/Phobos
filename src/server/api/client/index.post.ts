@@ -4,12 +4,12 @@ export default definePermissionEventHandler(
   'clients',
   'create',
   async ({ event }) => {
-    const { name, expiresAt, presetId } = await readValidatedBody(
+    const { name, expiresAt } = await readValidatedBody(
       event,
       validateZod(ClientCreateSchema, event)
     );
 
-    const result = await Database.clients.create({ name, expiresAt, presetId });
+    const result = await Database.clients.create({ name, expiresAt });
     await WireGuard.saveConfig();
 
     const clientId = result[0]!.clientId;

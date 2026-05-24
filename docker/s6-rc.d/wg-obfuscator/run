@@ -1,7 +1,12 @@
 #!/command/with-contenv sh
 
-while [ ! -s /run/wg-obfuscator.conf ]; do
+while [ ! -s /run/wg-obfuscator.args ]; do
   sleep 1
 done
 
-exec setsid /usr/local/bin/wg-obfuscator --config /run/wg-obfuscator.conf
+set --
+while IFS= read -r arg || [ -n "$arg" ]; do
+  [ -n "$arg" ] && set -- "$@" "$arg"
+done < /run/wg-obfuscator.args
+
+exec /usr/local/bin/wg-obfuscator "$@"

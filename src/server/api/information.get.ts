@@ -9,6 +9,10 @@ export default defineEventHandler(async () => {
     WG_ENV.INSECURE || (await Database.general.getAllowInsecureHttpLogin());
   const wgInterface = await Database.interfaces.get();
 
+  const envPort = Number(process.env.OBF_PORT);
+  const obfuscatorPortPinned =
+    Number.isFinite(envPort) && envPort >= 1024 && envPort <= 65535;
+
   const tlsOrigin = readTlsOrigin();
   const tlsUntrusted = isUntrustedTls(tlsOrigin);
   const tlsManagedExternally = isExternalTlsManaged();
@@ -17,6 +21,7 @@ export default defineEventHandler(async () => {
     currentRelease: RELEASE,
     insecure,
     firewallEnabled: wgInterface.firewallEnabled,
+    obfuscatorPortPinned,
     tlsOrigin,
     tlsUntrusted,
     tlsManagedExternally,

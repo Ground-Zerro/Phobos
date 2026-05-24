@@ -7,7 +7,6 @@
       "general": "General",
       "config": "Config",
       "interface": "Interface",
-      "obfuscatorPresets": "Obfuscator presets",
       "hooks": "Hooks"
     }
   },
@@ -147,10 +146,7 @@
     "viewConfig": "View Configuration",
     "firewallIps": "Firewall Allowed IPs",
     "firewallIpsDesc": "Destination IPs/CIDRs this client can access (server-side enforcement). Leave empty to use Allowed IPs. Supports optional port and protocol filtering. See docs for syntax.",
-    "downloadPng": "Download PNG",
-    "preset": "Obfuscator preset",
-    "presetDesc": "Choose which obfuscator preset routes this client. Leave on default to follow the server's default preset.",
-    "presetUseDefault": "Use default preset"
+    "downloadPng": "Download PNG"
   },
   "dialog": {
     "change": "Change",
@@ -220,32 +216,30 @@
       "restartSuccess": "Interface restarted",
       "firewall": "Traffic Filtering",
       "firewallEnabled": "Enable Per-Client Firewall",
-      "firewallEnabledDesc": "Restrict client traffic to specific destination IPs using iptables. When enabled, each client can be configured with allowed destinations.",
-      "publicAddress": "Public address",
+      "firewallEnabledDesc": "Restrict client traffic to specific destination IPs using iptables. When enabled, each client can be configured with allowed destinations."
+    },
+    "obfuscator": {
+      "heading": "Obfuscator",
+      "extPort": "External UDP port",
+      "extPortDesc": "Public UDP port obfuscator listens on. Pinned when OBF_PORT env is set.",
+      "key": "Obfuscator key",
+      "keyDesc": "XOR key shared between server and all clients.",
+      "regenerateKey": "Regenerate key",
+      "keyRegenerated": "Obfuscator key regenerated",
+      "regeneratePort": "Pick free port",
+      "portRegenerated": "Obfuscator port changed",
+      "masking": "Masking mode (STUN / AUTO / NONE)",
+      "maskingDesc": "STUN wraps packets in STUN Binding messages. AUTO lets the obfuscator choose. NONE disables masking.",
+      "idle": "Idle timeout (seconds)",
+      "idleDesc": "Time after which an inactive client is removed from the session table.",
+      "dummy": "Max dummy bytes",
+      "dummyDesc": "Random padding prepended to each packet. Larger values increase entropy but also overhead.",
       "publicIpV4": "Server public IPv4",
       "publicIpV4Desc": "Used as target in client obfuscator config.",
       "publicIpV6": "Server public IPv6",
       "publicIpV6Desc": "Optional IPv6 target."
     },
-    "obfuscatorPresets": {
-      "title": "Obfuscator presets",
-      "desc": "Each preset runs its own wg-obfuscator listener with independent port, key and masking. The default preset is used by every client that has no explicit assignment. Ports must be in the 51822-51921 range published by docker-compose.",
-      "add": "Add preset",
-      "default": "default",
-      "setAsDefault": "Set as default",
-      "deleteConfirm": "Delete this preset? Clients using it will fall back to the default preset.",
-      "regenerateKey": "Regenerate key",
-      "regeneratePort": "Pick free port",
-      "nameLabel": "Name",
-      "extPortLabel": "External UDP port (51822-51921)",
-      "keyLabel": "Obfuscator key",
-      "maskingLabel": "Masking mode",
-      "idleLabel": "Idle timeout (seconds)",
-      "dummyLabel": "Max dummy bytes",
-      "clientLocalPortLabel": "Client-side WireGuard local port",
-      "clientCount": "{n} client(s)"
-    },
-    "introText": "Welcome to the admin panel.\n\nHere you can manage general settings, configuration, the interface, obfuscator presets and the hooks.\n\nStart by choosing one of the sections in the sidebar."
+    "introText": "Welcome to the admin panel.\n\nHere you can manage the general settings, the configuration, the interface settings and the hooks.\n\nStart by choosing one of the sections in the sidebar."
   },
   "zod": {
     "generic": {
@@ -266,18 +260,7 @@
       "address6": "IPv6 Address",
       "serverAllowedIps": "Server Allowed IPs",
       "firewallIps": "Firewall Allowed IPs",
-      "firewallIpsInvalid": "Invalid firewall IP entry. See docs for supported syntax.",
-      "presetId": "Obfuscator preset ID"
-    },
-    "obfuscatorPreset": {
-      "id": "Obfuscator preset ID",
-      "name": "Preset name",
-      "extPort": "External UDP port (51822-51921)",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Idle timeout",
-      "dummy": "Max dummy bytes",
-      "clientWgLocalPort": "Client-side WireGuard local port"
+      "firewallIpsInvalid": "Invalid firewall IP entry. See docs for supported syntax."
     },
     "user": {
       "username": "Username",

@@ -7,16 +7,7 @@
       <ClientCardAvatar :client="client" />
       <div class="flex w-full flex-col gap-2 xxs:flex-row">
         <div class="flex flex-grow flex-col gap-1">
-          <div class="flex items-center gap-2">
-            <ClientCardName :client="client" />
-            <span
-              v-if="presetBadge"
-              class="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300"
-              :title="$t('client.preset')"
-            >
-              {{ presetBadge }}
-            </span>
-          </div>
+          <ClientCardName :client="client" />
           <div
             class="flex flex-col text-xs text-gray-500 dark:text-neutral-400"
           >
@@ -53,13 +44,7 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   client: LocalClient;
 }>();
-
-const presetBadge = computed(() => {
-  const preset = (props.client as LocalClient & { preset?: { name: string; isDefault: boolean } }).preset;
-  if (!preset || preset.isDefault) return null;
-  return preset.name;
-});
 </script>

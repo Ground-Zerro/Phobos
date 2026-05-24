@@ -58,7 +58,6 @@ const menuItems = computed(() => [
   { id: 'general', name: t('pages.admin.general') },
   { id: 'config', name: t('pages.admin.config') },
   { id: 'interface', name: t('pages.admin.interface') },
-  { id: 'obfuscator-presets', name: t('pages.admin.obfuscatorPresets') },
   { id: 'hooks', name: t('pages.admin.hooks') },
 ]);
 

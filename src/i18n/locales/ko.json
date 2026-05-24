@@ -169,7 +169,30 @@
       "restartWarn": "인터페이스를 재시작하시겠습니까? 이 작업은 모든 클라이언트를 연결 해제합니다.",
       "restartSuccess": "인터페이스가 재시작되었습니다"
     },
-    "introText": "관리 패널에 오신 것을 환영합니다.\n\n여기에서 일반 설정, 구성, 인터페이스 설정 및 후크를 관리할 수 있습니다.\n\n사이드바에서 섹션 중 하나를 선택하여 시작하세요."
+    "introText": "관리 패널에 오신 것을 환영합니다.\n\n여기에서 일반 설정, 구성, 인터페이스 설정 및 후크를 관리할 수 있습니다.\n\n사이드바에서 섹션 중 하나를 선택하여 시작하세요.",
+    "obfuscator": {
+      "heading": "Obfuscator",
+      "extPort": "External UDP port",
+      "extPortDesc": "Public UDP port obfuscator listens on. Pinned when OBF_PORT env is set.",
+      "key": "Obfuscator key",
+      "keyDesc": "XOR key shared between server and all clients.",
+      "regenerateKey": "Regenerate key",
+      "keyRegenerated": "Obfuscator key regenerated",
+      "regeneratePort": "Pick free port",
+      "portRegenerated": "Obfuscator port changed",
+      "masking": "Masking mode (STUN / AUTO / NONE)",
+      "maskingDesc": "STUN wraps packets in STUN Binding messages. AUTO lets the obfuscator choose. NONE disables masking.",
+      "idle": "Idle timeout (seconds)",
+      "idleDesc": "Time after which an inactive client is removed from the session table.",
+      "dummy": "Max dummy bytes",
+      "dummyDesc": "Random padding prepended to each packet. Larger values increase entropy but also overhead.",
+      "publicIpV4": "Server public IPv4",
+      "publicIpV4Desc": "Used as target in client obfuscator config.",
+      "publicIpV6": "Server public IPv6",
+      "publicIpV6Desc": "Optional IPv6 target.",
+      "clientWgLocalPort": "Client-side WG → obfuscator port",
+      "clientWgLocalPortDesc": "Local loopback port the WireGuard client sends to on the device."
+    }
   },
   "zod": {
     "generic": {

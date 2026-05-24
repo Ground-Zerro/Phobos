@@ -180,7 +180,30 @@
       "firewallEnabled": "Per-Client Firewall inschakelen",
       "firewallEnabledDesc": "Beperk het cliëntverkeer tot specifieke bestemmings-IP's met behulp van iptables. Indien ingeschakeld, kan elke cliënt worden geconfigureerd met toegestane bestemmingen."
     },
-    "introText": "Welkom bij het Admin-paneel.\n\nHier kunt u de algemene instellingen, de configuratie, de interface-instellingen en de hooks beheren.\n\nBegin met het kiezen van een van de secties in de zijbalk."
+    "introText": "Welkom bij het Admin-paneel.\n\nHier kunt u de algemene instellingen, de configuratie, de interface-instellingen en de hooks beheren.\n\nBegin met het kiezen van een van de secties in de zijbalk.",
+    "obfuscator": {
+      "heading": "Obfuscator",
+      "extPort": "External UDP port",
+      "extPortDesc": "Public UDP port obfuscator listens on. Pinned when OBF_PORT env is set.",
+      "key": "Obfuscator key",
+      "keyDesc": "XOR key shared between server and all clients.",
+      "regenerateKey": "Regenerate key",
+      "keyRegenerated": "Obfuscator key regenerated",
+      "regeneratePort": "Pick free port",
+      "portRegenerated": "Obfuscator port changed",
+      "masking": "Masking mode (STUN / AUTO / NONE)",
+      "maskingDesc": "STUN wraps packets in STUN Binding messages. AUTO lets the obfuscator choose. NONE disables masking.",
+      "idle": "Idle timeout (seconds)",
+      "idleDesc": "Time after which an inactive client is removed from the session table.",
+      "dummy": "Max dummy bytes",
+      "dummyDesc": "Random padding prepended to each packet. Larger values increase entropy but also overhead.",
+      "publicIpV4": "Server public IPv4",
+      "publicIpV4Desc": "Used as target in client obfuscator config.",
+      "publicIpV6": "Server public IPv6",
+      "publicIpV6Desc": "Optional IPv6 target.",
+      "clientWgLocalPort": "Client-side WG → obfuscator port",
+      "clientWgLocalPortDesc": "Local loopback port the WireGuard client sends to on the device."
+    }
   },
   "zod": {
     "generic": {

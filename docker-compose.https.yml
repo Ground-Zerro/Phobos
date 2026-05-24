@@ -11,6 +11,7 @@ services:
     image: ${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}
     container_name: phobos
     environment:
+      - OBF_PORT=${OBF_PORT:-51822}
       - WG_HOST=${WG_HOST:-}
       - TLS_TERMINATION=external
       - INIT_ENABLED=${INIT_ENABLED:-false}
@@ -27,7 +28,7 @@ services:
       - /lib/modules:/lib/modules:ro
       - ./certs:/app/certs:ro
     ports:
-      - "51822-51921:51822-51921/udp"
+      - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
     restart: unless-stopped
     cap_add:
       - NET_ADMIN

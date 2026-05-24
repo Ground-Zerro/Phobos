@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/phoboswg}"
+OBF_PORT="${OBF_PORT:-51822}"
 UI_PORT="${UI_PORT:-51831}"
 WG_HOST="${WG_HOST:-}"
 WG_EASY_IMAGE="${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}"
@@ -173,6 +174,7 @@ log "Writing .env"
 if [ "$INIT_ENABLED" = "true" ]; then
   cat > "${DEPLOY_DIR}/.env" <<EOF
 WG_HOST=${WG_HOST}
+OBF_PORT=${OBF_PORT}
 WG_EASY_IMAGE=${WG_EASY_IMAGE}
 INIT_ENABLED=true
 INIT_USERNAME=${INIT_USERNAME}
@@ -182,6 +184,7 @@ EOF
 else
   cat > "${DEPLOY_DIR}/.env" <<EOF
 WG_HOST=${WG_HOST}
+OBF_PORT=${OBF_PORT}
 WG_EASY_IMAGE=${WG_EASY_IMAGE}
 INIT_ENABLED=false
 EOF
@@ -192,8 +195,8 @@ log "Pulling image"
 docker compose -f "$COMPOSE_FILE" pull
 ok "Image pulled"
 
-log "Starting stack (compose=$COMPOSE_FILE)"
-docker compose -f "$COMPOSE_FILE" up -d --force-recreate
+log "Starting stack (compose=$COMPOSE_FILE, OBF_PORT=$OBF_PORT)"
+OBF_PORT="$OBF_PORT" docker compose -f "$COMPOSE_FILE" up -d --force-recreate
 ok "Stack started"
 
 wait_healthy
@@ -226,7 +229,7 @@ fi
 
 printf '\n'
 printf '  Admin UI    : %s:%s\n' "$WG_HOST" "$UI_PORT"
-printf '  Obfuscator  : UDP %s:51822-51921 (preset range)\n' "$WG_HOST"
+printf '  Obfuscator  : UDP %s:%s\n' "$WG_HOST" "$OBF_PORT"
 printf '  Image       : %s\n' "$WG_EASY_IMAGE"
 printf '  Deploy dir  : %s\n' "$DEPLOY_DIR"
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'

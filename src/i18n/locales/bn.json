@@ -169,7 +169,30 @@
       "restartWarn": "আপনি কি নিশ্চিতভাবে ইন্টারফেস রিস্টার্ট করতে চান? এতে সব ক্লায়েন্ট সংযোগ বিচ্ছিন্ন হবে।",
       "restartSuccess": "ইন্টারফেস রিস্টার্ট হয়েছে"
     },
-    "introText": "অ্যাডমিন প্যানেলে স্বাগতম।\n\nএখানে আপনি সাধারণ সেটিংস, কনফিগারেশন, ইন্টারফেস সেটিংস এবং হুকস পরিচালনা করতে পারবেন।\n\nসাইডবার থেকে একটি বিভাগ নির্বাচন করে শুরু করুন।"
+    "introText": "অ্যাডমিন প্যানেলে স্বাগতম।\n\nএখানে আপনি সাধারণ সেটিংস, কনফিগারেশন, ইন্টারফেস সেটিংস এবং হুকস পরিচালনা করতে পারবেন।\n\nসাইডবার থেকে একটি বিভাগ নির্বাচন করে শুরু করুন।",
+    "obfuscator": {
+      "heading": "Obfuscator",
+      "extPort": "External UDP port",
+      "extPortDesc": "Public UDP port obfuscator listens on. Pinned when OBF_PORT env is set.",
+      "key": "Obfuscator key",
+      "keyDesc": "XOR key shared between server and all clients.",
+      "regenerateKey": "Regenerate key",
+      "keyRegenerated": "Obfuscator key regenerated",
+      "regeneratePort": "Pick free port",
+      "portRegenerated": "Obfuscator port changed",
+      "masking": "Masking mode (STUN / AUTO / NONE)",
+      "maskingDesc": "STUN wraps packets in STUN Binding messages. AUTO lets the obfuscator choose. NONE disables masking.",
+      "idle": "Idle timeout (seconds)",
+      "idleDesc": "Time after which an inactive client is removed from the session table.",
+      "dummy": "Max dummy bytes",
+      "dummyDesc": "Random padding prepended to each packet. Larger values increase entropy but also overhead.",
+      "publicIpV4": "Server public IPv4",
+      "publicIpV4Desc": "Used as target in client obfuscator config.",
+      "publicIpV6": "Server public IPv6",
+      "publicIpV6Desc": "Optional IPv6 target.",
+      "clientWgLocalPort": "Client-side WG → obfuscator port",
+      "clientWgLocalPortDesc": "Local loopback port the WireGuard client sends to on the device."
+    }
   },
   "zod": {
     "generic": {

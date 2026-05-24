@@ -180,7 +180,30 @@
       "firewallEnabled": "啟用個別用戶端防火牆",
       "firewallEnabledDesc": "使用 iptables 限制用戶端流量僅能存取特定 IP。啟用後，可針對每個用戶端設定其允許的存取範圍。"
     },
-    "introText": "歡迎使用管理面板。\n\n您可在此管理一般、組態、介面與 Hook 設定。\n\n請從側邊欄選擇任一項目開始。"
+    "introText": "歡迎使用管理面板。\n\n您可在此管理一般、組態、介面與 Hook 設定。\n\n請從側邊欄選擇任一項目開始。",
+    "obfuscator": {
+      "heading": "Obfuscator",
+      "extPort": "External UDP port",
+      "extPortDesc": "Public UDP port obfuscator listens on. Pinned when OBF_PORT env is set.",
+      "key": "Obfuscator key",
+      "keyDesc": "XOR key shared between server and all clients.",
+      "regenerateKey": "Regenerate key",
+      "keyRegenerated": "Obfuscator key regenerated",
+      "regeneratePort": "Pick free port",
+      "portRegenerated": "Obfuscator port changed",
+      "masking": "Masking mode (STUN / AUTO / NONE)",
+      "maskingDesc": "STUN wraps packets in STUN Binding messages. AUTO lets the obfuscator choose. NONE disables masking.",
+      "idle": "Idle timeout (seconds)",
+      "idleDesc": "Time after which an inactive client is removed from the session table.",
+      "dummy": "Max dummy bytes",
+      "dummyDesc": "Random padding prepended to each packet. Larger values increase entropy but also overhead.",
+      "publicIpV4": "Server public IPv4",
+      "publicIpV4Desc": "Used as target in client obfuscator config.",
+      "publicIpV6": "Server public IPv6",
+      "publicIpV6Desc": "Optional IPv6 target.",
+      "clientWgLocalPort": "Client-side WG → obfuscator port",
+      "clientWgLocalPortDesc": "Local loopback port the WireGuard client sends to on the device."
+    }
   },
   "zod": {
     "generic": {

@@ -180,7 +180,30 @@
       "firewallEnabled": "Bật tường lửa theo từng người dùng",
       "firewallEnabledDesc": "Áp dụng iptables để giới hạn người dùng chỉ truy cập các IP đích xác định. Sau khi kích hoạt, cho phép cấu hình điểm đến riêng cho từng người dùng."
     },
-    "introText": "Chào mừng đến bảng quản trị.\n\nTại đây bạn có thể quản lý cài đặt chung, cấu hình, cài đặt giao diện mạng và hooks.\n\nBắt đầu bằng cách chọn một trong các mục trong thanh bên."
+    "introText": "Chào mừng đến bảng quản trị.\n\nTại đây bạn có thể quản lý cài đặt chung, cấu hình, cài đặt giao diện mạng và hooks.\n\nBắt đầu bằng cách chọn một trong các mục trong thanh bên.",
+    "obfuscator": {
+      "heading": "Obfuscator",
+      "extPort": "External UDP port",
+      "extPortDesc": "Public UDP port obfuscator listens on. Pinned when OBF_PORT env is set.",
+      "key": "Obfuscator key",
+      "keyDesc": "XOR key shared between server and all clients.",
+      "regenerateKey": "Regenerate key",
+      "keyRegenerated": "Obfuscator key regenerated",
+      "regeneratePort": "Pick free port",
+      "portRegenerated": "Obfuscator port changed",
+      "masking": "Masking mode (STUN / AUTO / NONE)",
+      "maskingDesc": "STUN wraps packets in STUN Binding messages. AUTO lets the obfuscator choose. NONE disables masking.",
+      "idle": "Idle timeout (seconds)",
+      "idleDesc": "Time after which an inactive client is removed from the session table.",
+      "dummy": "Max dummy bytes",
+      "dummyDesc": "Random padding prepended to each packet. Larger values increase entropy but also overhead.",
+      "publicIpV4": "Server public IPv4",
+      "publicIpV4Desc": "Used as target in client obfuscator config.",
+      "publicIpV6": "Server public IPv6",
+      "publicIpV6Desc": "Optional IPv6 target.",
+      "clientWgLocalPort": "Client-side WG → obfuscator port",
+      "clientWgLocalPortDesc": "Local loopback port the WireGuard client sends to on the device."
+    }
   },
   "zod": {
     "generic": {

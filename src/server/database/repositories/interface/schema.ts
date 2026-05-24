@@ -16,8 +16,18 @@ export const wgInterface = sqliteTable('interfaces_table', {
   firewallEnabled: int('firewall_enabled', { mode: 'boolean' })
     .notNull()
     .default(false),
+  obfuscatorExtPort: int('obfuscator_ext_port').notNull().default(51822),
+  obfuscatorKey: text('obfuscator_key').notNull().default(''),
+  obfuscatorMasking: text('obfuscator_masking', {
+    enum: ['STUN', 'AUTO', 'NONE'],
+  })
+    .notNull()
+    .default('STUN'),
+  obfuscatorIdle: int('obfuscator_idle').notNull().default(300),
+  obfuscatorDummy: int('obfuscator_dummy').notNull().default(10),
   serverPublicIpV4: text('server_public_ip_v4').notNull().default(''),
   serverPublicIpV6: text('server_public_ip_v6'),
+  clientWgLocalPort: int('client_wg_local_port').notNull().default(13255),
   createdAt: text('created_at')
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),

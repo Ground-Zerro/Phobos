@@ -25,18 +25,59 @@
         />
       </FormGroup>
       <FormGroup>
-        <FormHeading>{{ $t('admin.interface.publicAddress') }}</FormHeading>
+        <FormHeading>{{ $t('admin.obfuscator.heading') }}</FormHeading>
+
+        <FormNumberField
+          id="obfuscatorExtPort"
+          v-model="data.obfuscatorExtPort"
+          :label="$t('admin.obfuscator.extPort')"
+          :description="$t('admin.obfuscator.extPortDesc')"
+          :disabled="isPortPinned"
+        />
+        <FormSecondaryActionField
+          v-if="!isPortPinned"
+          :label="$t('admin.obfuscator.regeneratePort')"
+          @click="regeneratePort"
+        />
+        <FormTextField
+          id="obfuscatorKey"
+          v-model="data.obfuscatorKey"
+          :label="$t('admin.obfuscator.key')"
+          :description="$t('admin.obfuscator.keyDesc')"
+        />
+        <FormSecondaryActionField
+          :label="$t('admin.obfuscator.regenerateKey')"
+          @click="regenerateKey"
+        />
+        <FormTextField
+          id="obfuscatorMasking"
+          v-model="data.obfuscatorMasking"
+          :label="$t('admin.obfuscator.masking')"
+          :description="$t('admin.obfuscator.maskingDesc')"
+        />
+        <FormNumberField
+          id="obfuscatorIdle"
+          v-model="data.obfuscatorIdle"
+          :label="$t('admin.obfuscator.idle')"
+          :description="$t('admin.obfuscator.idleDesc')"
+        />
+        <FormNumberField
+          id="obfuscatorDummy"
+          v-model="data.obfuscatorDummy"
+          :label="$t('admin.obfuscator.dummy')"
+          :description="$t('admin.obfuscator.dummyDesc')"
+        />
         <FormTextField
           id="serverPublicIpV4"
           v-model="data.serverPublicIpV4"
-          :label="$t('admin.interface.publicIpV4')"
-          :description="$t('admin.interface.publicIpV4Desc')"
+          :label="$t('admin.obfuscator.publicIpV4')"
+          :description="$t('admin.obfuscator.publicIpV4Desc')"
         />
         <FormNullTextField
           id="serverPublicIpV6"
           v-model="data.serverPublicIpV6"
-          :label="$t('admin.interface.publicIpV6')"
-          :description="$t('admin.interface.publicIpV6Desc')"
+          :label="$t('admin.obfuscator.publicIpV6')"
+          :description="$t('admin.obfuscator.publicIpV6Desc')"
         />
       </FormGroup>
       <FormGroup>
@@ -72,6 +113,7 @@
 
 <script setup lang="ts">
 const globalStore = useGlobalStore();
+
 const { t } = useI18n();
 
 const { data: _data, refresh } = await useFetch(`/api/admin/interface`, {
@@ -89,6 +131,7 @@ const _submit = useSubmit(
     revert: async (success) => {
       await revert();
       if (success) {
+        // Refresh global store information after successful save
         await globalStore.refreshInformation();
       }
     },
@@ -132,5 +175,39 @@ const _restartInterface = useSubmit(
 
 async function restartInterface() {
   await _restartInterface(undefined);
+}
+
+const isPortPinned = computed(
+  () => globalStore.information?.obfuscatorPortPinned ?? false
+);
+
+const _regenerateKey = useSubmit<{ key: string }>(
+  '/api/admin/interface/regenerateObfuscatorKey',
+  { method: 'post' },
+  {
+    revert: async (success) => {
+      if (success) await revert();
+    },
+    successMsg: t('admin.obfuscator.keyRegenerated'),
+  }
+);
+
+async function regenerateKey() {
+  await _regenerateKey(undefined);
+}
+
+const _regeneratePort = useSubmit<{ port: number }>(
+  '/api/admin/interface/regenerateObfuscatorPort',
+  { method: 'post' },
+  {
+    revert: async (success) => {
+      if (success) await revert();
+    },
+    successMsg: t('admin.obfuscator.portRegenerated'),
+  }
+);
+
+async function regeneratePort() {
+  await _regeneratePort(undefined);
 }
 </script>

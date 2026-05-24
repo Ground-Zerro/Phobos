@@ -81,19 +81,14 @@ class PhobosPackageService {
     const client = await Database.clients.get(clientId);
     if (!client) throw new Error(`Client ${clientId} not found`);
 
-    const preset = await Database.obfuscatorPresets.getForClient(
-      client.presetId ?? null
-    );
-
     const slug = clientSlug(client.name, client.id);
     const pkgRoot = `phobos-${slug}`;
 
     const wgConf = wg.generateClientConfig(iface, userConfig, client, {
       enableIpv6: !WG_ENV.DISABLE_IPV6,
-      clientWgLocalPort: preset.clientWgLocalPort,
     });
 
-    const obfConf = Obfuscator.buildClientObfConf(preset, iface);
+    const obfConf = Obfuscator.buildClientObfConf(iface);
 
     const templatesDir = resolveTemplatesDir();
     const binDir = resolveBinDir();

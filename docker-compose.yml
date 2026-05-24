@@ -10,6 +10,7 @@ services:
     image: ${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}
     container_name: phobos
     environment:
+      - OBF_PORT=${OBF_PORT:-51822}
       - WG_HOST=${WG_HOST:-}
       - INIT_ENABLED=${INIT_ENABLED:-false}
       - INIT_USERNAME=${INIT_USERNAME:-}
@@ -43,7 +44,7 @@ services:
         bind:
           create_host_path: true
     ports:
-      - "51822-51921:51822-51921/udp"
+      - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
       - "51831:51831/tcp"
     restart: unless-stopped
     cap_add:

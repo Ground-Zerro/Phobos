@@ -22,9 +22,6 @@ function createPreparedStatement(db: DBType) {
       .findMany({
         with: {
           installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true },
-          },
         },
         columns: {
           privateKey: false,
@@ -38,12 +35,7 @@ function createPreparedStatement(db: DBType) {
     findByUserId: db.query.client
       .findMany({
         where: eq(client.userId, sql.placeholder('userId')),
-        with: {
-          installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true },
-          },
-        },
+        with: { installLink: true },
         columns: {
           privateKey: false,
           preSharedKey: false,
@@ -59,9 +51,6 @@ function createPreparedStatement(db: DBType) {
         ),
         with: {
           installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true },
-          },
         },
         columns: {
           privateKey: false,
@@ -79,12 +68,7 @@ function createPreparedStatement(db: DBType) {
             like(client.ipv6Address, sql.placeholder('filter'))
           )
         ),
-        with: {
-          installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true },
-          },
-        },
+        with: { installLink: true },
         columns: {
           privateKey: false,
           preSharedKey: false,
@@ -184,7 +168,7 @@ export class ClientService {
     return this.#statements.findById.execute({ id });
   }
 
-  async create({ name, expiresAt, presetId }: ClientCreateType) {
+  async create({ name, expiresAt }: ClientCreateType) {
     const privateKey = await wg.generatePrivateKey();
     const publicKey = await wg.getPublicKey(privateKey);
     const preSharedKey = await wg.generatePreSharedKey();
@@ -223,7 +207,6 @@ export class ClientService {
           // TODO: properly assign user id
           userId: 1,
           interfaceId: 'wg0',
-          presetId: presetId ?? null,
           expiresAt,
           privateKey,
           publicKey,
@@ -231,6 +214,14 @@ export class ClientService {
           ipv4Address,
           ipv6Address,
           mtu: clientConfig.defaultMtu,
+          jC: clientConfig.defaultJC,
+          jMin: clientConfig.defaultJMin,
+          jMax: clientConfig.defaultJMax,
+          i1: clientConfig.defaultI1,
+          i2: clientConfig.defaultI2,
+          i3: clientConfig.defaultI3,
+          i4: clientConfig.defaultI4,
+          i5: clientConfig.defaultI5,
           persistentKeepalive: clientConfig.defaultPersistentKeepalive,
           serverAllowedIps: [],
           enabled: true,
@@ -289,13 +280,19 @@ export class ClientService {
         name,
         userId: 1,
         interfaceId: 'wg0',
-        presetId: null,
         privateKey,
         publicKey,
         preSharedKey,
         ipv4Address,
         ipv6Address,
         mtu: clientConfig.defaultMtu,
+        jC: clientConfig.defaultJC,
+        jMin: clientConfig.defaultJMin,
+        jMax: clientConfig.defaultJMax,
+        i1: clientConfig.defaultI1,
+        i2: clientConfig.defaultI2,
+        i3: clientConfig.defaultI3,
+        i4: clientConfig.defaultI4,
         allowedIps: clientConfig.defaultAllowedIps,
         dns: clientConfig.defaultDns,
         persistentKeepalive: clientConfig.defaultPersistentKeepalive,

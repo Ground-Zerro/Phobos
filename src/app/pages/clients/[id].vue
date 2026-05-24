@@ -49,28 +49,6 @@
             />
           </FormGroup>
           <FormGroup>
-            <FormHeading :description="$t('client.presetDesc')">
-              {{ $t('client.preset') }}
-            </FormHeading>
-            <div class="flex flex-col gap-1">
-              <FormLabel for="presetId">{{ $t('client.preset') }}</FormLabel>
-              <select
-                id="presetId"
-                v-model="data.presetId"
-                class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-              >
-                <option :value="null">{{ $t('client.presetUseDefault') }}</option>
-                <option
-                  v-for="p in presetList"
-                  :key="p.id"
-                  :value="p.id"
-                >
-                  {{ p.name }}{{ p.isDefault ? ' (default)' : '' }}
-                </option>
-              </select>
-            </div>
-          </FormGroup>
-          <FormGroup>
             <FormHeading :description="$t('client.allowedIpsDesc')">
               {{ $t('general.allowedIps') }}
             </FormHeading>
@@ -186,22 +164,10 @@ const globalStore = useGlobalStore();
 const route = useRoute();
 const id = route.params.id as string;
 
-type PresetSummary = {
-  id: number;
-  name: string;
-  isDefault: boolean;
-};
-
 const { data: _data, refresh } = await useFetch(`/api/client/${id}`, {
   method: 'get',
 });
 const data = toRef(_data.value);
-
-const { data: presets } = await useFetch<PresetSummary[]>(
-  '/api/admin/obfuscator-presets',
-  { method: 'get', default: () => [] }
-);
-const presetList = computed(() => presets.value ?? []);
 
 const _submit = useSubmit(
   `/api/client/${id}`,

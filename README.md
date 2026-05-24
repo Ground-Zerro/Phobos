@@ -14,33 +14,25 @@ WireGuard admin panel with a built-in STUN obfuscator. Traffic from the client t
 
 - WireGuard + Web UI + XOR/STUN obfuscator in a single container.
 - s6-overlay supervises `node` and `wg-obfuscator` as independent long-running services.
-- **Obfuscator presets**: run multiple independent obfuscator listeners side by side (different port/key/masking/idle/dummy), and pick one per client.
-- Public WireGuard port is not exposed; only obfuscator UDP ports are published.
+- Public WireGuard port is not exposed; only the obfuscator UDP port is published.
 - Per-client **install-link**: one shell command installs a full Phobos package on the client (WG config + platform installer + multi-arch obfuscator binary).
-- Admin UI for tuning presets, masking mode, keys, ports — per preset.
+- Admin UI for tuning obfuscator level, masking mode, key, port.
 - SQLite + Drizzle, multilanguage UI, 2FA, per-client firewall, IPv6, CIDR support.
 
 ## Quickstart (generic Docker)
 
 ```yaml
-name: phoboswg
-
-volumes:
-  phobos_etc_wireguard:
-  phobos_sqlite_data:
-  phobos_certs_data:
-
 services:
-  phobos:
+  wg-easy:
     image: ghcr.io/ground-zerro/phobos:latest
-    container_name: phobos
+    environment:
+      - OBF_PORT=51822
     ports:
-      - "51822-51921:51822-51921/udp"
-      - "51831:51831/tcp"
+      - "51822:51822/udp"
+      - "51821:51821/tcp"
     volumes:
-      - phobos_etc_wireguard:/etc/wireguard
-      - phobos_sqlite_data:/app/server/data
-      - phobos_certs_data:/app/certs
+      - etc_wireguard:/etc/wireguard
+      - sqlite_data:/app/server/data
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -48,9 +40,13 @@ services:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped
+
+volumes:
+  etc_wireguard:
+  sqlite_data:
 ```
 
-Open `http://<host>:51831`, complete the initial setup, create a client.
+Open `http://<host>:51821`, complete the initial setup, create a client.
 
 ## One-command server deploy
 
@@ -68,15 +64,18 @@ Script behavior:
 - starts the stack without server-side image build,
 - opens the setup wizard: create admin account, set hostname, configure TLS.
 
-After deployment open `http://<WG_HOST>:51831/` — the wizard guides through:
+After deployment open `http://<WG_HOST>:51821/` — the wizard guides through:
 1. Admin account (username + password)
 2. Server host (IP address or domain)
-3. TLS certificate (self-signed / import existing / import by path / skip)
+3. TLS certificate (self-signed / Let's Encrypt / skip)
+
+> Make sure port **80** is open for Let's Encrypt HTTP challenge.
 
 Optional parameters:
 
 ```shell
 WG_HOST=<PUBLIC_IP_OR_DOMAIN> \
+OBF_PORT=51822 \
 WG_EASY_IMAGE=ghcr.io/ground-zerro/phobos:latest \
 curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/ph-wg-easy/deploy.sh | sudo bash
 ```
@@ -93,73 +92,35 @@ curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/ph-wg-easy/depl
 
 Ports:
 
-- Web UI: `http://<WG_HOST>:51831/`
-- Obfuscator presets: `UDP <WG_HOST>:51822-51921` (one port per preset, allocated from this range)
+- Web UI: `http://<WG_HOST>:51821/`
+- Obfuscator: `UDP <WG_HOST>:<OBF_PORT>`
 
 ## How it works
 
 ```
-Client device                       Server (Docker)
-─────────────                       ────────────────
- app ─► 127.0.0.1:13255              0.0.0.0:<preset.extPort>
-        (local WG client)             (wg-obfuscator instance for this preset)
-           │                             │  STUN unwrap + XOR decode
-           │ plain WG                    ▼
-           ▼                        127.0.0.1:51820 (wg0, loopback-only)
- 127.0.0.1:13255                         │
- (wg-obfuscator client)                  │  WG
-           │                             ▼
-           │ XOR + STUN wrap        FORWARD → internet
+Client device                    Server (Docker)
+─────────────                    ────────────────
+ app ─► 127.0.0.1:13255           0.0.0.0:<OBF_PORT>
+        (local WG client)          (wg-obfuscator server)
+           │                            │  STUN unwrap + XOR decode
+           │ plain WG                   ▼
+           ▼                       127.0.0.1:51820 (wg0, loopback-only)
+ 127.0.0.1:13255                        │
+ (wg-obfuscator client)                 │  WG
+           │                            ▼
+           │ XOR + STUN wrap       FORWARD → internet
            ▼
- UDP → <server_ip>:<preset.extPort>
+ UDP → <server_ip>:<OBF_PORT>
 ```
-
-A single `wg-obfuscator` process loads `/run/wg-obfuscator.conf`, where the server holds one `[preset-<id>]` section per active preset; the binary forks one listener per section. Each listener forwards decoded traffic to the same loopback WireGuard port — so the WG side stays unaware of the preset selection.
-
-## Obfuscator presets
-
-Presets let you serve different clients (or groups of clients) through obfuscator listeners with **independent parameters** on the same WG interface.
-
-**What's in a preset**:
-- `name` — free-form label shown in the admin UI;
-- `extPort` — public UDP port the listener binds to, must be in `51822–51921` (the range docker-compose publishes by default);
-- `key` — XOR key shared with this preset's clients only;
-- `masking` — `STUN` / `AUTO` / `NONE`;
-- `idle` — idle session timeout (seconds);
-- `dummy` — max dummy bytes per packet;
-- `clientWgLocalPort` — local WG port on the client side (matters when several Phobos profiles coexist on one router);
-- `isDefault` — exactly one preset has this flag; it's used by every client that has no explicit assignment.
-
-**Why use it**:
-- Probe-resistant fallback: serve trusted users through `STUN` with light padding, hold a stricter `AUTO`-mode preset on a different port as backup.
-- Per-group isolation: separate the key for a public test client from your personal profile so a leaked package can't decode the other.
-- A/B different obfuscation parameters without restarting clients that don't move.
-
-**Admin UI** — *Admin Panel → Obfuscator presets*:
-- `Add preset` — Node picks the next free port in the range (or you supply one), generates a fresh key, applies the config and restarts the listener (single `s6-svc -r`).
-- `Set as default` — moves the default flag in a single transaction; new and unassigned clients immediately use this preset.
-- `Regenerate key` / `Regenerate port` — rotates the value and reapplies.
-- `Delete` — only allowed for non-default presets; clients pointing at it fall back to default automatically (`ON DELETE SET NULL`).
-
-**Per-client assignment**:
-- *Create client* dialog has a preset dropdown; default option is **Use default preset**.
-- *Edit client* page (`/clients/<id>`) has the same dropdown — switching it produces a new package download that targets the chosen preset's port/key.
-- A non-default preset shows as a colored badge next to the client's name in the list.
-
-**Lifecycle**:
-- Each create/update/delete/regenerate/set-default action calls `Obfuscator.applyAll()`: it regenerates `/run/wg-obfuscator.conf` from the DB and issues `s6-svc -r /run/service/wg-obfuscator`. The single restart re-forks all listeners; existing sessions reconnect via `idle-timeout`.
-- The run script starts the binary under `setsid` so all forked child listeners share a process group; `finish` follows up with `pkill -f /usr/local/bin/wg-obfuscator` to guarantee no zombie listeners survive a stop/restart.
 
 ## Client installation
 
-1. Admin creates a client in the Web UI (optionally choosing a non-default obfuscator preset).
+1. Admin creates a client in the Web UI.
 2. Admin clicks the **install-link** button — the command is copied to the clipboard:
    ```
    curl -sL http://<origin>/api/install/<token> | sh
    ```
 3. Admin pastes the command on the target device. The script downloads the Phobos package, detects the platform, installs `wg-obfuscator` and configures WireGuard.
-
-The downloaded WireGuard config carries the preset's parameters as an `[instance]` section appended to the standard `[Peer]` block, so the client obfuscator targets the right server port with the right key.
 
 ## Supported client platforms
 
@@ -167,6 +128,16 @@ The downloaded WireGuard config carries the preset's parameters as an `[instance
 - OpenWrt / ImmortalWrt (opkg + UCI)
 - Debian / Ubuntu Linux (apt + systemd)
 - 3x-ui panels (SQLite integration)
+
+## Obfuscator tuning
+
+| Level | Key length | Max dummy |
+|-------|-----------|-----------|
+| 1 — Light | 3 | 4 |
+| 2 — Sufficient | 6 | 10 |
+| 3 — Average | 20 | 20 |
+| 4 — Above average | 50 | 50 |
+| 5 — Nightmare | 255 | 100 |
 
 ## Remote deploy scripts
 

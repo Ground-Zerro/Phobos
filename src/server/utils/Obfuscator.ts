@@ -4,12 +4,10 @@ import { randomBytes } from 'node:crypto';
 import debug from 'debug';
 
 import type { InterfaceType } from '#db/repositories/interface/types';
-import type { ObfuscatorPresetType } from '#db/repositories/obfuscatorPreset/types';
-import { OBFUSCATOR_PORT_MIN } from '#db/repositories/obfuscatorPreset/types';
 
 const OBFUSCATOR_DEBUG = debug('Obfuscator');
 
-const CONFIG_PATH = '/run/wg-obfuscator.conf';
+const ARGS_PATH = '/run/wg-obfuscator.args';
 const SERVICE_DIR = '/run/service/wg-obfuscator';
 const DEFAULT_KEY_LENGTH = 16;
 
@@ -17,40 +15,24 @@ function isPrivateIp(ip: string): boolean {
   return /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.)/.test(ip);
 }
 
-export function generateObfuscatorKey(length: number = DEFAULT_KEY_LENGTH): string {
-  if (length < 1 || length > 255) {
-    throw new Error('Key length must be 1..255');
-  }
-  return randomBytes(length * 2)
-    .toString('base64')
-    .replace(/[+/=]/g, '')
-    .slice(0, length);
-}
-
 class ObfuscatorService {
-  buildSection(preset: ObfuscatorPresetType, wgPort: number): string {
+  buildArgs(iface: InterfaceType): string[] {
     return [
-      `[preset-${preset.id}]`,
-      'source-if = 0.0.0.0',
-      `source-lport = ${preset.extPort}`,
-      `target = 127.0.0.1:${wgPort}`,
-      `key = ${preset.key}`,
-      `masking = ${preset.masking}`,
-      'verbose = INFO',
-      `idle-timeout = ${preset.idle}`,
-      `max-dummy = ${preset.dummy}`,
-      '',
-    ].join('\n');
+      `--source-if=0.0.0.0`,
+      `--source-lport=${iface.obfuscatorExtPort}`,
+      `--target=127.0.0.1:${iface.port}`,
+      `--key=${iface.obfuscatorKey}`,
+      `--masking=${iface.obfuscatorMasking}`,
+      `--verbose=INFO`,
+      `--idle-timeout=${iface.obfuscatorIdle}`,
+      `--max-dummy=${iface.obfuscatorDummy}`,
+    ];
   }
 
-  buildConfigFile(presets: ObfuscatorPresetType[], wgPort: number): string {
-    return presets.map((p) => this.buildSection(p, wgPort)).join('\n');
-  }
-
-  async writeConfig(presets: ObfuscatorPresetType[], wgPort: number): Promise<void> {
-    const content = this.buildConfigFile(presets, wgPort);
-    await writeFile(CONFIG_PATH, content, { mode: 0o600 });
-    OBFUSCATOR_DEBUG(`wrote ${presets.length} instances to ${CONFIG_PATH}`);
+  async writeArgs(iface: InterfaceType): Promise<void> {
+    const args = this.buildArgs(iface);
+    await writeFile(ARGS_PATH, args.join('\n') + '\n', { mode: 0o600 });
+    OBFUSCATOR_DEBUG(`wrote args to ${ARGS_PATH}`);
   }
 
   async restart(): Promise<void> {
@@ -62,15 +44,14 @@ class ObfuscatorService {
     OBFUSCATOR_DEBUG('s6-svc -r issued');
   }
 
-  async applyAll(): Promise<void> {
-    const presets = await Database.obfuscatorPresets.list();
-    if (presets.length === 0) {
-      OBFUSCATOR_DEBUG('no presets configured, skipping apply');
-      return;
+  generateKey(length: number): string {
+    if (length < 1 || length > 255) {
+      throw new Error('Key length must be 1..255');
     }
-    const iface = await Database.interfaces.get();
-    await this.writeConfig(presets, iface.port);
-    await this.restart();
+    return randomBytes(length * 2)
+      .toString('base64')
+      .replace(/[+/=]/g, '')
+      .slice(0, length);
   }
 
   async detectPublicIpV4(): Promise<string> {
@@ -108,47 +89,85 @@ class ObfuscatorService {
     }
   }
 
-  buildClientObfConf(preset: ObfuscatorPresetType, iface: InterfaceType): string {
+  async findFreePort(min = 1024, max = 65535): Promise<number> {
+    let used = '';
+    try {
+      used = await exec('ss -ulnp');
+    } catch {
+      used = '';
+    }
+    const taken = new Set(
+      [...used.matchAll(/:(\d+)\s/g)].map((m) => Number(m[1]))
+    );
+
+    for (let i = 0; i < 100; i++) {
+      const port = Math.floor(Math.random() * (max - min + 1)) + min;
+      if (!taken.has(port)) return port;
+    }
+    throw new Error('No free UDP port in range');
+  }
+
+  buildClientObfConf(iface: InterfaceType): string {
     return [
       '[instance]',
       'source-if = 127.0.0.1',
-      `source-lport = ${preset.clientWgLocalPort}`,
-      `target = ${iface.serverPublicIpV4}:${preset.extPort}`,
-      `key = ${preset.key}`,
-      `masking = ${preset.masking}`,
+      `source-lport = ${iface.clientWgLocalPort}`,
+      `target = ${iface.serverPublicIpV4}:${iface.obfuscatorExtPort}`,
+      `key = ${iface.obfuscatorKey}`,
+      `masking = ${iface.obfuscatorMasking}`,
       'verbose = INFO',
-      `idle-timeout = ${preset.idle}`,
-      `max-dummy = ${preset.dummy}`,
+      `idle-timeout = ${iface.obfuscatorIdle}`,
+      `max-dummy = ${iface.obfuscatorDummy}`,
       '',
     ].join('\n');
+  }
+
+  async apply(iface: InterfaceType): Promise<void> {
+    await this.writeArgs(iface);
+    await this.restart();
   }
 
   async Startup(): Promise<void> {
     OBFUSCATOR_DEBUG('Starting Obfuscator...');
 
-    const iface = await Database.interfaces.get();
+    let iface = await Database.interfaces.get();
 
-    if (!iface.serverPublicIpV4) {
-      const ipv4 = await this.detectPublicIpV4().catch(() => '');
+    const envPortRaw = Number(process.env.OBF_PORT);
+    const envPort =
+      Number.isFinite(envPortRaw) && envPortRaw >= 1024 && envPortRaw <= 65535
+        ? envPortRaw
+        : null;
+
+    const needsInit =
+      !iface.obfuscatorKey ||
+      !iface.serverPublicIpV4 ||
+      !iface.obfuscatorExtPort ||
+      (envPort !== null && envPort !== iface.obfuscatorExtPort);
+
+    if (needsInit) {
+      OBFUSCATOR_DEBUG('First-run initialization');
+
+      const port =
+        envPort ?? iface.obfuscatorExtPort ?? (await this.findFreePort());
+      const key = iface.obfuscatorKey || this.generateKey(DEFAULT_KEY_LENGTH);
+      const ipv4 =
+        iface.serverPublicIpV4 || (await this.detectPublicIpV4().catch(() => ''));
       const ipv6 = iface.serverPublicIpV6 ?? (await this.detectPublicIpV6());
-      if (ipv4 || ipv6 !== iface.serverPublicIpV6) {
-        await Database.interfaces.update({
-          serverPublicIpV4: ipv4,
-          serverPublicIpV6: ipv6,
-        });
-      }
+
+      await Database.interfaces.update({
+        obfuscatorExtPort: port,
+        obfuscatorKey: key,
+        obfuscatorMasking: iface.obfuscatorMasking,
+        obfuscatorIdle: iface.obfuscatorIdle,
+        obfuscatorDummy: iface.obfuscatorDummy,
+        serverPublicIpV4: ipv4,
+        serverPublicIpV6: ipv6,
+        clientWgLocalPort: iface.clientWgLocalPort,
+      });
+      iface = await Database.interfaces.get();
     }
 
-    await Database.obfuscatorPresets.ensureDefault({
-      extPort: OBFUSCATOR_PORT_MIN,
-      key: generateObfuscatorKey(),
-      masking: 'STUN',
-      idle: 300,
-      dummy: 10,
-      clientWgLocalPort: 13255,
-    });
-
-    await this.applyAll();
+    await this.apply(iface);
 
     OBFUSCATOR_DEBUG('Obfuscator started');
   }

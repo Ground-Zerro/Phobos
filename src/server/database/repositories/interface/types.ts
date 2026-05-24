@@ -16,8 +16,11 @@ export type InterfaceUpdateType = Omit<
   'name' | 'createdAt' | 'updatedAt' | 'privateKey' | 'publicKey'
 >;
 
-/** Admin/API updates: internal WG listen port is fixed in DB. */
-export type InterfaceAdminUpdateType = Omit<InterfaceUpdateType, 'port'>;
+/** Admin/API updates: internal WG listen port and local client port are fixed in DB. */
+export type InterfaceAdminUpdateType = Omit<
+  InterfaceUpdateType,
+  'port' | 'clientWgLocalPort'
+>;
 
 const device = z
   .string({ message: t('zod.interface.device') })
@@ -29,6 +32,34 @@ const cidr = z
   .min(1, { message: t('zod.interface.cidr') })
   .refine((value) => isCidr(value), { message: t('zod.interface.cidrValid') })
   .pipe(safeStringRefine);
+
+export const ObfuscatorExtPortSchema = z
+  .number({ message: t('zod.obfuscator.extPort') })
+  .int()
+  .min(1024, { message: t('zod.obfuscator.extPort') })
+  .max(65535, { message: t('zod.obfuscator.extPort') });
+
+export const ObfuscatorKeySchema = z
+  .string({ message: t('zod.obfuscator.key') })
+  .min(3)
+  .max(255)
+  .pipe(safeStringRefine);
+
+export const ObfuscatorMaskingSchema = z.enum(['STUN', 'AUTO', 'NONE'], {
+  message: t('zod.obfuscator.masking'),
+});
+
+export const ObfuscatorIdleSchema = z
+  .number({ message: t('zod.obfuscator.idle') })
+  .int()
+  .min(30)
+  .max(3600);
+
+export const ObfuscatorDummySchema = z
+  .number({ message: t('zod.obfuscator.dummy') })
+  .int()
+  .min(0)
+  .max(255);
 
 export const ServerPublicIpV4Schema = z
   .string({ message: t('zod.obfuscator.publicIpV4') })
@@ -51,6 +82,11 @@ export const InterfaceUpdateSchema = schemaForType<InterfaceAdminUpdateType>()(
     device: device,
     enabled: EnabledSchema,
     firewallEnabled: EnabledSchema,
+    obfuscatorExtPort: ObfuscatorExtPortSchema,
+    obfuscatorKey: ObfuscatorKeySchema,
+    obfuscatorMasking: ObfuscatorMaskingSchema,
+    obfuscatorIdle: ObfuscatorIdleSchema,
+    obfuscatorDummy: ObfuscatorDummySchema,
     serverPublicIpV4: ServerPublicIpV4Schema,
     serverPublicIpV6: ServerPublicIpV6Schema,
   })

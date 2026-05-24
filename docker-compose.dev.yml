@@ -11,7 +11,7 @@ services:
       - temp1:/app/node_modules/
       - /lib/modules:/lib/modules:ro
     ports:
-      - "51822-51921:51822-51921/udp"
+      - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
       - "51831:51831/tcp"
     cap_add:
       - NET_ADMIN
@@ -22,6 +22,7 @@ services:
       - INIT_HOST=test
       - INIT_USERNAME=testtest
       - INIT_PASSWORD=Qweasdyxcv!2
+      - OBF_PORT=${OBF_PORT:-51822}
 
 volumes:
   temp:

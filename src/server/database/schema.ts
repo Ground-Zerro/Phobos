@@ -4,6 +4,5 @@ export * from './repositories/general/schema';
 export * from './repositories/hooks/schema';
 export * from './repositories/interface/schema';
 export * from './repositories/installLink/schema';
-export * from './repositories/obfuscatorPreset/schema';
 export * from './repositories/user/schema';
 export * from './repositories/userConfig/schema';

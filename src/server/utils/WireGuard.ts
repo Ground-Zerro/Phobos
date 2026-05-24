@@ -170,26 +170,17 @@ class WireGuard {
       throw new Error('Client not found');
     }
 
-    const preset = await Database.obfuscatorPresets.getForClient(
-      client.presetId ?? null
-    );
-
     return wg.generateClientConfig(wgInterface, userConfig, client, {
       enableIpv6: !WG_ENV.DISABLE_IPV6,
-      clientWgLocalPort: preset.clientWgLocalPort,
     });
   }
 
   async getClientFullConfig({ clientId }: { clientId: ID }) {
-    const [wgConfig, iface, client] = await Promise.all([
+    const [wgConfig, iface] = await Promise.all([
       this.getClientConfiguration({ clientId }),
       Database.interfaces.get(),
-      Database.clients.get(clientId),
     ]);
-    const preset = await Database.obfuscatorPresets.getForClient(
-      client?.presetId ?? null
-    );
-    return `${wgConfig.replace(/\s+$/, '')}\n\n${Obfuscator.buildClientObfConf(preset, iface)}`;
+    return `${wgConfig.replace(/\s+$/, '')}\n\n${Obfuscator.buildClientObfConf(iface)}`;
   }
 
   async getClientQRCodeSVG({ clientId }: { clientId: ID }) {
