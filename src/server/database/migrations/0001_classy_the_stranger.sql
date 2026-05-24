@@ -14,4 +14,4 @@ VALUES (
 );
 --> statement-breakpoint
 INSERT INTO `user_configs_table` (`id`, `default_mtu`, `default_persistent_keepalive`, `default_dns`, `default_allowed_ips`, `host`, `port`)
-VALUES ('wg0', 1420, 0, '["1.1.1.1","2606:4700:4700::1111"]', '["0.0.0.0/0","::/0"]', '', 51820)
+VALUES ('wg0', 1420, 0, '["8.8.8.8","2001:4860:4860::8888"]', '["0.0.0.0/0","::/0"]', '', 51820)

@@ -74,7 +74,7 @@
               v-model.trim="importCertPath"
               type="text"
               class="w-full"
-              placeholder="/etc/letsencrypt/live/example.com/fullchain.pem"
+              placeholder="/root/cert/example.com/fullchain.pem"
             />
           </div>
           <div class="flex flex-col gap-1">
@@ -85,12 +85,19 @@
               v-model.trim="importKeyPath"
               type="text"
               class="w-full"
-              placeholder="/etc/letsencrypt/live/example.com/privkey.pem"
+              placeholder="/root/cert/example.com/privkey.pem"
             />
           </div>
           <p class="text-xs text-amber-600 dark:text-amber-400">
             {{ $t('setup.tls.importPathHint') }}
           </p>
+        </div>
+
+        <div
+          v-if="mode === 'self-signed'"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+        >
+          {{ $t('setup.tls.selfSignedHstsWarning') }}
         </div>
 
         <div

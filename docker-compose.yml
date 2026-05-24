@@ -25,6 +25,24 @@ services:
       - phobos_sqlite_data:/app/server/data
       - phobos_certs_data:/app/certs
       - /lib/modules:/lib/modules:ro
+      - type: bind
+        source: /etc/letsencrypt
+        target: /etc/letsencrypt
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /root/cert
+        target: /root/cert
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /root/.acme.sh
+        target: /root/.acme.sh
+        read_only: true
+        bind:
+          create_host_path: true
     ports:
       - "${OBF_PORT:-51822}:${OBF_PORT:-51822}/udp"
       - "51831:51831/tcp"

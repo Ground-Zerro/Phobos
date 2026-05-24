@@ -135,7 +135,7 @@ VALUES (
 );
 --> statement-breakpoint
 INSERT INTO `user_configs_table` (`id`, `default_mtu`, `default_persistent_keepalive`, `default_dns`, `default_allowed_ips`, `host`)
-VALUES ('wg0', 1420, 0, '["1.1.1.1","2606:4700:4700::1111"]', '["0.0.0.0/0","::/0"]', '');
+VALUES ('wg0', 1420, 0, '["8.8.8.8","2001:4860:4860::8888"]', '["0.0.0.0/0","::/0"]', '');
 --> statement-breakpoint
 INSERT INTO `general_table` (`setup_step`, `session_password`, `session_timeout`, `metrics_prometheus`, `metrics_json`, `allow_insecure_http_login`)
 VALUES (1, hex(randomblob(256)), 3600, 0, 0, 0);
