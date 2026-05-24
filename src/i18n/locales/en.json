@@ -148,6 +148,10 @@
     "firewallIps": "Firewall Allowed IPs",
     "firewallIpsDesc": "Destination IPs/CIDRs this client can access (server-side enforcement). Leave empty to use Allowed IPs. Supports optional port and protocol filtering. See docs for syntax.",
     "downloadPng": "Download PNG",
+    "copyLink": "Copy phobos:// link",
+    "linkShort": "Link",
+    "linkCopied": "phobos:// link copied to clipboard",
+    "linkFailed": "Failed to copy phobos:// link",
     "preset": "Obfuscator preset",
     "presetDesc": "Choose which obfuscator preset routes this client. Leave on default to follow the server's default preset.",
     "presetUseDefault": "Use default preset"

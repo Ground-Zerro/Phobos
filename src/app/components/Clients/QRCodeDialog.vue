@@ -17,6 +17,13 @@
     <template #actions>
       <BaseSecondaryButton
         class="flex items-center gap-2"
+        :title="$t('client.copyLink')"
+        @click="copyLink"
+      >
+        <IconsLink class="size-5" /> {{ $t('client.linkShort') }}
+      </BaseSecondaryButton>
+      <BaseSecondaryButton
+        class="flex items-center gap-2"
         :title="$t('client.downloadPng')"
         @click="downloadPng"
       >
@@ -30,7 +37,11 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ qrCode: string; configUrl: string }>();
+const props = defineProps<{
+  qrCode: string;
+  configUrl: string;
+  clientName?: string | null;
+}>();
 
 const toast = useToast();
 const { t } = useI18n();
@@ -105,6 +116,23 @@ async function svgToPng() {
       return res(blob);
     }, 'image/png');
   });
+}
+
+async function copyLink() {
+  const config = configText.value;
+  if (!config) {
+    if (!configLoading.value) loadConfig();
+    toast.showToast({ type: 'error', message: t('client.linkFailed') });
+    return;
+  }
+  try {
+    const link = buildPhobosLink(config, props.clientName ?? null);
+    await copy(link);
+    toast.showToast({ type: 'success', message: t('client.linkCopied') });
+  } catch (e) {
+    console.error('failed to copy phobos link', e);
+    toast.showToast({ type: 'error', message: t('client.linkFailed') });
+  }
 }
 
 async function downloadPng() {
