@@ -389,47 +389,49 @@ static inline void xor_data(uint8_t *buffer, int length, char *key, int key_leng
 #endif
 }
 
-static inline int encode(uint8_t *buffer, int length, char *key, int key_length, uint8_t version, int max_dummy_length_data) {
+static inline int encode(uint8_t *buffer, int length, char *key, int key_length, uint8_t version, int max_dummy_length_data, int obfuscate_bytes) {
+    int partial = obfuscate_bytes > 0 && obfuscate_bytes < length;
+
     if (version >= 1) {
         uint32_t packet_type = WG_TYPE(buffer);
         uint8_t rnd = 1 + (fast_rand() % 255);
         buffer[0] ^= rnd;
         buffer[1] = rnd;
-        if (length < MAX_DUMMY_LENGTH_TOTAL) {
-            uint16_t dummy_length = 0;
+        uint16_t dummy_length = 0;
+        if (!partial && length < MAX_DUMMY_LENGTH_TOTAL) {
             uint16_t max_dummy_length = MAX_DUMMY_LENGTH_TOTAL - length;
-            if (length < MAX_DUMMY_LENGTH_TOTAL) {
-                switch (packet_type) {
-                    case WG_TYPE_HANDSHAKE:
-                    case WG_TYPE_HANDSHAKE_RESP:
-                        dummy_length = fast_rand() % MIN(max_dummy_length, MAX_DUMMY_LENGTH_HANDSHAKE);
-                        break;
-                    case WG_TYPE_COOKIE:
-                    case WG_TYPE_DATA:
-                        if (max_dummy_length_data) {
-                            dummy_length = fast_rand() % MIN(max_dummy_length, max_dummy_length_data);
-                        }
-                        break;
-                    default:
-                        break;
-                }
+            switch (packet_type) {
+                case WG_TYPE_HANDSHAKE:
+                case WG_TYPE_HANDSHAKE_RESP:
+                    dummy_length = fast_rand() % MIN(max_dummy_length, MAX_DUMMY_LENGTH_HANDSHAKE);
+                    break;
+                case WG_TYPE_COOKIE:
+                case WG_TYPE_DATA:
+                    if (max_dummy_length_data) {
+                        dummy_length = fast_rand() % MIN(max_dummy_length, max_dummy_length_data);
+                    }
+                    break;
+                default:
+                    break;
             }
-            buffer[2] = dummy_length & 0xFF;
-            buffer[3] = dummy_length >> 8;
-            if (dummy_length > 0) {
-                memset(buffer + length, 0xFF, dummy_length);
-                length += dummy_length;
-            }
+        }
+        buffer[2] = dummy_length & 0xFF;
+        buffer[3] = dummy_length >> 8;
+        if (dummy_length > 0) {
+            memset(buffer + length, 0xFF, dummy_length);
+            length += dummy_length;
         }
     }
 
-    xor_data(buffer, length, key, key_length);
+    xor_data(buffer, partial ? obfuscate_bytes : length, key, key_length);
 
     return length;
 }
 
-static inline int decode(uint8_t *buffer, int length, char *key, int key_length, uint8_t *version_out) {
-    xor_data(buffer, length, key, key_length);
+static inline int decode(uint8_t *buffer, int length, char *key, int key_length, uint8_t *version_out, int obfuscate_bytes) {
+    int partial = obfuscate_bytes > 0 && obfuscate_bytes < length;
+
+    xor_data(buffer, partial ? obfuscate_bytes : length, key, key_length);
 
     if (!is_obfuscated(buffer)) {
         *version_out = 0;

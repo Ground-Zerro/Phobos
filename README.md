@@ -8,15 +8,13 @@
 
 ### Основные компоненты
 
-- **Серверная часть** - автоматизация развертывания WireGuard с обфускацией на VPS
-- **Клиентская часть** - установщики для роутеров (Keenetic/Netcraze, OpenWrt, ImmortalWrt) и Linux систем
-- **Интеграция с 3x-ui** - поддержка установки только obfuscator для работы с панелью 3x-ui
+- **Серверная часть** — автоматизация развертывания WireGuard с обфускацией на VPS
+- **Клиентская часть** — установщики для роутеров (Keenetic/Netcraze, OpenWrt, ImmortalWrt) и Linux систем
+- **Интеграция с 3x-ui** — поддержка установки только obfuscator для работы с панелью 3x-ui
 
 ## Быстрый старт
 
 ### 1. Установка на VPS
-
-Запустите установку:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/main/phobos-deploy.sh)" </dev/tty
@@ -44,16 +42,26 @@ wget -O - http://<server_ip>:8080/init/<token>.sh | sudo sh
 
   Скрипт автоматически определяет платформу и архитектуру, устанавливает wg-obfuscator, настраивает автозапуск, конфигурирует WireGuard, активирует подключение, развёртывает скрипты health-check и uninstall.
 
-  **Keenetic/Netcraze:** настройка через RCI API, интерфейс `Phobos-{client_name}`
-  **OpenWrt/ImmortalWrt:** установка kmod-wireguard, wireguard-tools, luci-app-wireguard; настройка через UCI, интерфейс `phobos_wg`, firewall зона `phobos`
+  **Keenetic/Netcraze:** настройка через RCI API, интерфейс `Phobos-{client_name}`  
+  **OpenWrt/ImmortalWrt:** установка kmod-wireguard, wireguard-tools, luci-app-wireguard; настройка через UCI, интерфейс `phobos_wg`, firewall зона `phobos`  
   **Linux:** установка через apt-get и systemd, интерфейс `phobos`, VPN как запасной интерфейс (`Table = off`). При обнаружении 3x-ui — только obfuscator через 3xui.sh.
 </details>
+
+## Режимы маскировки
+
+| Режим | Описание |
+|-------|----------|
+| `AUTO` | Сервер автоопределяет режим по первому пакету клиента. Клиент использует STUN. |
+| `STUN` | Трафик оборачивается в STUN-сообщения. Автоопределяется по magic cookie. |
+| `MEDIA` | Трафик маскируется под RTP/H.264 медиапоток (видеозвонок/стрим). Задаётся явно на обеих сторонах. Накладные расходы — 12 байт на пакет. |
+| `NONE` | Маскировка отключена, XOR-обфускация остаётся. |
+
+Режим `MEDIA` обеспечивает наибольшую устойчивость к DPI: трафик выглядит как непрерывный видеозвонок с STUN/ICE-фазой в начале сессии. Подробнее — в [`docs/MEDIA-guide.md`](docs/MEDIA-guide.md).
 
 ## Управление системой
 
 ### Интерактивное меню на VPS
 
-Меню на VPS вызывается командой:
 ```
 phobos
 ```
@@ -62,13 +70,18 @@ phobos
 - Управление сервисами (start/stop/status/logs для WireGuard, obfuscator, HTTP сервера)
 - Управление клиентами (создание, удаление, пересоздание конфигураций)
 - Системные функции (health checks, мониторинг клиентов, очистка токенов)
-- Настройка параметров obfuscator (порты, ключи, уровни маскировки, пул адресов)
+- Настройка параметров obfuscator:
+  - Шаблоны маскировки (ключ + dummy)
+  - Порты сервера и клиента, IP интерфейса
+  - Ключ обфускации, режим маскировки (`STUN` / `MEDIA` / `AUTO` / `NONE`)
+  - Уровень логов (`ERROR` / `WARN` / `INFO` / `DEBUG` / `TRACE`)
+  - Idle таймаут, max-dummy, obfuscate-bytes
+  - MEDIA параметры (media-pt, media-ssrc, media-clock)
+  - Пул адресов WireGuard, порт WireGuard, публичный IP сервера
 
 ## Удаление
 
 ### Удаление с VPS сервера
-
-Для полного удаления Phobos с VPS сервера:
 
 ```bash
 sudo /opt/Phobos/repo/server/scripts/vps-uninstall.sh
@@ -102,29 +115,29 @@ sudo /opt/Phobos/phobos-uninstall.sh
 
   Скрипт остановит obfuscator и WireGuard, удалит интерфейс, бинарники, конфигурационные файлы и init-скрипт / systemd сервис.
 
-  **Keenetic/Netcraze:** удаление интерфейсов через RCI API, сохранение конфигурации роутера
-  **OpenWrt/ImmortalWrt:** удаление через UCI, firewall зоны `phobos`, сохранение конфигурации роутера
+  **Keenetic/Netcraze:** удаление интерфейсов через RCI API, сохранение конфигурации роутера  
+  **OpenWrt/ImmortalWrt:** удаление через UCI, firewall зоны `phobos`, сохранение конфигурации роутера  
   **Linux:** удаление `/usr/local/bin/wg-obfuscator`, `/opt/Phobos`, `/etc/wireguard/phobos.conf`
 </details>
 
 ## Совместимость и поддерживаемые платформы
 
 ### Сервер (VPS)
-Протестированно и рекомендуется к использованию на **Ubuntu 20/22/24.04**.
+Протестировано и рекомендуется на **Ubuntu 20/22/24.04**.
 Желательна установка на **чистый VPS** без предварительно установленных сервисов или конфигураций.
 > Совместимость с другими дистрибутивами Linux и сторонними сервисами **не проверялась**.
 
 ### Клиенты
 
 **Роутеры:**
-- **Keenetic** (все модели с Entware) - mipsel, aarch64, mips
-- **Netcraze** (устройства Keenetic под другой маркой) - mipsel, aarch64, mips
-- **OpenWrt/LEDE** - mipsel, mips, aarch64, armv7, x86_64
-- **ImmortalWrt** - форк OpenWrt с дополнительными возможностями
+- **Keenetic** (все модели с Entware) — mipsel, aarch64, mips
+- **Netcraze** (устройства Keenetic под другой маркой) — mipsel, aarch64, mips
+- **OpenWrt/LEDE** — mipsel, mips, aarch64, armv7, x86_64
+- **ImmortalWrt** — форк OpenWrt с дополнительными возможностями
 
 **Linux системы:**
-- **Ubuntu/Debian** - стандартная установка WireGuard + obfuscator
-- **Системы с 3x-ui панелью** - автоматическое определение и установка только obfuscator
+- **Ubuntu/Debian** — стандартная установка WireGuard + obfuscator
+- **Системы с 3x-ui панелью** — автоматическое определение и установка только obfuscator
 
 **Поддерживаемые архитектуры:**
 - x86_64 (VPS, PC-роутеры)
@@ -133,6 +146,11 @@ sudo /opt/Phobos/phobos-uninstall.sh
 - aarch64 (современные Keenetic, Linksys, Netgear)
 - armv7 (GL.iNet, Raspberry Pi 2/3)
 
+## Документация
+
+- [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) — полный справочник параметров wg-obfuscator
+- [`docs/MEDIA-guide.md`](docs/MEDIA-guide.md) — принцип работы и параметры режима MEDIA
+
 ## License
 
 This project is licensed under GPL-3.0.
@@ -140,7 +158,7 @@ See the [LICENSE](./LICENSE) file for full terms.
 
 ## Благодарности
 
-- [ClusterM/wg-obfuscator](https://github.com/ClusterM/wg-obfuscator) — инструмент обфускации WireGuard трафика /[Поблагадарить Алексея и поддержать его разработку](https://boosty.to/cluster)/
+- [ClusterM/wg-obfuscator](https://github.com/ClusterM/wg-obfuscator) — инструмент обфускации WireGuard трафика / [Поблагодарить Алексея и поддержать его разработку](https://boosty.to/cluster)
 - [WireGuard](https://www.wireguard.com/) — современный VPN протокол
 
 ## Поддержка

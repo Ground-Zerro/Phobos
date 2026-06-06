@@ -110,7 +110,8 @@ PersistentKeepalive = 25
 EOF
   chmod 600 "$dir/${id}.conf"
   
-  cat > "$dir/wg-obfuscator.conf" <<EOF
+  local obf_conf="$dir/wg-obfuscator.conf"
+  cat > "$obf_conf" <<EOF
 [instance]
 source-if = 127.0.0.1
 source-lport = ${CLIENT_WG_PORT:-13255}
@@ -119,9 +120,18 @@ key = ${OBFUSCATOR_KEY:-KEY}
 masking = ${OBFUSCATOR_MASKING:-AUTO}
 verbose = INFO
 idle-timeout = ${OBFUSCATOR_IDLE:-300}
-max-dummy = ${OBFUSCATOR_DUMMY:-4}
 EOF
-  chmod 600 "$dir/wg-obfuscator.conf"
+  if [[ "${OBFUSCATOR_MASKING:-AUTO}" == "MEDIA" ]]; then
+    echo "max-dummy = 0" >> "$obf_conf"
+    echo "obfuscate-bytes = ${OBFUSCATOR_OBFUSCATE_BYTES:-4}" >> "$obf_conf"
+    [[ "${OBFUSCATOR_MEDIA_PT:-0}" != "0" ]] && echo "media-pt = ${OBFUSCATOR_MEDIA_PT}" >> "$obf_conf"
+    [[ "${OBFUSCATOR_MEDIA_SSRC:-0}" != "0" ]] && echo "media-ssrc = ${OBFUSCATOR_MEDIA_SSRC}" >> "$obf_conf"
+    [[ "${OBFUSCATOR_MEDIA_CLOCK:-0}" != "0" ]] && echo "media-clock = ${OBFUSCATOR_MEDIA_CLOCK}" >> "$obf_conf"
+  else
+    echo "max-dummy = ${OBFUSCATOR_DUMMY:-4}" >> "$obf_conf"
+    [[ "${OBFUSCATOR_OBFUSCATE_BYTES:-0}" != "0" ]] && echo "obfuscate-bytes = ${OBFUSCATOR_OBFUSCATE_BYTES}" >> "$obf_conf"
+  fi
+  chmod 600 "$obf_conf"
   
   cat > "$dir/metadata.json" <<EOF
 {
@@ -132,7 +142,9 @@ EOF
   "public_key": "$pub_key",
   "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "obfuscator_key": "${OBFUSCATOR_KEY:-}",
+  "obfuscator_masking": "${OBFUSCATOR_MASKING:-AUTO}",
   "obfuscator_dummy": "${OBFUSCATOR_DUMMY:-4}",
+  "obfuscator_obfuscate_bytes": "${OBFUSCATOR_OBFUSCATE_BYTES:-0}",
   "obfuscator_idle": "${OBFUSCATOR_IDLE:-300}",
   "server_ip_v4": "$SERVER_PUBLIC_IP_V4",
   "server_port": "${OBFUSCATOR_PORT:-}"
@@ -254,8 +266,10 @@ action_check() {
 
   local client_server_ip=$(jq -r '.server_ip_v4 // ""' "$dir/metadata.json")
   local client_obf_key=$(jq -r '.obfuscator_key // ""' "$dir/metadata.json")
+  local client_obf_masking=$(jq -r '.obfuscator_masking // "AUTO"' "$dir/metadata.json")
   local client_obf_port=$(jq -r '.server_port // ""' "$dir/metadata.json")
   local client_obf_dummy=$(jq -r '.obfuscator_dummy // "4"' "$dir/metadata.json")
+  local client_obf_obfbytes=$(jq -r '.obfuscator_obfuscate_bytes // "0"' "$dir/metadata.json")
   local client_obf_idle=$(jq -r '.obfuscator_idle // "300"' "$dir/metadata.json")
 
   local client_wg_pubkey=""
@@ -265,8 +279,10 @@ action_check() {
 
   [[ "$client_server_ip" != "$SERVER_PUBLIC_IP_V4" ]] && changes+=("IP сервера: $client_server_ip -> $SERVER_PUBLIC_IP_V4")
   [[ "$client_obf_key" != "$OBFUSCATOR_KEY" ]] && changes+=("Ключ обфускатора: изменен")
+  [[ "$client_obf_masking" != "${OBFUSCATOR_MASKING:-AUTO}" ]] && changes+=("Режим маскировки: $client_obf_masking -> ${OBFUSCATOR_MASKING:-AUTO}")
   [[ "$client_obf_port" != "$OBFUSCATOR_PORT" ]] && changes+=("Порт обфускатора: $client_obf_port -> $OBFUSCATOR_PORT")
   [[ "$client_obf_dummy" != "$OBFUSCATOR_DUMMY" ]] && changes+=("Max dummy: изменен")
+  [[ "$client_obf_obfbytes" != "${OBFUSCATOR_OBFUSCATE_BYTES:-0}" ]] && changes+=("Obfuscate bytes: изменен")
   [[ "$client_obf_idle" != "$OBFUSCATOR_IDLE" ]] && changes+=("Idle таймаут: изменен")
   [[ -n "$client_wg_pubkey" && "$client_wg_pubkey" != "$SERVER_WG_PUBLIC_KEY" ]] && changes+=("Публичный ключ WG: изменен")
 

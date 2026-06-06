@@ -120,6 +120,24 @@ int masking_unwrap_from_server(uint8_t *buffer, int length,
     return client->masking_handler->on_data_unwrap(buffer, length, config, client, DIR_SERVER_TO_CLIENT, server_addr, &client->client_addr, send_to_server_cb, send_to_client_cb);
 }
 
+int masking_build_frame_to_server(uint8_t *header, int payload_length,
+                                obfuscator_config_t *config,
+                                client_entry_t *client) {
+    if (!client->masking_handler || !client->masking_handler->build_frame) {
+        return 0;
+    }
+    return client->masking_handler->build_frame(header, payload_length, config, client, DIR_CLIENT_TO_SERVER);
+}
+
+int masking_build_frame_to_client(uint8_t *header, int payload_length,
+                                obfuscator_config_t *config,
+                                client_entry_t *client) {
+    if (!client->masking_handler || !client->masking_handler->build_frame) {
+        return 0;
+    }
+    return client->masking_handler->build_frame(header, payload_length, config, client, DIR_SERVER_TO_CLIENT);
+}
+
 int masking_data_wrap_to_client(uint8_t *buffer, int length,
                                 obfuscator_config_t *config,
                                 client_entry_t *client,

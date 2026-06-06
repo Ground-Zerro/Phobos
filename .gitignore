@@ -1,8 +1,10 @@
 .git/
 .idea/
 .claude/
-_Old_orig/
-_test/
 .gitignore
-CLAUDE.md
-QWEN.md
+docs/plans/
+docs/MEDIA-mode.md
+docs/ROUTER_SSH_ACCESS.md
+wg-obfuscator/build/
+wg-obfuscator/build-all-architectures.sh
+Phobos-ico.zip

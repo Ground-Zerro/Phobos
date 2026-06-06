@@ -53,15 +53,9 @@ spin() {
 
 step_deps() {
   log_info "Установка зависимостей..."
-  (
-    apt-get update -qq \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wireguard jq curl build-essential ufw iptables nftables
-  ) >/dev/null 2>&1 &
+  (apt-get update -qq && apt-get install -y -qq wireguard jq curl build-essential ufw) >/dev/null 2>&1 &
   spin $! "Установка пакетов..."
   wait $!
-  local apt_st=$?
-  [[ $apt_st -eq 0 ]] || die "Установка пакетов завершилась с ошибкой (код $apt_st). Запустите: apt-get update && apt-get install -y wireguard iptables nftables"
-  command -v wg >/dev/null 2>&1 || die "Команда wg не найдена после установки wireguard-tools"
   log_success "Зависимости установлены."
 }
 
@@ -109,117 +103,16 @@ step_build() {
   log_success "darkhttpd собран и установлен"
 }
 
-load_netfilter_wireguard_modules() {
-  local mod
-  for mod in wireguard iptable_nat iptable_filter ip_tables ip6_tables ip6table_filter ip6table_nat \
-    nf_tables nf_nat nf_nat_ipv6 nft_nat nft_chain_nat nf_conntrack \
-    xt_MASQUERADE nf_defrag_ipv4 nf_defrag_ipv6; do
-    modprobe "$mod" 2>/dev/null || true
-  done
-}
-
-ensure_ip6tables_nat() {
-  if ip6tables -t nat -S >/dev/null 2>&1; then
-    return 0
-  fi
-  load_netfilter_wireguard_modules
-  if ip6tables -t nat -S >/dev/null 2>&1; then
-    return 0
-  fi
-  log_info "Настройка ip6tables NAT: доустановка пакетов и повторная проверка..."
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iptables nftables >/dev/null 2>&1 || true
-  load_netfilter_wireguard_modules
-  ip6tables -t nat -S >/dev/null 2>&1
-}
-
 step_wg() {
   log_info "Настройка WireGuard..."
   mkdir -p /etc/wireguard
 
-  local iface
-  iface=$(ip -4 route show default 2>/dev/null | awk '{print $5; exit}')
-  [[ -z "$iface" ]] && iface=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
-  [[ -z "$iface" || ! -d "/sys/class/net/$iface" ]] && die "Не удалось определить интерфейс для NAT (нужен default route)"
-
-  load_netfilter_wireguard_modules
-
-  local priv pub
-  priv=$(wg genkey) || die "Не удалось сгенерировать приватный ключ WireGuard"
-  pub=$(printf '%s\n' "$priv" | wg pubkey) || die "Не удалось получить публичный ключ WireGuard"
-
+  local priv=$(wg genkey)
+  local pub=$(echo "$priv" | wg pubkey)
   local wg_ipv4_net="10.25.0.0/16"
   local wg_ipv6_net="fd00:10:25::/48"
   local wg_ipv4_addr="10.25.0.1/16"
   local wg_ipv6_addr="fd00:10:25::1/48"
-
-  local ipv6_on=0
-  if [[ -r /proc/sys/net/ipv6/conf/all/disable_ipv6 ]] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" == "0" ]]; then
-    ipv6_on=1
-  fi
-
-  local ipv6_nat=0
-  if [[ "$ipv6_on" -eq 1 ]]; then
-    if ensure_ip6tables_nat; then
-      ipv6_nat=1
-    else
-      log_warn "Таблица ip6tables nat недоступна после установки пакетов и загрузки модулей; IPv6 NAT в PostUp не добавляется"
-    fi
-  fi
-
-  local addr_line="Address = $wg_ipv4_addr"
-  [[ "$ipv6_on" -eq 1 ]] && addr_line+=", $wg_ipv6_addr"
-
-  local iface_q
-  iface_q=$(printf '%q' "$iface")
-
-  mkdir -p "$PHOBOS_DIR/server"
-  cat > "$PHOBOS_DIR/server/wg0-fw.sh" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-WAN_IFACE=${iface_q}
-IPV6_ON=${ipv6_on}
-IPV6_NAT=${ipv6_nat}
-
-load_mods() {
-  local m
-  for m in wireguard iptable_nat iptable_filter ip_tables ip6_tables ip6table_filter ip6table_nat \\
-    nf_tables nf_nat nf_nat_ipv6 nft_nat nft_chain_nat xt_MASQUERADE nf_conntrack nf_defrag_ipv4 nf_defrag_ipv6; do
-    modprobe "\$m" 2>/dev/null || true
-  done
-}
-
-case "\${1:-}" in
-  up)
-    load_mods
-    iptables -C FORWARD -i wg0 -o wg0 -j DROP 2>/dev/null || iptables -A FORWARD -i wg0 -o wg0 -j DROP
-    iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || iptables -A FORWARD -i wg0 -j ACCEPT
-    iptables -t nat -C POSTROUTING -o "\$WAN_IFACE" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o "\$WAN_IFACE" -j MASQUERADE
-    if [[ "\$IPV6_ON" -eq 1 ]]; then
-      ip6tables -C FORWARD -i wg0 -o wg0 -j DROP 2>/dev/null || ip6tables -A FORWARD -i wg0 -o wg0 -j DROP
-      ip6tables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || ip6tables -A FORWARD -i wg0 -j ACCEPT
-      if [[ "\$IPV6_NAT" -eq 1 ]]; then
-        ip6tables -t nat -C POSTROUTING -o "\$WAN_IFACE" -j MASQUERADE 2>/dev/null || ip6tables -t nat -A POSTROUTING -o "\$WAN_IFACE" -j MASQUERADE
-      fi
-    fi
-    ;;
-  down)
-    iptables -D FORWARD -i wg0 -o wg0 -j DROP 2>/dev/null || true
-    iptables -D FORWARD -i wg0 -j ACCEPT 2>/dev/null || true
-    iptables -t nat -D POSTROUTING -o "\$WAN_IFACE" -j MASQUERADE 2>/dev/null || true
-    if [[ "\$IPV6_ON" -eq 1 ]]; then
-      ip6tables -D FORWARD -i wg0 -o wg0 -j DROP 2>/dev/null || true
-      ip6tables -D FORWARD -i wg0 -j ACCEPT 2>/dev/null || true
-      if [[ "\$IPV6_NAT" -eq 1 ]]; then
-        ip6tables -t nat -D POSTROUTING -o "\$WAN_IFACE" -j MASQUERADE 2>/dev/null || true
-      fi
-    fi
-    ;;
-  *)
-    exit 1
-    ;;
-esac
-EOF
-  chmod 700 "$PHOBOS_DIR/server/wg0-fw.sh"
 
   cat > "$SERVER_ENV" <<EOF
 SERVER_WG_PRIVATE_KEY=$priv
@@ -228,39 +121,24 @@ SERVER_WG_IPV4_NETWORK=$wg_ipv4_net
 SERVER_WG_IPV6_NETWORK=$wg_ipv6_net
 EOF
 
+  local iface=$(ip route | grep default | awk '{print $5}' | head -1)
+
   cat > "$WG_CONFIG" <<EOF
 [Interface]
-$addr_line
+Address = $wg_ipv4_addr, $wg_ipv6_addr
 ListenPort = 51820
 PrivateKey = $priv
-PostUp = $PHOBOS_DIR/server/wg0-fw.sh up
-PostDown = $PHOBOS_DIR/server/wg0-fw.sh down
+PostUp = iptables -A FORWARD -i wg0 -o wg0 -j DROP; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $iface -j MASQUERADE; ip6tables -A FORWARD -i wg0 -o wg0 -j DROP; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o $iface -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -o wg0 -j DROP; iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $iface -j MASQUERADE; ip6tables -D FORWARD -i wg0 -o wg0 -j DROP; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o $iface -j MASQUERADE
 EOF
   chmod 600 "$WG_CONFIG"
 
   sysctl -w net.ipv4.ip_forward=1 >/dev/null
   echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-phobos.conf
-  if [[ "$ipv6_on" -eq 1 ]]; then
-    echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.d/99-phobos.conf
-    sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null
-  fi
   sysctl -p /etc/sysctl.d/99-phobos.conf >/dev/null
 
-  if ! iptables -t nat -S >/dev/null 2>&1; then
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iptables nftables >/dev/null 2>&1 || true
-    load_netfilter_wireguard_modules
-  fi
-  iptables -t nat -S >/dev/null 2>&1 || die "Таблица iptables nat недоступна (модуль iptable_nat или пакет iptables)"
-
-  wg-quick down wg0 2>/dev/null || true
-  ip link delete dev wg0 2>/dev/null || true
-
   systemctl enable wg-quick@wg0
-  if ! systemctl restart wg-quick@wg0; then
-    log_error "Не удалось запустить WireGuard."
-    journalctl -u wg-quick@wg0 -n 50 --no-pager >&2 || true
-    die "См. journalctl -xeu wg-quick@wg0.service"
-  fi
+  systemctl restart wg-quick@wg0
   log_success "WireGuard настроен"
 }
 

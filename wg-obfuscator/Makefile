@@ -1,7 +1,7 @@
 PROG_NAME    = wg-obfuscator
 CONFIG       = wg-obfuscator.conf
 SERVICE_FILE = wg-obfuscator.service
-HEADERS      = wg-obfuscator.h obfuscation.h config.h uthash.h mini_argp.h masking.h masking_stun.h threading.h
+HEADERS      = wg-obfuscator.h obfuscation.h config.h uthash.h mini_argp.h masking.h masking_stun.h masking_media.h masking_handlers.h threading.h
 
 RELEASE ?= 0
 
@@ -18,7 +18,7 @@ endif
 ifdef STATIC
   LDFLAGS += -static -static-libgcc
 endif
-OBJS = wg-obfuscator.o config.o masking.o masking_stun.o threading.o
+OBJS = wg-obfuscator.o config.o masking.o masking_stun.o masking_media.o threading.o
 EXEDIR = .
 
 EXTRA_CFLAGS ?=

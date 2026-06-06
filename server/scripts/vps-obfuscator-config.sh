@@ -25,18 +25,26 @@ load_config() {
     CURRENT_MASKING=$(grep '^masking' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "AUTO")
     CURRENT_IDLE=$(grep '^idle-timeout' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "300")
     CURRENT_DUMMY=$(grep '^max-dummy' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "4")
+    CURRENT_OBFUSCATE_BYTES=$(grep '^obfuscate-bytes' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "0")
+    CURRENT_MEDIA_PT=$(grep '^media-pt' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "0")
+    CURRENT_MEDIA_SSRC=$(grep '^media-ssrc' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "0")
+    CURRENT_MEDIA_CLOCK=$(grep '^media-clock' "$OBF_CONFIG" | cut -d'=' -f2- | tr -d ' ' || echo "0")
   else
     CURRENT_IP="0.0.0.0"
     CURRENT_LOG="INFO"
     CURRENT_MASKING="AUTO"
     CURRENT_IDLE="300"
     CURRENT_DUMMY="4"
+    CURRENT_OBFUSCATE_BYTES="${OBFUSCATOR_OBFUSCATE_BYTES:-0}"
+    CURRENT_MEDIA_PT="${OBFUSCATOR_MEDIA_PT:-0}"
+    CURRENT_MEDIA_SSRC="${OBFUSCATOR_MEDIA_SSRC:-0}"
+    CURRENT_MEDIA_CLOCK="${OBFUSCATOR_MEDIA_CLOCK:-0}"
   fi
 }
 
 save_server_env() {
   if [[ -f "$SERVER_ENV" ]]; then
-    grep -vE '^(OBFUSCATOR_PORT|OBFUSCATOR_KEY|OBFUSCATOR_DUMMY|OBFUSCATOR_IDLE|OBFUSCATOR_MASKING|SERVER_PUBLIC_IP_V4|SERVER_PUBLIC_IP_V6|WG_LOCAL_ENDPOINT|CLIENT_WG_PORT|SERVER_WG_IPV4_NETWORK|SERVER_WG_IPV6_NETWORK)=' "$SERVER_ENV" > "$SERVER_ENV.tmp"
+    grep -vE '^(OBFUSCATOR_PORT|OBFUSCATOR_KEY|OBFUSCATOR_DUMMY|OBFUSCATOR_IDLE|OBFUSCATOR_MASKING|OBFUSCATOR_OBFUSCATE_BYTES|OBFUSCATOR_MEDIA_PT|OBFUSCATOR_MEDIA_SSRC|OBFUSCATOR_MEDIA_CLOCK|SERVER_PUBLIC_IP_V4|SERVER_PUBLIC_IP_V6|WG_LOCAL_ENDPOINT|CLIENT_WG_PORT|SERVER_WG_IPV4_NETWORK|SERVER_WG_IPV6_NETWORK)=' "$SERVER_ENV" > "$SERVER_ENV.tmp"
     mv "$SERVER_ENV.tmp" "$SERVER_ENV"
   fi
 
@@ -46,6 +54,10 @@ OBFUSCATOR_KEY=$OBFUSCATOR_KEY
 OBFUSCATOR_DUMMY=$CURRENT_DUMMY
 OBFUSCATOR_IDLE=$CURRENT_IDLE
 OBFUSCATOR_MASKING=$CURRENT_MASKING
+OBFUSCATOR_OBFUSCATE_BYTES=$CURRENT_OBFUSCATE_BYTES
+OBFUSCATOR_MEDIA_PT=$CURRENT_MEDIA_PT
+OBFUSCATOR_MEDIA_SSRC=$CURRENT_MEDIA_SSRC
+OBFUSCATOR_MEDIA_CLOCK=$CURRENT_MEDIA_CLOCK
 SERVER_PUBLIC_IP_V4=$SERVER_PUBLIC_IP_V4
 SERVER_PUBLIC_IP_V6=$SERVER_PUBLIC_IP_V6
 WG_LOCAL_ENDPOINT=$WG_LOCAL_ENDPOINT
@@ -60,17 +72,26 @@ apply_obfuscator_config() {
   local skip_restart="${1:-}"
   log_info "Применение настроек Obfuscator..."
 
-  cat > "$OBF_CONFIG" <<EOF
-[instance]
-source-if = $CURRENT_IP
-source-lport = $OBFUSCATOR_PORT
-target = $WG_LOCAL_ENDPOINT
-key = $OBFUSCATOR_KEY
-masking = $CURRENT_MASKING
-verbose = $CURRENT_LOG
-idle-timeout = $CURRENT_IDLE
-max-dummy = $CURRENT_DUMMY
-EOF
+  {
+    printf '[instance]\n'
+    printf 'source-if = %s\n' "$CURRENT_IP"
+    printf 'source-lport = %s\n' "$OBFUSCATOR_PORT"
+    printf 'target = %s\n' "$WG_LOCAL_ENDPOINT"
+    printf 'key = %s\n' "$OBFUSCATOR_KEY"
+    printf 'masking = %s\n' "$CURRENT_MASKING"
+    printf 'verbose = %s\n' "$CURRENT_LOG"
+    printf 'idle-timeout = %s\n' "$CURRENT_IDLE"
+    if [[ "$CURRENT_MASKING" == "MEDIA" ]]; then
+      printf 'max-dummy = 0\n'
+      printf 'obfuscate-bytes = %s\n' "${CURRENT_OBFUSCATE_BYTES:-4}"
+      [[ "${CURRENT_MEDIA_PT:-0}" != "0" ]] && printf 'media-pt = %s\n' "$CURRENT_MEDIA_PT"
+      [[ "${CURRENT_MEDIA_SSRC:-0}" != "0" ]] && printf 'media-ssrc = %s\n' "$CURRENT_MEDIA_SSRC"
+      [[ "${CURRENT_MEDIA_CLOCK:-0}" != "0" ]] && printf 'media-clock = %s\n' "$CURRENT_MEDIA_CLOCK"
+    else
+      printf 'max-dummy = %s\n' "$CURRENT_DUMMY"
+      [[ "${CURRENT_OBFUSCATE_BYTES:-0}" != "0" ]] && printf 'obfuscate-bytes = %s\n' "$CURRENT_OBFUSCATE_BYTES"
+    fi
+  } > "$OBF_CONFIG"
 
   save_server_env
 
@@ -170,31 +191,35 @@ rebuild_all_clients() {
 
 change_masking() {
   echo ""
-  echo "Режим маскировки: STUN, AUTO, NONE"
+  echo "Режим маскировки: STUN, MEDIA, AUTO, NONE"
   echo "Текущий: $CURRENT_MASKING"
   read -p "Новый режим: " input
-  if [[ "$input" =~ ^(STUN|AUTO|NONE)$ ]]; then
+  if [[ "$input" =~ ^(STUN|MEDIA|AUTO|NONE)$ ]]; then
     CURRENT_MASKING="$input"
+    if [[ "$input" == "MEDIA" && "${CURRENT_OBFUSCATE_BYTES:-0}" == "0" ]]; then
+      CURRENT_OBFUSCATE_BYTES=4
+      log_info "obfuscate-bytes установлен в 4 (рекомендуется для MEDIA)"
+    fi
     apply_obfuscator_config
     rebuild_all_clients
     log_success "Маскировка изменена"
   else
-    log_error "Неверный режим"
+    log_error "Неверный режим (допустимые: STUN, MEDIA, AUTO, NONE)"
   fi
   read -p "Нажмите Enter..."
 }
 
 change_log_level() {
   echo ""
-  echo "Уровни: ERRORS, WARNINGS, INFO, DEBUG, TRACE"
+  echo "Уровни: ERROR, WARN, INFO, DEBUG, TRACE"
   echo "Текущий: $CURRENT_LOG"
   read -p "Новый уровень: " input
-  if [[ "$input" =~ ^(ERRORS|WARNINGS|INFO|DEBUG|TRACE)$ ]]; then
+  if [[ "$input" =~ ^(ERROR|WARN|INFO|DEBUG|TRACE)$ ]]; then
     CURRENT_LOG="$input"
     apply_obfuscator_config
     log_success "Уровень логов изменен"
   else
-    log_error "Неверный уровень"
+    log_error "Неверный уровень (допустимые: ERROR, WARN, INFO, DEBUG, TRACE)"
   fi
   read -p "Нажмите Enter..."
 }
@@ -228,6 +253,46 @@ change_dummy() {
   else
     log_error "Неверное значение"
   fi
+  read -p "Нажмите Enter..."
+}
+
+change_obfuscate_bytes() {
+  echo ""
+  echo "Obfuscate bytes — сколько первых байт пакета преобразовывать."
+  echo "0 = весь пакет. Для MEDIA минимум 4 (рекомендуется, обязательно совпадение с клиентом)."
+  echo "Текущий: ${CURRENT_OBFUSCATE_BYTES:-0}"
+  read -p "Новое значение: " input
+  if [[ "$input" =~ ^[0-9]+$ ]]; then
+    CURRENT_OBFUSCATE_BYTES="$input"
+    apply_obfuscator_config
+    rebuild_all_clients
+    log_success "Obfuscate bytes изменен"
+  else
+    log_error "Неверное значение"
+  fi
+  read -p "Нажмите Enter..."
+}
+
+change_media_params() {
+  echo ""
+  echo "=== MEDIA параметры (только при masking = MEDIA) ==="
+  echo "Значение 0 = случайный выбор на каждое подключение (рекомендуется)."
+  echo "Ненулевые media-pt и media-ssrc должны совпадать на обеих сторонах."
+  echo ""
+  echo "Текущие:"
+  echo "  media-pt    (payload type, 0 или 96-127): ${CURRENT_MEDIA_PT:-0}"
+  echo "  media-ssrc  (SSRC идентификатор потока):  ${CURRENT_MEDIA_SSRC:-0}"
+  echo "  media-clock (FPS, 0 или 1-1000):          ${CURRENT_MEDIA_CLOCK:-0}"
+  echo ""
+  read -p "media-pt [${CURRENT_MEDIA_PT:-0}]: " pt_input
+  read -p "media-ssrc [${CURRENT_MEDIA_SSRC:-0}]: " ssrc_input
+  read -p "media-clock [${CURRENT_MEDIA_CLOCK:-0}]: " clock_input
+  [[ -n "$pt_input" ]] && CURRENT_MEDIA_PT="$pt_input"
+  [[ -n "$ssrc_input" ]] && CURRENT_MEDIA_SSRC="$ssrc_input"
+  [[ -n "$clock_input" ]] && CURRENT_MEDIA_CLOCK="$clock_input"
+  apply_obfuscator_config
+  rebuild_all_clients
+  log_success "MEDIA параметры изменены"
   read -p "Нажмите Enter..."
 }
 
@@ -507,11 +572,17 @@ show_menu() {
   echo "  7) Уровень логов          [$CURRENT_LOG]"
   echo "  8) Idle таймаут (сек)     [$CURRENT_IDLE]"
   echo "  9) Max dummy (байт)       [$CURRENT_DUMMY]"
+  echo " 10) Obfuscate bytes        [${CURRENT_OBFUSCATE_BYTES:-0}]"
+  if [[ "$CURRENT_MASKING" == "MEDIA" ]]; then
+    echo " 11) MEDIA параметры        [pt:${CURRENT_MEDIA_PT:-0} ssrc:${CURRENT_MEDIA_SSRC:-0} clock:${CURRENT_MEDIA_CLOCK:-0}]"
+  else
+    echo " 11) MEDIA параметры"
+  fi
   echo ""
   local wg_port=$(grep "^ListenPort" "$WG_CONFIG" 2>/dev/null | cut -d'=' -f2 | tr -d ' ')
-  echo " 10) Смена пула адресов WG  (IPv4/IPv6)"
-  echo " 11) Порт WireGuard         [${wg_port:-51820}]"
-  echo " 12) Публичный IP сервера   [$SERVER_PUBLIC_IP_V4]"
+  echo " 12) Смена пула адресов WG  (IPv4/IPv6)"
+  echo " 13) Порт WireGuard         [${wg_port:-51820}]"
+  echo " 14) Публичный IP сервера   [$SERVER_PUBLIC_IP_V4]"
   echo ""
   echo "  0) Назад"
   echo ""
@@ -527,9 +598,11 @@ show_menu() {
     7) change_log_level ;;
     8) change_idle_timeout ;;
     9) change_dummy ;;
-    10) change_wg_pool ;;
-    11) change_wg_listen_port ;;
-    12) change_server_ip ;;
+    10) change_obfuscate_bytes ;;
+    11) change_media_params ;;
+    12) change_wg_pool ;;
+    13) change_wg_listen_port ;;
+    14) change_server_ip ;;
     0) exit 0 ;;
     *) echo "Неверный выбор" ;;
   esac
