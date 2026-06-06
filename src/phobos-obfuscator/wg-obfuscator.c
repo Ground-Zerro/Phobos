@@ -19,6 +19,10 @@
 #include "uthash.h"
 #include "masking.h"
 #include "threading.h"
+
+#define ST_BATCH 16
+#define ST_BUFSZ 2048
+#define ST_FRAME_MAX 32
 #ifdef USE_IO_URING
 #include "io_uring_support.h"
 static uring_context_t uring_ctx = {0};
@@ -343,7 +347,6 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in 
         listen_addr, // Address for listening socket, for receiving data from the client
         forward_addr; // Address for forwarding socket, for sending data to the server
-    uint8_t buffer[BUFFER_SIZE];
     char target_host[256] = {0};
     int target_port = -1;
     int key_length = 0;
@@ -720,18 +723,36 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
 
-                struct sockaddr_in sender_addr = {0};
-                socklen_t sender_addr_len = sizeof(sender_addr);
-                int length = recvfrom(listen_sock, buffer, BUFFER_SIZE, MSG_TRUNC, (struct sockaddr *)&sender_addr, &sender_addr_len);
-                if (length < 0) {
-                    serror_level(LL_DEBUG, "recvfrom client");
+                static struct mmsghdr a_rxhdr[ST_BATCH];
+                static struct iovec a_rxiov[ST_BATCH];
+                static struct sockaddr_in a_rxaddr[ST_BATCH];
+                static uint8_t a_rxbuf[ST_BATCH][ST_BUFSZ];
+                static struct mmsghdr a_txhdr[ST_BATCH];
+                static struct iovec a_txiov[ST_BATCH][2];
+                static uint8_t a_txframe[ST_BATCH][ST_FRAME_MAX];
+                for (int _i = 0; _i < ST_BATCH; _i++) {
+                    a_rxiov[_i].iov_base = a_rxbuf[_i];
+                    a_rxiov[_i].iov_len = ST_BUFSZ;
+                    memset(&a_rxhdr[_i].msg_hdr, 0, sizeof(a_rxhdr[_i].msg_hdr));
+                    a_rxhdr[_i].msg_hdr.msg_name = &a_rxaddr[_i];
+                    a_rxhdr[_i].msg_hdr.msg_namelen = sizeof(a_rxaddr[_i]);
+                    a_rxhdr[_i].msg_hdr.msg_iov = &a_rxiov[_i];
+                    a_rxhdr[_i].msg_hdr.msg_iovlen = 1;
+                }
+                int a_rxn = recvmmsg(listen_sock, a_rxhdr, ST_BATCH, MSG_DONTWAIT | MSG_TRUNC, NULL);
+                if (a_rxn <= 0) {
+                    if (a_rxn < 0) serror_level(LL_DEBUG, "recvmmsg client");
                     continue;
                 }
-                if (length > BUFFER_SIZE) {
-                    log(LL_DEBUG, "Received packet from %s:%d is too large (%d bytes), while buffer size is %d bytes, ignoring",
-                        inet_ntoa(sender_addr.sin_addr), ntohs(sender_addr.sin_port), length, BUFFER_SIZE);
-                    continue;
-                }
+                int a_txn = 0;
+                int a_txfd = -1;
+                for (int _rxb = 0; _rxb < a_rxn; _rxb++) {
+                    uint8_t *buffer = a_rxbuf[_rxb];
+                    struct sockaddr_in sender_addr = a_rxaddr[_rxb];
+                    int length = a_rxhdr[_rxb].msg_len;
+                    if (length < 1 || length > ST_BUFSZ) {
+                        continue;
+                    }
 
                 client_entry_t *client_entry = find_client_safe(&sender_addr);
 
@@ -773,7 +794,7 @@ int main(int argc, char *argv[]) {
                 if (obfuscated) {
                     // decode
                     int original_length = length;
-                    length = decode(buffer, length, config.xor_key, key_length, &version);
+                    length = decode(buffer, length, config.xor_key, key_length, &version, config.obfuscate_bytes);
                     if (length < 4 || length > original_length) {
                         log(LL_DEBUG, "Failed to decode packet from %s:%d (original_length=%d, decoded_length=%d)",
                             inet_ntoa(sender_addr.sin_addr), ntohs(sender_addr.sin_port), original_length, length);
@@ -853,15 +874,17 @@ int main(int argc, char *argv[]) {
                     client_entry->version = version;
                 }
 
+                uint8_t frame_hdr[32];
+                int frame_len = 0;
                 if (!obfuscated) {
                     // If the packet is not obfuscated, we need to encode it
-                    length = encode(buffer, length, config.xor_key, key_length, client_entry->version, config.max_dummy_length_data);
+                    length = encode(buffer, length, config.xor_key, key_length, client_entry->version, config.max_dummy_length_data, config.obfuscate_bytes);
                     if (length < 4) {
                         log(LL_ERROR, "Failed to encode packet from %s:%d (too short, length=%d)",
                             inet_ntoa(sender_addr.sin_addr), ntohs(sender_addr.sin_port), length);
                         continue;
                     }
-                    length = masking_data_wrap_to_server(buffer, length, &config, client_entry, listen_sock, &forward_addr);
+                    frame_len = masking_build_frame_to_server(frame_hdr, length, &config, client_entry);
                 }
 
                 if (verbose >= LL_TRACE) {
@@ -876,12 +899,32 @@ int main(int argc, char *argv[]) {
                     trace("\n");
                 }
 
-                length = send(client_entry->server_sock, buffer, length, 0);
-                if (length < 0) {
-                    serror_level(LL_DEBUG, "sendto %s:%d", target_host, target_port);
-                    continue;
+                if (a_txn > 0 && a_txfd != client_entry->server_sock) {
+                    sendmmsg(a_txfd, a_txhdr, a_txn, 0);
+                    a_txn = 0;
                 }
+                a_txfd = client_entry->server_sock;
+                memset(&a_txhdr[a_txn].msg_hdr, 0, sizeof(a_txhdr[a_txn].msg_hdr));
+                if (frame_len > 0) {
+                    memcpy(a_txframe[a_txn], frame_hdr, frame_len);
+                    a_txiov[a_txn][0].iov_base = a_txframe[a_txn];
+                    a_txiov[a_txn][0].iov_len = frame_len;
+                    a_txiov[a_txn][1].iov_base = buffer;
+                    a_txiov[a_txn][1].iov_len = length;
+                    a_txhdr[a_txn].msg_hdr.msg_iov = a_txiov[a_txn];
+                    a_txhdr[a_txn].msg_hdr.msg_iovlen = 2;
+                } else {
+                    a_txiov[a_txn][0].iov_base = buffer;
+                    a_txiov[a_txn][0].iov_len = length;
+                    a_txhdr[a_txn].msg_hdr.msg_iov = a_txiov[a_txn];
+                    a_txhdr[a_txn].msg_hdr.msg_iovlen = 1;
+                }
+                a_txn++;
                 client_entry->last_activity_time = now;
+                } // for _rxb (client -> server batch)
+                if (a_txn > 0) {
+                    sendmmsg(a_txfd, a_txhdr, a_txn, 0);
+                }
             } else { // if (event->data.fd == listen_sock)
 #ifdef USE_EPOLL
                 client_entry_t *client_entry = event->data.ptr;
@@ -909,16 +952,31 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
 
-                int length = recv(client_entry->server_sock, buffer, BUFFER_SIZE, MSG_TRUNC);
-                if (length < 0) {
-                    serror_level(LL_DEBUG, "recv from server");
+                static struct mmsghdr b_rxhdr[ST_BATCH];
+                static struct iovec b_rxiov[ST_BATCH];
+                static uint8_t b_rxbuf[ST_BATCH][ST_BUFSZ];
+                static struct mmsghdr b_txhdr[ST_BATCH];
+                static struct iovec b_txiov[ST_BATCH][2];
+                static uint8_t b_txframe[ST_BATCH][ST_FRAME_MAX];
+                for (int _i = 0; _i < ST_BATCH; _i++) {
+                    b_rxiov[_i].iov_base = b_rxbuf[_i];
+                    b_rxiov[_i].iov_len = ST_BUFSZ;
+                    memset(&b_rxhdr[_i].msg_hdr, 0, sizeof(b_rxhdr[_i].msg_hdr));
+                    b_rxhdr[_i].msg_hdr.msg_iov = &b_rxiov[_i];
+                    b_rxhdr[_i].msg_hdr.msg_iovlen = 1;
+                }
+                int b_rxn = recvmmsg(client_entry->server_sock, b_rxhdr, ST_BATCH, MSG_DONTWAIT | MSG_TRUNC, NULL);
+                if (b_rxn <= 0) {
+                    if (b_rxn < 0) serror_level(LL_DEBUG, "recv from server");
                     continue;
                 }
-                if (length > BUFFER_SIZE) {
-                    log(LL_DEBUG, "Received packet from %s:%d is too large (%d bytes), while buffer size is %d bytes, ignoring",
-                        target_host, target_port, length, BUFFER_SIZE);
-                    continue;
-                }
+                int b_txn = 0;
+                for (int _rxb = 0; _rxb < b_rxn; _rxb++) {
+                    uint8_t *buffer = b_rxbuf[_rxb];
+                    int length = b_rxhdr[_rxb].msg_len;
+                    if (length < 1 || length > ST_BUFSZ) {
+                        continue;
+                    }
 
                 uint8_t obfuscated = length >= 4 && is_obfuscated(buffer);
                 if (obfuscated) {
@@ -957,7 +1015,7 @@ int main(int argc, char *argv[]) {
                 if (obfuscated) {
                     // decode
                     int original_length = length;
-                    length = decode(buffer, length, config.xor_key, key_length, &version);
+                    length = decode(buffer, length, config.xor_key, key_length, &version, config.obfuscate_bytes);
                     if (length < 4 || length > original_length) {
                         log(LL_DEBUG, "Failed to decode packet from %s:%d (original_length=%d, decoded_length=%d)", target_host, target_port, original_length, length);
                         continue;
@@ -1025,16 +1083,18 @@ int main(int argc, char *argv[]) {
                     client_entry->version = version;
                 }
 
+                uint8_t frame_hdr[32];
+                int frame_len = 0;
                 if (!obfuscated) {
                     // If the packet is not obfuscated, we need to encode it
-                    length = encode(buffer, length, config.xor_key, key_length, client_entry->version, config.max_dummy_length_data);
+                    length = encode(buffer, length, config.xor_key, key_length, client_entry->version, config.max_dummy_length_data, config.obfuscate_bytes);
                     if (length < 4) {
                         log(LL_ERROR, "Failed to encode packet from %s:%d", target_host, target_port);
                         continue;
                     }
-                    length = masking_data_wrap_to_client(buffer, length, &config, client_entry, listen_sock, &forward_addr);
+                    frame_len = masking_build_frame_to_client(frame_hdr, length, &config, client_entry);
                 }
-                
+
                 if (verbose >= LL_TRACE) {
                     if (!obfuscated) {
                         trace("<-X: ");
@@ -1047,13 +1107,30 @@ int main(int argc, char *argv[]) {
                     trace("\n");
                 }
 
-                // Send the response back to the original client
-                length = sendto(listen_sock, buffer, length, 0, (struct sockaddr *)&client_entry->client_addr, sizeof(client_entry->client_addr));
-                if (length < 0) {
-                    serror_level(LL_DEBUG, "sendto %s:%d", inet_ntoa(client_entry->client_addr.sin_addr), ntohs(client_entry->client_addr.sin_port));
-                    continue;
+                // Append the response to the batch for the original client
+                memset(&b_txhdr[b_txn].msg_hdr, 0, sizeof(b_txhdr[b_txn].msg_hdr));
+                b_txhdr[b_txn].msg_hdr.msg_name = &client_entry->client_addr;
+                b_txhdr[b_txn].msg_hdr.msg_namelen = sizeof(client_entry->client_addr);
+                if (frame_len > 0) {
+                    memcpy(b_txframe[b_txn], frame_hdr, frame_len);
+                    b_txiov[b_txn][0].iov_base = b_txframe[b_txn];
+                    b_txiov[b_txn][0].iov_len = frame_len;
+                    b_txiov[b_txn][1].iov_base = buffer;
+                    b_txiov[b_txn][1].iov_len = length;
+                    b_txhdr[b_txn].msg_hdr.msg_iov = b_txiov[b_txn];
+                    b_txhdr[b_txn].msg_hdr.msg_iovlen = 2;
+                } else {
+                    b_txiov[b_txn][0].iov_base = buffer;
+                    b_txiov[b_txn][0].iov_len = length;
+                    b_txhdr[b_txn].msg_hdr.msg_iov = b_txiov[b_txn];
+                    b_txhdr[b_txn].msg_hdr.msg_iovlen = 1;
                 }
+                b_txn++;
                 client_entry->last_activity_time = now;
+                } // for _rxb (server -> client batch)
+                if (b_txn > 0) {
+                    sendmmsg(listen_sock, b_txhdr, b_txn, 0);
+                }
             } // if (event->data.fd != listen_sock)
         } // for (int e = 0; e < events_n; e++)
 

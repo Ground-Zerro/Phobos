@@ -11,7 +11,7 @@ const metricsEnabled = z.boolean({ message: t('zod.general.metricsEnabled') });
 const metricsPassword = z
   .string({ message: t('zod.general.metricsPassword') })
   .min(1, { message: t('zod.general.metricsPassword') })
-  .nullable();
+  .optional();
 
 export const GeneralUpdateSchema = z.object({
   sessionTimeout: sessionTimeout,

@@ -35,6 +35,11 @@
 #define IDLE_TIMEOUT_DEFAULT            300000
 #define MAX_DUMMY_LENGTH_DATA_DEFAULT   4
 
+#define MEDIA_PAYLOAD_TYPE_DEFAULT      0
+#define MEDIA_TS_STEP_DEFAULT           0
+#define MEDIA_SSRC_DEFAULT              0
+#define MEDIA_OBFUSCATE_BYTES_DEFAULT   16
+
 #define DEFAULT_INSTANCE_NAME   "main"
 #define LL_ERROR        0
 #define LL_WARN         1
@@ -74,8 +79,13 @@ typedef struct {
     int max_clients;
     long idle_timeout;
     int max_dummy_length_data;
+    int obfuscate_bytes;
     uint32_t fwmark;
     masking_handler_t *masking_handler;
+
+    uint8_t media_payload_type;
+    uint32_t media_ssrc;
+    uint16_t media_ts_step;
 
     uint8_t reuseport;
 
@@ -107,6 +117,7 @@ typedef struct {
     long last_handshake_request_time;
     long last_handshake_time;
     long last_masking_timer_time;
+    uint8_t masking_priv[32];
     pending_packet_t pending_sends[PENDING_SEND_SIZE];
     volatile int pending_head;
     volatile int pending_tail;

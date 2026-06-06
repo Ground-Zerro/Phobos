@@ -53,7 +53,7 @@ static void process_packet_from_client(packet_job_t *job, obfuscator_config_t *c
 
     if (obfuscated) {
         int original_length = length;
-        length = decode(buffer, length, xor_key, key_length, &version);
+        length = decode(buffer, length, xor_key, key_length, &version, config->obfuscate_bytes);
         if (length < 4 || length > original_length) return;
     }
 
@@ -89,7 +89,7 @@ static void process_packet_from_client(packet_job_t *job, obfuscator_config_t *c
 
     if (!obfuscated && client_entry) {
         length = encode(buffer, length, xor_key, key_length, client_entry->version,
-                       config->max_dummy_length_data);
+                       config->max_dummy_length_data, config->obfuscate_bytes);
         if (length < 4) return;
         length = masking_data_wrap_to_server(buffer, length, config, client_entry, listen_sock, forward_addr);
     }
@@ -141,7 +141,7 @@ static int process_packet_from_server(packet_job_t *job, obfuscator_config_t *co
 
     if (obfuscated) {
         int original_length = length;
-        length = decode(buffer, length, xor_key, key_length, &version);
+        length = decode(buffer, length, xor_key, key_length, &version, config->obfuscate_bytes);
         if (length < 4 || length > original_length) return 0;
     }
 
@@ -170,7 +170,7 @@ static int process_packet_from_server(packet_job_t *job, obfuscator_config_t *co
 
     if (!obfuscated) {
         length = encode(buffer, length, xor_key, key_length, client_entry->version,
-                       config->max_dummy_length_data);
+                       config->max_dummy_length_data, config->obfuscate_bytes);
         if (length < 4) return 0;
         length = masking_data_wrap_to_client(buffer, length, config, client_entry, listen_sock, forward_addr);
     }

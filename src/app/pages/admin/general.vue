@@ -11,11 +11,17 @@
       </FormGroup>
       <FormGroup>
         <FormHeading>{{ $t('admin.general.metrics') }}</FormHeading>
-        <FormNullTextField
+        <FormPasswordField
           id="password"
-          v-model="data.metricsPassword"
+          v-model="metricsPassword"
+          autocomplete="new-password"
           :label="$t('admin.general.metricsPassword')"
           :description="$t('admin.general.metricsPasswordDesc')"
+          :placeholder="
+            data.metricsPasswordSet
+              ? $t('admin.general.metricsPasswordSet')
+              : $t('admin.general.metricsPasswordUnset')
+          "
         />
         <FormSwitchField
           id="prometheus"
@@ -45,6 +51,8 @@ const { data: _data, refresh } = await useFetch(`/api/admin/general`, {
 });
 const data = toRef(_data.value);
 
+const metricsPassword = ref('');
+
 const _submit = useSubmit(
   `/api/admin/general`,
   {
@@ -54,10 +62,25 @@ const _submit = useSubmit(
 );
 
 function submit() {
-  return _submit(data.value);
+  if (!data.value) return;
+  const body: {
+    sessionTimeout: number;
+    metricsPrometheus: boolean;
+    metricsJson: boolean;
+    metricsPassword?: string;
+  } = {
+    sessionTimeout: data.value.sessionTimeout,
+    metricsPrometheus: data.value.metricsPrometheus,
+    metricsJson: data.value.metricsJson,
+  };
+  if (metricsPassword.value) {
+    body.metricsPassword = metricsPassword.value;
+  }
+  return _submit(body);
 }
 
 async function revert() {
+  metricsPassword.value = '';
   await refresh();
   data.value = toRef(_data.value).value;
 }

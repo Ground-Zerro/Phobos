@@ -26,7 +26,7 @@ const key = z
   .max(255)
   .pipe(safeStringRefine);
 
-const masking = z.enum(['STUN', 'AUTO', 'NONE'], {
+const masking = z.enum(['STUN', 'MEDIA', 'AUTO', 'NONE'], {
   message: t('zod.obfuscatorPreset.masking'),
 });
 

@@ -31,12 +31,19 @@ typedef void (*masking_timer_handler_t)(obfuscator_config_t *config,
                                 send_data_callback_t send_to_client_callback,
                                 send_data_callback_t send_to_server_callback);
 
+typedef int (*masking_frame_builder_t)(uint8_t *header,
+                                int payload_length,
+                                obfuscator_config_t *config,
+                                client_entry_t *client,
+                                direction_t direction);
+
 struct masking_handler {
     char name[32];
     masking_event_handler_t on_handshake_req;
     masking_data_handler_t on_data_wrap;
     masking_data_handler_t on_data_unwrap;
     masking_timer_handler_t on_timer;
+    masking_frame_builder_t build_frame;
     uint32_t timer_interval_s;
 };
 typedef struct masking_handler masking_handler_t;
@@ -54,6 +61,14 @@ void masking_on_handshake_req_from_server(obfuscator_config_t *config,
                                 int listen_sock,
                                 struct sockaddr_in *client_addr,
                                 struct sockaddr_in *server_addr);
+
+int masking_build_frame_to_server(uint8_t *header, int payload_length,
+                                obfuscator_config_t *config,
+                                client_entry_t *client);
+
+int masking_build_frame_to_client(uint8_t *header, int payload_length,
+                                obfuscator_config_t *config,
+                                client_entry_t *client);
 
 int masking_data_wrap_to_client(uint8_t *buffer, int length,
                                 obfuscator_config_t *config,

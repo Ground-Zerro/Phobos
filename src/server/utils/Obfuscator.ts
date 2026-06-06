@@ -9,13 +9,19 @@ import { OBFUSCATOR_PORT_MIN } from '#db/repositories/obfuscatorPreset/types';
 const OBFUSCATOR_DEBUG = debug('Obfuscator');
 
 const BINARY = '/usr/local/bin/wg-obfuscator';
-const DEFAULT_KEY_LENGTH = 16;
+const KEY_LENGTH_MIN = 200;
+const KEY_LENGTH_MAX = 254;
 
 function isPrivateIp(ip: string): boolean {
   return /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.)/.test(ip);
 }
 
-export function generateObfuscatorKey(length: number = DEFAULT_KEY_LENGTH): string {
+function randomKeyLength(): number {
+  const span = KEY_LENGTH_MAX - KEY_LENGTH_MIN + 1;
+  return KEY_LENGTH_MIN + (randomBytes(1)[0]! % span);
+}
+
+export function generateObfuscatorKey(length: number = randomKeyLength()): string {
   if (length < 1 || length > 255) {
     throw new Error('Key length must be 1..255');
   }
@@ -203,7 +209,7 @@ class ObfuscatorService {
       key: generateObfuscatorKey(),
       masking: 'STUN',
       idle: 300,
-      dummy: 10,
+      dummy: 40,
       clientWgLocalPort: 13255,
     });
 

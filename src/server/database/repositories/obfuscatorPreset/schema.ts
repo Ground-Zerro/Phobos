@@ -11,11 +11,11 @@ export const obfuscatorPreset = sqliteTable(
     isDefault: int('is_default', { mode: 'boolean' }).notNull().default(false),
     extPort: int('ext_port').notNull().unique(),
     key: text().notNull(),
-    masking: text({ enum: ['STUN', 'AUTO', 'NONE'] })
+    masking: text({ enum: ['STUN', 'MEDIA', 'AUTO', 'NONE'] })
       .notNull()
       .default('STUN'),
     idle: int().notNull().default(300),
-    dummy: int().notNull().default(10),
+    dummy: int().notNull().default(40),
     clientWgLocalPort: int('client_wg_local_port').notNull().default(13255),
     createdAt: text('created_at')
       .notNull()

@@ -26,6 +26,10 @@ static const mini_argp_opt options[] = {
     { "max-clients" , 'm', 1 },
     { "idle-timeout", 'l', 1 },
     { "max-dummy", 'd', 1 },
+    { "obfuscate-bytes", 'O', 1 },
+    { "media-pt", 'P', 1 },
+    { "media-ssrc", 'S', 1 },
+    { "media-clock", 'C', 1 },
     { "fwmark", 'f', 1 },
     { "verbose", 'v', 1 },
     { "reuseport", 'R', 0 },
@@ -47,7 +51,7 @@ static void show_usage(void)
         "  -k, --key=<key>            Obfuscation key \n"
         "                             (required, must be 1-255 characters long)\n"
         "  -a, --masking=<type>       Masking type (optional, default - AUTO)\n"
-        "                             Supported values: STUN, AUTO, NONE\n"
+        "                             Supported values: STUN, MEDIA, AUTO, NONE\n"
         "  -b, --static-bindings=<ip>:<port>:<port>,...\n"
         "                             Comma-separated static bindings for two-way mode\n"
         "                             as <client_ip>:<client_port>:<forward_port>\n"
@@ -65,8 +69,16 @@ static void show_usage(void)
         "Additional options:\n"
         "  -m, --max-clients=<number> Maximum number of clients (default: 1024)\n"
         "  -l, --idle-timeout=<sec>   Idle timeout in seconds (default: 300)\n"
-        "  -d, --max-dummy=<bytes>    Maximum length of dummy bytes for data packets\n" 
-        "                             (default: 4)\n");
+        "  -d, --max-dummy=<bytes>    Maximum length of dummy bytes for data packets\n"
+        "                             (default: 4)\n"
+        "  -O, --obfuscate-bytes=<n>  Obfuscate only the first <n> bytes of payload\n"
+        "                             (0 = whole payload, default: 0; MEDIA default: 16)\n"
+        "  -P, --media-pt=<type>      RTP payload type for MEDIA (0 = random preset,\n"
+        "                             default: 0; static value must match on both sides)\n"
+        "  -S, --media-ssrc=<id>      RTP SSRC for MEDIA (0 = random per connection,\n"
+        "                             default: 0; static value must match on both sides)\n"
+        "  -C, --media-clock=<fps>    RTP timestamp clock for MEDIA (0 = random preset,\n"
+        "                             default: 0)\n");
 }
 
 static int parse_opt(const char *lname, char sname, const char *val, void *ctx);
@@ -85,6 +97,9 @@ static void reset_config(obfuscator_config_t *config)
     config->max_clients = MAX_CLIENTS_DEFAULT;
     config->idle_timeout = IDLE_TIMEOUT_DEFAULT;
     config->max_dummy_length_data = MAX_DUMMY_LENGTH_DATA_DEFAULT;
+    config->media_payload_type = MEDIA_PAYLOAD_TYPE_DEFAULT;
+    config->media_ssrc = MEDIA_SSRC_DEFAULT;
+    config->media_ts_step = MEDIA_TS_STEP_DEFAULT;
     verbose = LL_DEFAULT;
 }
 
@@ -289,6 +304,56 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
                 exit(EXIT_FAILURE);
             }
             break;
+        case 'O':
+            if (!is_integer(val)) {
+                log(LL_ERROR, "Invalid obfuscate-bytes: %s (must be an integer)", val);
+                exit(EXIT_FAILURE);
+            }
+            config->obfuscate_bytes = atoi(val);
+            if (config->obfuscate_bytes < 0) {
+                log(LL_ERROR, "Invalid obfuscate-bytes: %s (must be >= 0)", val);
+                exit(EXIT_FAILURE);
+            }
+            break;
+        case 'P':
+            if (!is_integer(val)) {
+                log(LL_ERROR, "Invalid media-pt: %s (must be an integer)", val);
+                exit(EXIT_FAILURE);
+            }
+            {
+                int pt = atoi(val);
+                if (pt < 0 || pt > 127) {
+                    log(LL_ERROR, "Invalid media-pt: %s (must be between 0 and 127)", val);
+                    exit(EXIT_FAILURE);
+                }
+                config->media_payload_type = (uint8_t)pt;
+            }
+            break;
+        case 'S':
+            {
+                char *end = NULL;
+                unsigned long ssrc = strtoul(val, &end, 0);
+                if (!end || *end) {
+                    log(LL_ERROR, "Invalid media-ssrc: %s (must be a number)", val);
+                    exit(EXIT_FAILURE);
+                }
+                config->media_ssrc = (uint32_t)ssrc;
+            }
+            break;
+        case 'C':
+            if (!is_integer(val)) {
+                log(LL_ERROR, "Invalid media-clock: %s (must be an integer)", val);
+                exit(EXIT_FAILURE);
+            }
+            {
+                int fps = atoi(val);
+                if (fps < 0 || fps > 1000) {
+                    log(LL_ERROR, "Invalid media-clock: %s (must be between 0 and 1000, 0 = random)", val);
+                    exit(EXIT_FAILURE);
+                }
+                config->media_ts_step = fps ? (uint16_t)(90000 / fps) : 0;
+            }
+            break;
         case 'f':
             {
 #ifdef __linux__
@@ -325,6 +390,9 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
                 }
                 config->masking_handler = handler;
                 config->masking_handler_set = 1;
+                if (strcmp(handler->name, "MEDIA") == 0 && config->obfuscate_bytes == 0) {
+                    config->obfuscate_bytes = MEDIA_OBFUSCATE_BYTES_DEFAULT;
+                }
             }
             break;
         case 'R':

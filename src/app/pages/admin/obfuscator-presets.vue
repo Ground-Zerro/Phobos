@@ -29,6 +29,7 @@
                 class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
               >
                 <option value="STUN">STUN</option>
+                <option value="MEDIA">MEDIA</option>
                 <option value="AUTO">AUTO</option>
                 <option value="NONE">NONE</option>
               </select>
@@ -39,7 +40,7 @@
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-sm">{{ $t('admin.obfuscatorPresets.dummyLabel') }}</label>
-              <BaseInput v-model.number="newPreset.dummy" type="number" placeholder="10" />
+              <BaseInput v-model.number="newPreset.dummy" type="number" placeholder="40" />
             </div>
             <div class="flex flex-col gap-1">
               <label class="text-sm">{{ $t('admin.obfuscatorPresets.clientLocalPortLabel') }}</label>
@@ -107,6 +108,7 @@
               class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
             >
               <option value="STUN">STUN</option>
+              <option value="MEDIA">MEDIA</option>
               <option value="AUTO">AUTO</option>
               <option value="NONE">NONE</option>
             </select>
@@ -148,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-type Masking = 'STUN' | 'AUTO' | 'NONE';
+type Masking = 'STUN' | 'MEDIA' | 'AUTO' | 'NONE';
 type Preset = {
   id: number;
   name: string;
@@ -187,7 +189,7 @@ const newPreset = ref<{
   extPort: null,
   masking: 'STUN',
   idle: 300,
-  dummy: 10,
+  dummy: 40,
   clientWgLocalPort: 13255,
 });
 
@@ -214,7 +216,7 @@ async function create() {
       extPort: null,
       masking: 'STUN',
       idle: 300,
-      dummy: 10,
+      dummy: 40,
       clientWgLocalPort: 13255,
     };
     toast.showToast({ type: 'success', message: t('toast.saved') });

@@ -130,11 +130,7 @@ export class GeneralService {
   }
 
   async update(data: GeneralUpdateType) {
-    // only hash the password if it is not already hashed
-    if (
-      data.metricsPassword !== null &&
-      !isValidPasswordHash(data.metricsPassword)
-    ) {
+    if (data.metricsPassword) {
       data.metricsPassword = await hashPassword(data.metricsPassword);
     }
 
@@ -148,6 +144,11 @@ export class GeneralService {
       throw new Error('General Config not found');
     }
 
-    return result;
+    return {
+      sessionTimeout: result.sessionTimeout,
+      metricsPrometheus: result.metricsPrometheus,
+      metricsJson: result.metricsJson,
+      metricsPasswordSet: result.metricsPassword != null,
+    };
   }
 }

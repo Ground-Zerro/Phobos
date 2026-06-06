@@ -106,7 +106,7 @@ export class ObfuscatorPresetService {
         key: data.key ?? generateObfuscatorKey(),
         masking: data.masking ?? 'STUN',
         idle: data.idle ?? 300,
-        dummy: data.dummy ?? 10,
+        dummy: data.dummy ?? 40,
         clientWgLocalPort: data.clientWgLocalPort ?? 13255,
       })
       .returning()
@@ -189,7 +189,7 @@ export class ObfuscatorPresetService {
   async ensureDefault(seed: {
     extPort: number;
     key: string;
-    masking: 'STUN' | 'AUTO' | 'NONE';
+    masking: 'STUN' | 'MEDIA' | 'AUTO' | 'NONE';
     idle: number;
     dummy: number;
     clientWgLocalPort: number;
