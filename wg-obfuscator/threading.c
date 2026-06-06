@@ -106,7 +106,7 @@ static void process_packet_from_client(packet_job_t *job, obfuscator_config_t *c
         ssize_t r = send(client_entry->server_sock, buffer, length, MSG_DONTWAIT);
         if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
             int pending_count = client_entry->pending_head - client_entry->pending_tail;
-            if (pending_count < PENDING_SEND_SIZE) {
+            if (pending_count < PENDING_SEND_SIZE && length <= PENDING_SEND_BUF_SIZE) {
                 pending_packet_t *pp = &client_entry->pending_sends[client_entry->pending_head % PENDING_SEND_SIZE];
                 memcpy(pp->data, buffer, length);
                 pp->length = length;
