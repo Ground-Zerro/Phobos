@@ -138,36 +138,6 @@ int masking_build_frame_to_client(uint8_t *header, int payload_length,
     return client->masking_handler->build_frame(header, payload_length, config, client, DIR_SERVER_TO_CLIENT);
 }
 
-int masking_data_wrap_to_client(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *server_addr) {
-    if (!client->masking_handler || !client->masking_handler->on_data_wrap) {
-        return length; // no masking handler, nothing to do
-    }
-
-    g_send_ctx.listen_sock = listen_sock;
-    g_send_ctx.sender_addr = &client->client_addr;
-    g_send_ctx.server_sock = client->server_sock;
-    return client->masking_handler->on_data_wrap(buffer, length, config, client, DIR_SERVER_TO_CLIENT, server_addr, &client->client_addr, send_to_server_cb, send_to_client_cb);
-}
-
-int masking_data_wrap_to_server(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *server_addr) {
-    if (!client->masking_handler || !client->masking_handler->on_data_wrap) {
-        return length; // no masking handler, nothing to do
-    }
-
-    g_send_ctx.listen_sock = listen_sock;
-    g_send_ctx.sender_addr = &client->client_addr;
-    g_send_ctx.server_sock = client->server_sock;
-    return client->masking_handler->on_data_wrap(buffer, length, config, client, DIR_CLIENT_TO_SERVER, &client->client_addr, server_addr, send_to_client_cb, send_to_server_cb);
-}
-
 void masking_on_timer(obfuscator_config_t *config,
                                 client_entry_t *client,
                                 int listen_sock,

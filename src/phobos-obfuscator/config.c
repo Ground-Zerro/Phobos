@@ -33,6 +33,7 @@ static const mini_argp_opt options[] = {
     { "fwmark", 'f', 1 },
     { "verbose", 'v', 1 },
     { "reuseport", 'R', 0 },
+    { "threads", 'T', 1 },
     { 0 }
 };
 
@@ -57,6 +58,7 @@ static void show_usage(void)
         "                             as <client_ip>:<client_port>:<forward_port>\n"
         "  -f, --fwmark=<mark>        Firewall mark to set on all packets\n"
         "                             (optional, default - 0, e.g. disabled)\n"
+        "  -T, --threads=<number>     Worker threads (0 = auto-detect, default: 0)\n"
         "  -v, --verbose=<level>      Verbosity level (optional, default - INFO)\n"
         "                             ERRORS (critical errors only)\n"
         "                             WARNINGS (important messages)\n"
@@ -397,6 +399,17 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
             break;
         case 'R':
             config->reuseport = 1;
+            break;
+        case 'T':
+            if (!is_integer(val)) {
+                log(LL_ERROR, "Invalid threads value: %s (must be an integer)", val);
+                exit(EXIT_FAILURE);
+            }
+            config->threads = atoi(val);
+            if (config->threads < 0) {
+                log(LL_ERROR, "Invalid threads value: %s (0 = auto)", val);
+                exit(EXIT_FAILURE);
+            }
             break;
         case 'v':
             strncpy(val_lower, val, sizeof(val_lower) - 1);

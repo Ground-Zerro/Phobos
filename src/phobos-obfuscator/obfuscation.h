@@ -48,6 +48,17 @@ typedef struct {
 
 static _Thread_local xor_cache_entry_t xor_cache[XOR_CACHE_ENTRIES];
 static _Thread_local int xor_cache_count = 0;
+static int xor_cache_cap = XOR_CACHE_ENTRIES;
+
+static inline void xor_set_cache_cap(int n) {
+    if (n < 1) n = 1;
+    if (n > XOR_CACHE_ENTRIES) n = XOR_CACHE_ENTRIES;
+    xor_cache_cap = n;
+}
+
+static inline int xor_get_cache_cap(void) {
+    return xor_cache_cap;
+}
 
 #ifdef ARCH_X86
 static volatile int cpu_features_detected = 0;
@@ -328,10 +339,10 @@ static inline void xor_apply_cached(uint8_t *buffer, int length, char *key, int 
     xor_cache_entry_t *entry = xor_cache_find(length, key_length);
 
     if (!entry && length <= XOR_CACHE_MAX_LEN) {
-        if (xor_cache_count < XOR_CACHE_ENTRIES) {
+        if (xor_cache_count < xor_cache_cap) {
             entry = &xor_cache[xor_cache_count++];
         } else {
-            entry = &xor_cache[fast_rand() % XOR_CACHE_ENTRIES];
+            entry = &xor_cache[fast_rand() % xor_cache_cap];
         }
         entry->length = length;
         entry->key_length = key_length;

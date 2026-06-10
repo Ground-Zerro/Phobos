@@ -17,14 +17,13 @@
 #include <poll.h>
 #endif
 
-#define WG_OBFUSCATOR_VERSION "1.5"
+#define WG_OBFUSCATOR_VERSION "1.2"
 #define WG_OBFUSCATOR_GIT_REPO "https://github.com/ClusterM/wg-obfuscator"
 
 #define LL_DEFAULT      LL_INFO
 
 #define BUFFER_SIZE                     65535
-#define PENDING_SEND_SIZE               8
-#define PENDING_SEND_BUF_SIZE           2048
+#define MAX_STATIC_BINDINGS             256
 #define POLL_TIMEOUT                    5000
 #define HANDSHAKE_TIMEOUT               5000
 #define ITERATE_INTERVAL                1000
@@ -71,16 +70,25 @@ struct masking_handler;
 typedef struct masking_handler masking_handler_t;
 
 typedef struct {
+    struct in_addr client_ip;
+    uint16_t remote_port;
+    uint16_t local_port;
+} static_binding_t;
+
+typedef struct {
     int listen_port;
     char forward_host_port[256];
     char xor_key[256];
     char client_interface[256];
     char static_bindings[10 * 1024];
+    static_binding_t static_specs[MAX_STATIC_BINDINGS];
+    int static_spec_count;
     int max_clients;
     long idle_timeout;
     int max_dummy_length_data;
     int obfuscate_bytes;
     uint32_t fwmark;
+    int threads;
     masking_handler_t *masking_handler;
 
     uint8_t media_payload_type;
@@ -98,11 +106,6 @@ typedef struct {
 } obfuscator_config_t;
 
 typedef struct {
-    uint8_t data[PENDING_SEND_BUF_SIZE];
-    int length;
-} pending_packet_t;
-
-typedef struct {
     struct sockaddr_in client_addr;
     int server_sock;
     masking_handler_t *masking_handler;
@@ -118,9 +121,6 @@ typedef struct {
     long last_handshake_time;
     long last_masking_timer_time;
     uint8_t masking_priv[32];
-    pending_packet_t pending_sends[PENDING_SEND_SIZE];
-    volatile int pending_head;
-    volatile int pending_tail;
     UT_hash_handle hh;
 } client_entry_t;
 
@@ -128,10 +128,5 @@ extern int verbose;
 extern char section_name[256];
 
 void print_version(void);
-
-client_entry_t* find_client_safe(struct sockaddr_in *addr);
-void add_client_safe(client_entry_t *entry);
-void delete_client_safe(client_entry_t *entry);
-client_entry_t* new_client_entry(obfuscator_config_t *config, struct sockaddr_in *client_addr, struct sockaddr_in *forward_addr);
 
 #endif

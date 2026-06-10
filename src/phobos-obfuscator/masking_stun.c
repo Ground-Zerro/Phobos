@@ -145,18 +145,6 @@ static int stun_build_frame(uint8_t *header, int payload_length,
     return STUN_DATA_IND_HEADER;
 }
 
-static int stun_wrap(uint8_t *buf, size_t data_len) {
-    if (data_len + STUN_DATA_IND_HEADER > BUFFER_SIZE) {
-        log(LL_WARN, "Can't wrap data in STUN, data too large (%zu bytes)", data_len);
-        return -ENOMEM;
-    }
-
-    memmove(buf + STUN_DATA_IND_HEADER, buf, data_len);
-    stun_build_frame(buf, (int)data_len, NULL, NULL, 0);
-
-    return STUN_DATA_IND_HEADER + data_len;
-}
-
 static int stun_unwrap(uint8_t *buf, size_t len) {
     if (len < 20 + 4) return -1;
 
@@ -250,17 +238,6 @@ int stun_on_data_unwrap(uint8_t *buffer, int length,
     }
 }
 
-static int stun_on_data_wrap(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                direction_t direction,
-                                const struct sockaddr_in *src_addr,
-                                const struct sockaddr_in *dest_addr,
-                                send_data_callback_t send_back_callback,
-                                send_data_callback_t send_forward_callback) {
-    return stun_wrap(buffer, length);
-}
-
 void stun_on_timer(obfuscator_config_t *config,
                                 client_entry_t *client,
                                 const struct sockaddr_in *client_addr,
@@ -296,7 +273,6 @@ void stun_on_timer(obfuscator_config_t *config,
 masking_handler_t stun_masking_handler = {
     .name = "STUN",
     .on_handshake_req = stun_on_handshake_req,
-    .on_data_wrap = stun_on_data_wrap,
     .on_data_unwrap = stun_on_data_unwrap,
     .on_timer = stun_on_timer,
     .build_frame = stun_build_frame,
