@@ -11,7 +11,6 @@ static const uint8_t COOKIE_BE[4] = {0x21,0x12,0xA4,0x42};
 #define STUN_BINDING_REQ        0x0001
 #define STUN_BINDING_RESP       0x0101
 #define STUN_ATTR_XORMAPPED     0x0020
-#define STUN_ATTR_SOFTWARE      0x8022
 #define STUN_ATTR_FINGERPR      0x8028
 #define STUN_ATTR_DATA          0x0013
 
@@ -41,6 +40,7 @@ int stun_on_data_unwrap(uint8_t *buffer, int length,
                                 const struct sockaddr_in *src_addr,
                                 const struct sockaddr_in *dest_addr,
                                 send_data_callback_t send_back_callback,
-                                send_data_callback_t send_forward_callback);
+                                send_data_callback_t send_forward_callback,
+                                int *out_offset);
 
 #endif // _MASKING_STUN_H_

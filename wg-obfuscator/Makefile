@@ -1,9 +1,15 @@
 PROG_NAME    = wg-obfuscator
 CONFIG       = wg-obfuscator.conf
 SERVICE_FILE = wg-obfuscator.service
-HEADERS      = wg-obfuscator.h obfuscation.h config.h uthash.h mini_argp.h masking.h masking_stun.h masking_media.h masking_handlers.h threading.h
+HEADERS      = wg-obfuscator.h obfuscation.h config.h uthash.h mini_argp.h masking.h masking_stun.h masking_media.h masking_handlers.h threading.h resolve.h
 
 RELEASE ?= 0
+
+ifeq ($(V),1)
+  Q :=
+else
+  Q := @
+endif
 
 RM    = rm -f
 CC    ?= gcc
@@ -18,7 +24,7 @@ endif
 ifdef STATIC
   LDFLAGS += -static -static-libgcc
 endif
-OBJS = wg-obfuscator.o config.o masking.o masking_stun.o masking_media.o threading.o
+OBJS = wg-obfuscator.o config.o masking.o masking_stun.o masking_media.o threading.o resolve.o
 EXEDIR = .
 
 EXTRA_CFLAGS ?=
@@ -177,10 +183,10 @@ endif
 $(OBJS): 
 
 %.o : %.c $(HEADERS)
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
+	$(Q)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $@ -c $<
 
 $(TARGET): $(OBJS)
-	$(CC) -o $(TARGET) $(OBJS) $(LDFLAGS)
+	$(Q)$(CC) -o $(TARGET) $(OBJS) $(LDFLAGS)
 ifeq ($(OS),Windows_NT)
 	@for f in `cygcheck "$(TARGET)" | grep .dll | grep msys` ; do if [ ! -f "$(EXEDIR)/`basename $$f`" ] ; then cp -vf `cygpath "$$f"` $(EXEDIR)/ ; fi ; done
 endif

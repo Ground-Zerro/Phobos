@@ -35,11 +35,11 @@ masking_handler_t * get_masking_handler_by_name(const char *name) {
     return NULL;
 }
 
-void masking_on_handshake_req_from_client(obfuscator_config_t *config,
+void masking_send_handshake_req(obfuscator_config_t *config,
                                 client_entry_t *client,
                                 int listen_sock,
-                                struct sockaddr_in *client_addr,
-                                struct sockaddr_in *server_addr) {
+                                struct sockaddr_in *server_addr,
+                                direction_t direction) {
     if (!client->masking_handler || !client->masking_handler->on_handshake_req) {
         return;
     }
@@ -47,22 +47,13 @@ void masking_on_handshake_req_from_client(obfuscator_config_t *config,
     g_send_ctx.listen_sock = listen_sock;
     g_send_ctx.sender_addr = &client->client_addr;
     g_send_ctx.server_sock = client->server_sock;
-    client->masking_handler->on_handshake_req(config, client, DIR_CLIENT_TO_SERVER, client_addr, server_addr, send_to_client_cb, send_to_server_cb);
-}
-
-void masking_on_handshake_req_from_server(obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *client_addr,
-                                struct sockaddr_in *server_addr) {
-    if (!client->masking_handler || !client->masking_handler->on_handshake_req) {
-        return;
+    if (direction == DIR_CLIENT_TO_SERVER) {
+        client->masking_handler->on_handshake_req(config, client, DIR_CLIENT_TO_SERVER,
+            &client->client_addr, server_addr, send_to_client_cb, send_to_server_cb);
+    } else {
+        client->masking_handler->on_handshake_req(config, client, DIR_SERVER_TO_CLIENT,
+            server_addr, &client->client_addr, send_to_server_cb, send_to_client_cb);
     }
-
-    g_send_ctx.listen_sock = listen_sock;
-    g_send_ctx.sender_addr = &client->client_addr;
-    g_send_ctx.server_sock = client->server_sock;
-    client->masking_handler->on_handshake_req(config, client, DIR_SERVER_TO_CLIENT, server_addr, client_addr, send_to_server_cb, send_to_client_cb);
 }
 
 int masking_unwrap_from_client(uint8_t *buffer, int length,
@@ -71,7 +62,9 @@ int masking_unwrap_from_client(uint8_t *buffer, int length,
                                 int listen_sock,
                                 struct sockaddr_in *client_addr,
                                 struct sockaddr_in *server_addr,
-                                masking_handler_t **masking_handler_out) {
+                                masking_handler_t **masking_handler_out,
+                                int *out_offset) {
+    *out_offset = 0;
     g_send_ctx.listen_sock = listen_sock;
     g_send_ctx.sender_addr = client_addr;
     g_send_ctx.server_sock = client ? client->server_sock : 0;
@@ -79,7 +72,7 @@ int masking_unwrap_from_client(uint8_t *buffer, int length,
     if (!client && !config->masking_handler_set) {
         // Brueteforce detection of masking type if no client entry and no default masking handler
         for (int i = 0; masking_handlers[i]; ++i) {
-            int r = masking_handlers[i]->on_data_unwrap(buffer, length, config, NULL, DIR_CLIENT_TO_SERVER, client_addr, server_addr, send_to_client_cb, send_to_server_cb);
+            int r = masking_handlers[i]->on_data_unwrap(buffer, length, config, NULL, DIR_CLIENT_TO_SERVER, client_addr, server_addr, send_to_client_cb, send_to_server_cb, out_offset);
             if (r >= 0) {
                 // Found a matching masking handler
                 log(LL_TRACE, "Autodetected masking handler for packet from %s:%d: %s", inet_ntoa(client_addr->sin_addr), ntohs(client_addr->sin_port), masking_handlers[i]->name);
@@ -102,14 +95,16 @@ int masking_unwrap_from_client(uint8_t *buffer, int length,
         return length; // no masking handler, nothing to do
     }
 
-    return handler->on_data_unwrap(buffer, length, config, client, DIR_CLIENT_TO_SERVER, client_addr, server_addr, send_to_client_cb, client ? send_to_server_cb : NULL);
+    return handler->on_data_unwrap(buffer, length, config, client, DIR_CLIENT_TO_SERVER, client_addr, server_addr, send_to_client_cb, client ? send_to_server_cb : NULL, out_offset);
 }
 
 int masking_unwrap_from_server(uint8_t *buffer, int length,
                                 obfuscator_config_t *config,
                                 client_entry_t *client,
                                 int listen_sock,
-                                struct sockaddr_in *server_addr) {
+                                struct sockaddr_in *server_addr,
+                                int *out_offset) {
+    *out_offset = 0;
     if (!client->masking_handler || !client->masking_handler->on_data_unwrap) {
         return length; // no masking handler, nothing to do
     }
@@ -117,7 +112,7 @@ int masking_unwrap_from_server(uint8_t *buffer, int length,
     g_send_ctx.listen_sock = listen_sock;
     g_send_ctx.sender_addr = &client->client_addr;
     g_send_ctx.server_sock = client->server_sock;
-    return client->masking_handler->on_data_unwrap(buffer, length, config, client, DIR_SERVER_TO_CLIENT, server_addr, &client->client_addr, send_to_server_cb, send_to_client_cb);
+    return client->masking_handler->on_data_unwrap(buffer, length, config, client, DIR_SERVER_TO_CLIENT, server_addr, &client->client_addr, send_to_server_cb, send_to_client_cb, out_offset);
 }
 
 int masking_build_frame_to_server(uint8_t *header, int payload_length,
@@ -136,36 +131,6 @@ int masking_build_frame_to_client(uint8_t *header, int payload_length,
         return 0;
     }
     return client->masking_handler->build_frame(header, payload_length, config, client, DIR_SERVER_TO_CLIENT);
-}
-
-int masking_data_wrap_to_client(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *server_addr) {
-    if (!client->masking_handler || !client->masking_handler->on_data_wrap) {
-        return length; // no masking handler, nothing to do
-    }
-
-    g_send_ctx.listen_sock = listen_sock;
-    g_send_ctx.sender_addr = &client->client_addr;
-    g_send_ctx.server_sock = client->server_sock;
-    return client->masking_handler->on_data_wrap(buffer, length, config, client, DIR_SERVER_TO_CLIENT, server_addr, &client->client_addr, send_to_server_cb, send_to_client_cb);
-}
-
-int masking_data_wrap_to_server(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *server_addr) {
-    if (!client->masking_handler || !client->masking_handler->on_data_wrap) {
-        return length; // no masking handler, nothing to do
-    }
-
-    g_send_ctx.listen_sock = listen_sock;
-    g_send_ctx.sender_addr = &client->client_addr;
-    g_send_ctx.server_sock = client->server_sock;
-    return client->masking_handler->on_data_wrap(buffer, length, config, client, DIR_CLIENT_TO_SERVER, &client->client_addr, server_addr, send_to_client_cb, send_to_server_cb);
 }
 
 void masking_on_timer(obfuscator_config_t *config,

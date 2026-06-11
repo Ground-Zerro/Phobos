@@ -64,38 +64,19 @@ static int media_build_frame(uint8_t *header, int payload_length,
         state->init_mask |= (1 << dir);
     }
 
+    uint16_t seq = __atomic_fetch_add(&state->seq[dir], 1, __ATOMIC_RELAXED);
+    uint32_t ts = __atomic_fetch_add(&state->timestamp[dir], state->ts_step[dir], __ATOMIC_RELAXED);
+
     header[0] = 0x80;
     header[1] = 0x80 | (state->pt[dir] & 0x7F);
-    header[2] = state->seq[dir] >> 8;
-    header[3] = state->seq[dir] & 0xFF;
-    uint32_t timestamp = htonl(state->timestamp[dir]);
+    header[2] = seq >> 8;
+    header[3] = seq & 0xFF;
+    uint32_t timestamp = htonl(ts);
     memcpy(header + 4, &timestamp, 4);
     uint32_t ssrc = htonl(state->ssrc[dir]);
     memcpy(header + 8, &ssrc, 4);
 
-    state->seq[dir]++;
-    state->timestamp[dir] += state->ts_step[dir];
-
     return RTP_HEADER_SIZE;
-}
-
-static int media_on_data_wrap(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                direction_t direction,
-                                const struct sockaddr_in *src_addr,
-                                const struct sockaddr_in *dest_addr,
-                                send_data_callback_t send_back_callback,
-                                send_data_callback_t send_forward_callback) {
-    if (length + RTP_HEADER_SIZE > BUFFER_SIZE) {
-        log(LL_WARN, "Can't wrap data in RTP, data too large (%d bytes)", length);
-        return -ENOMEM;
-    }
-
-    memmove(buffer + RTP_HEADER_SIZE, buffer, length);
-    media_build_frame(buffer, length, config, client, direction);
-
-    return length + RTP_HEADER_SIZE;
 }
 
 static int media_on_data_unwrap(uint8_t *buffer, int length,
@@ -105,9 +86,11 @@ static int media_on_data_unwrap(uint8_t *buffer, int length,
                                 const struct sockaddr_in *src_addr,
                                 const struct sockaddr_in *dest_addr,
                                 send_data_callback_t send_back_callback,
-                                send_data_callback_t send_forward_callback) {
+                                send_data_callback_t send_forward_callback,
+                                int *out_offset) {
+    *out_offset = 0;
     if (stun_check_magic(buffer, length)) {
-        return stun_on_data_unwrap(buffer, length, config, client, direction, src_addr, dest_addr, send_back_callback, send_forward_callback);
+        return stun_on_data_unwrap(buffer, length, config, client, direction, src_addr, dest_addr, send_back_callback, send_forward_callback, out_offset);
     }
 
     if (length < RTP_HEADER_SIZE + 4) {
@@ -127,15 +110,13 @@ static int media_on_data_unwrap(uint8_t *buffer, int length,
         }
     }
 
-    int data_len = length - RTP_HEADER_SIZE;
-    memmove(buffer, buffer + RTP_HEADER_SIZE, data_len);
-    return data_len;
+    *out_offset = RTP_HEADER_SIZE;
+    return length - RTP_HEADER_SIZE;
 }
 
 masking_handler_t media_masking_handler = {
     .name = "MEDIA",
     .on_handshake_req = stun_on_handshake_req,
-    .on_data_wrap = media_on_data_wrap,
     .on_data_unwrap = media_on_data_unwrap,
     .on_timer = stun_on_timer,
     .build_frame = media_build_frame,

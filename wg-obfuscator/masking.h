@@ -22,7 +22,8 @@ typedef int (*masking_data_handler_t)(uint8_t *buffer, int length,
                                 const struct sockaddr_in *src_addr,
                                 const struct sockaddr_in *dest_addr,
                                 send_data_callback_t send_back_callback,
-                                send_data_callback_t send_forward_callback);
+                                send_data_callback_t send_forward_callback,
+                                int *out_offset);
 
 typedef void (*masking_timer_handler_t)(obfuscator_config_t *config,
                                 client_entry_t *client,
@@ -40,7 +41,6 @@ typedef int (*masking_frame_builder_t)(uint8_t *header,
 struct masking_handler {
     char name[32];
     masking_event_handler_t on_handshake_req;
-    masking_data_handler_t on_data_wrap;
     masking_data_handler_t on_data_unwrap;
     masking_timer_handler_t on_timer;
     masking_frame_builder_t build_frame;
@@ -50,17 +50,11 @@ typedef struct masking_handler masking_handler_t;
 
 masking_handler_t * get_masking_handler_by_name(const char *name);
 
-void masking_on_handshake_req_from_client(obfuscator_config_t *config,
+void masking_send_handshake_req(obfuscator_config_t *config,
                                 client_entry_t *client,
                                 int listen_sock,
-                                struct sockaddr_in *client_addr,
-                                struct sockaddr_in *server_addr);
-
-void masking_on_handshake_req_from_server(obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *client_addr,
-                                struct sockaddr_in *server_addr);
+                                struct sockaddr_in *server_addr,
+                                direction_t direction);
 
 int masking_build_frame_to_server(uint8_t *header, int payload_length,
                                 obfuscator_config_t *config,
@@ -70,31 +64,21 @@ int masking_build_frame_to_client(uint8_t *header, int payload_length,
                                 obfuscator_config_t *config,
                                 client_entry_t *client);
 
-int masking_data_wrap_to_client(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *server_addr);
-
-int masking_data_wrap_to_server(uint8_t *buffer, int length,
-                                obfuscator_config_t *config,
-                                client_entry_t *client,
-                                int listen_sock,
-                                struct sockaddr_in *server_addr);
-
 int masking_unwrap_from_client(uint8_t *buffer, int length,
                                 obfuscator_config_t *config,
                                 client_entry_t *client,
                                 int listen_sock,
                                 struct sockaddr_in *client_addr,
                                 struct sockaddr_in *server_addr,
-                                masking_handler_t **masking_handler_out);
+                                masking_handler_t **masking_handler_out,
+                                int *out_offset);
 
 int masking_unwrap_from_server(uint8_t *buffer, int length,
                                 obfuscator_config_t *config,
                                 client_entry_t *client,
                                 int listen_sock,
-                                struct sockaddr_in *server_addr);
+                                struct sockaddr_in *server_addr,
+                                int *out_offset);
 
 void masking_on_timer(obfuscator_config_t *config,
                                 client_entry_t *client,

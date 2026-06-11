@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <limits.h>
 #include "config.h"
 #include "wg-obfuscator.h"
 #include "mini_argp.h"
@@ -15,11 +16,8 @@ static const mini_argp_opt options[] = {
     { "help", '?', 0 },
     { "config", 'c', 1 },
     { "source-if", 'i', 1 },
-    { "source", 's', 1 },
     { "source-lport", 'p', 1 },
-    { "target-if", 'o', 1 },
     { "target", 't', 1 },
-    { "target-lport", 'r', 1 },
     { "key", 'k', 1 },
     { "masking", 'a', 1 },
     { "static-bindings", 'b', 1 },
@@ -32,7 +30,7 @@ static const mini_argp_opt options[] = {
     { "media-clock", 'C', 1 },
     { "fwmark", 'f', 1 },
     { "verbose", 'v', 1 },
-    { "reuseport", 'R', 0 },
+    { "threads", 'T', 1 },
     { 0 }
 };
 
@@ -57,6 +55,7 @@ static void show_usage(void)
         "                             as <client_ip>:<client_port>:<forward_port>\n"
         "  -f, --fwmark=<mark>        Firewall mark to set on all packets\n"
         "                             (optional, default - 0, e.g. disabled)\n"
+        "  -T, --threads=<number>     Worker threads (0 = auto-detect, default: 0)\n"
         "  -v, --verbose=<level>      Verbosity level (optional, default - INFO)\n"
         "                             ERRORS (critical errors only)\n"
         "                             WARNINGS (important messages)\n"
@@ -97,9 +96,6 @@ static void reset_config(obfuscator_config_t *config)
     config->max_clients = MAX_CLIENTS_DEFAULT;
     config->idle_timeout = IDLE_TIMEOUT_DEFAULT;
     config->max_dummy_length_data = MAX_DUMMY_LENGTH_DATA_DEFAULT;
-    config->media_payload_type = MEDIA_PAYLOAD_TYPE_DEFAULT;
-    config->media_ssrc = MEDIA_SSRC_DEFAULT;
-    config->media_ts_step = MEDIA_TS_STEP_DEFAULT;
     verbose = LL_DEFAULT;
 }
 
@@ -121,6 +117,20 @@ static uint8_t is_integer(const char *str)
         str++;
     }
     return 1; // All characters are digits
+}
+
+static long parse_int_range(const char *val, long min, long max, const char *name)
+{
+    if (!is_integer(val)) {
+        log(LL_ERROR, "Invalid %s: %s (must be an integer)", name, val);
+        exit(EXIT_FAILURE);
+    }
+    long v = atol(val);
+    if (v < min || v > max) {
+        log(LL_ERROR, "Invalid %s: %s (must be between %ld and %ld)", name, val, min, max);
+        exit(EXIT_FAILURE);
+    }
+    return v;
 }
 
 /**
@@ -240,15 +250,7 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
             config->client_interface_set = 1;
             break;
         case 'p':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid source port: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
-            config->listen_port = atoi(val);
-            if (config->listen_port <= 0 || config->listen_port > 65535) {
-                log(LL_ERROR, "Invalid listen port: %s (must be between 1 and 65535)", val);
-                exit(EXIT_FAILURE);
-            }
+            config->listen_port = (int)parse_int_range(val, 1, 65535, "source port");
             config->listen_port_set = 1;
             break;
         case 't':
@@ -271,63 +273,19 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
             config->xor_key_set = 1;
             break;
         case 'm':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid maximum number of clients: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
-            config->max_clients = atoi(val);
-            if (config->max_clients <= 0) {
-                log(LL_ERROR, "Invalid maximum number of clients: %s (must be greater than 0)", val);
-                exit(EXIT_FAILURE);
-            }
+            config->max_clients = (int)parse_int_range(val, 1, INT_MAX, "maximum number of clients");
             break;
         case 'l':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid idle timeout: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
-            config->idle_timeout = atol(val);
-            if (config->idle_timeout <= 0) {
-                log(LL_ERROR, "Invalid idle timeout: %s (must be greater than 0)", val);
-                exit(EXIT_FAILURE);
-            }
-            config->idle_timeout *= 1000; // Convert to milliseconds
+            config->idle_timeout = parse_int_range(val, 1, INT_MAX / 1000, "idle timeout") * 1000;
             break;
         case 'd':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid maximum dummy length for data packets: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
-            config->max_dummy_length_data = atoi(val);
-            if (config->max_dummy_length_data < 0 || config->max_dummy_length_data > MAX_DUMMY_LENGTH_TOTAL) {
-                log(LL_ERROR, "Invalid maximum dummy length for data packets: %s (must be between 0 and %d)", val, MAX_DUMMY_LENGTH_TOTAL);
-                exit(EXIT_FAILURE);
-            }
+            config->max_dummy_length_data = (int)parse_int_range(val, 0, MAX_DUMMY_LENGTH_TOTAL, "maximum dummy length for data packets");
             break;
         case 'O':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid obfuscate-bytes: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
-            config->obfuscate_bytes = atoi(val);
-            if (config->obfuscate_bytes < 0) {
-                log(LL_ERROR, "Invalid obfuscate-bytes: %s (must be >= 0)", val);
-                exit(EXIT_FAILURE);
-            }
+            config->obfuscate_bytes = (int)parse_int_range(val, 0, INT_MAX, "obfuscate-bytes");
             break;
         case 'P':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid media-pt: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
-            {
-                int pt = atoi(val);
-                if (pt < 0 || pt > 127) {
-                    log(LL_ERROR, "Invalid media-pt: %s (must be between 0 and 127)", val);
-                    exit(EXIT_FAILURE);
-                }
-                config->media_payload_type = (uint8_t)pt;
-            }
+            config->media_payload_type = (uint8_t)parse_int_range(val, 0, 127, "media-pt");
             break;
         case 'S':
             {
@@ -341,16 +299,8 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
             }
             break;
         case 'C':
-            if (!is_integer(val)) {
-                log(LL_ERROR, "Invalid media-clock: %s (must be an integer)", val);
-                exit(EXIT_FAILURE);
-            }
             {
-                int fps = atoi(val);
-                if (fps < 0 || fps > 1000) {
-                    log(LL_ERROR, "Invalid media-clock: %s (must be between 0 and 1000, 0 = random)", val);
-                    exit(EXIT_FAILURE);
-                }
+                int fps = (int)parse_int_range(val, 0, 1000, "media-clock");
                 config->media_ts_step = fps ? (uint16_t)(90000 / fps) : 0;
             }
             break;
@@ -395,8 +345,8 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
                 }
             }
             break;
-        case 'R':
-            config->reuseport = 1;
+        case 'T':
+            config->threads = (int)parse_int_range(val, 0, INT_MAX, "threads");
             break;
         case 'v':
             strncpy(val_lower, val, sizeof(val_lower) - 1);

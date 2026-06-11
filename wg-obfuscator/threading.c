@@ -5,162 +5,345 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sched.h>
 #include "threading.h"
 #include "wg-obfuscator.h"
 #include "obfuscation.h"
 #include "masking.h"
 
-extern client_entry_t *conn_table;
-
-int detect_cpu_cores(void) {
-#ifdef _SC_NPROCESSORS_ONLN
-    long cores = sysconf(_SC_NPROCESSORS_ONLN);
-    if (cores > 0) return (int)cores;
+#ifdef __linux__
+#include <sys/epoll.h>
+#ifndef EPOLLEXCLUSIVE
+#define EPOLLEXCLUSIVE (1u << 28)
 #endif
-    return 1;
+#endif
+
+#define CONN_SHARDS 16
+static client_entry_t *conn_table[CONN_SHARDS];
+static pthread_rwlock_t table_lock[CONN_SHARDS] = { [0 ... CONN_SHARDS - 1] = PTHREAD_RWLOCK_INITIALIZER };
+static volatile unsigned int client_count = 0;
+static volatile unsigned long table_gen = 0;
+
+static _Thread_local struct sockaddr_in lc_addr;
+static _Thread_local client_entry_t *lc_entry = NULL;
+static _Thread_local unsigned long lc_gen = 0;
+
+static inline int sa_eq(const struct sockaddr_in *a, const struct sockaddr_in *b) {
+    return a->sin_port == b->sin_port && a->sin_addr.s_addr == b->sin_addr.s_addr;
 }
 
-static void queue_init(packet_queue_t *queue) {
-    queue->head = 0;
-    queue->tail = 0;
-    queue->shutdown = 0;
+static inline int shard_of(const struct sockaddr_in *a) {
+    uint32_t h = a->sin_addr.s_addr ^ ((uint32_t)a->sin_port * 2654435761u);
+    h ^= h >> 16;
+    return (int)(h & (CONN_SHARDS - 1));
 }
 
-static void process_packet_from_client(packet_job_t *job, obfuscator_config_t *config,
-                                       char *xor_key, int key_length, int listen_sock,
-                                       struct sockaddr_in *forward_addr) {
-    uint8_t *buffer = job->buffer;
-    int length = job->length;
-    struct sockaddr_in *sender_addr = &job->addr;
-    long now = job->timestamp_ms;
+typedef struct {
+    int cpu;
+    int sibling_index;
+} cpu_slot_t;
 
-    client_entry_t *client_entry = find_client_safe(sender_addr);
+static int read_long_file(const char *path, long *out) {
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+    long v;
+    int r = fscanf(f, "%ld", &v);
+    fclose(f);
+    if (r != 1) return -1;
+    *out = v;
+    return 0;
+}
 
-    uint8_t obfuscated = length >= 4 && is_obfuscated(buffer);
-    masking_handler_t *masking_handler = config->masking_handler;
+static long read_cache_size(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    char buf[32];
+    if (!fgets(buf, sizeof(buf), f)) {
+        fclose(f);
+        return 0;
+    }
+    fclose(f);
+    long v = atol(buf);
+    if (strchr(buf, 'M') || strchr(buf, 'm')) v *= 1024 * 1024;
+    else if (strchr(buf, 'K') || strchr(buf, 'k')) v *= 1024;
+    return v;
+}
 
-    if (obfuscated) {
-        length = masking_unwrap_from_client(buffer, length, config, client_entry,
-                                           listen_sock, sender_addr, forward_addr, &masking_handler);
-        if (length <= 0) return;
+static long detect_cache_level(int want_level, int want_data) {
+    char path[160], val[32];
+    for (int i = 0; i < 10; i++) {
+        long level = 0;
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu0/cache/index%d/level", i);
+        if (read_long_file(path, &level) != 0) break;
+        if (level != want_level) continue;
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu0/cache/index%d/type", i);
+        FILE *f = fopen(path, "r");
+        if (!f) continue;
+        val[0] = 0;
+        if (fgets(val, sizeof(val), f)) {}
+        fclose(f);
+        int is_data = (val[0] == 'D' || val[0] == 'U');
+        if (want_data && !is_data) continue;
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu0/cache/index%d/size", i);
+        long sz = read_cache_size(path);
+        if (sz > 0) return sz;
+    }
+    return 0;
+}
+
+static int cgroup_cpu_limit(void) {
+    long quota, period;
+    FILE *f = fopen("/sys/fs/cgroup/cpu.max", "r");
+    if (f) {
+        char tok[32];
+        if (fscanf(f, "%31s %ld", tok, &period) == 2) {
+            fclose(f);
+            if (strcmp(tok, "max") == 0 || period <= 0) return 0;
+            quota = atol(tok);
+            if (quota <= 0) return 0;
+            int n = (int)((quota + period - 1) / period);
+            return n > 0 ? n : 1;
+        }
+        fclose(f);
+    }
+    if (read_long_file("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", &quota) == 0 &&
+        read_long_file("/sys/fs/cgroup/cpu/cpu.cfs_period_us", &period) == 0) {
+        if (quota <= 0 || period <= 0) return 0;
+        int n = (int)((quota + period - 1) / period);
+        return n > 0 ? n : 1;
+    }
+    return 0;
+}
+
+static long cpu_core_key(int cpu) {
+    char path[128];
+    long core = -1, pkg = 0;
+    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/topology/core_id", cpu);
+    read_long_file(path, &core);
+    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", cpu);
+    read_long_file(path, &pkg);
+    if (core < 0) return ((long)cpu) | 0x40000000L;
+    return (pkg << 16) | core;
+}
+
+static int detect_topology(int *order, int max) {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    if (sched_getaffinity(0, sizeof(set), &set) != 0) {
+        long n = sysconf(_SC_NPROCESSORS_ONLN);
+        int count = n > 0 ? (int)n : 1;
+        if (count > max) count = max;
+        for (int i = 0; i < count; i++) order[i] = i;
+        return count;
     }
 
-    if (length < 4) return;
+    int avail[CPU_SETSIZE];
+    int navail = 0;
+    for (int c = 0; c < CPU_SETSIZE && navail < max; c++) {
+        if (CPU_ISSET(c, &set)) avail[navail++] = c;
+    }
+    if (navail == 0) {
+        order[0] = 0;
+        return 1;
+    }
 
+    long keys[CPU_SETSIZE];
+    cpu_slot_t slots[CPU_SETSIZE];
+    for (int i = 0; i < navail; i++) {
+        keys[i] = cpu_core_key(avail[i]);
+        int sib = 0;
+        for (int j = 0; j < i; j++) {
+            if (keys[j] == keys[i]) sib++;
+        }
+        slots[i].cpu = avail[i];
+        slots[i].sibling_index = sib;
+    }
+
+    int n = 0;
+    int max_sib = 0;
+    for (int i = 0; i < navail; i++) {
+        if (slots[i].sibling_index > max_sib) max_sib = slots[i].sibling_index;
+    }
+    for (int s = 0; s <= max_sib; s++) {
+        for (int i = 0; i < navail; i++) {
+            if (slots[i].sibling_index == s) order[n++] = slots[i].cpu;
+        }
+    }
+    return n;
+}
+
+static void pin_to_cpu(int cpu) {
+    if (cpu < 0) return;
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(cpu, &set);
+    pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+}
+
+static long now_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static client_entry_t *table_find(struct sockaddr_in *addr) {
+    client_entry_t *result;
+    int s = shard_of(addr);
+    pthread_rwlock_rdlock(&table_lock[s]);
+    HASH_FIND(hh, conn_table[s], addr, sizeof(*addr), result);
+    pthread_rwlock_unlock(&table_lock[s]);
+    return result;
+}
+
+static void configure_udp_socket(int sock, obfuscator_config_t *config) {
+#ifdef __linux__
+    int pmtu = IP_PMTUDISC_DONT;
+    setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+    if (config->fwmark) {
+        if (setsockopt(sock, SOL_SOCKET, SO_MARK, &config->fwmark, sizeof(config->fwmark)) < 0) {
+            log(LL_WARN, "Failed to set 'firewall mark': %s", strerror(errno));
+        }
+    }
+#endif
+    int bufsize = 4 * 1024 * 1024;
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+    setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+}
+
+static void epoll_add(int epfd, int fd, void *ptr) {
+#ifdef __linux__
+    struct epoll_event e;
+    e.events = EPOLLIN | EPOLLEXCLUSIVE;
+    e.data.ptr = ptr;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &e) != 0) {
+        e.events = EPOLLIN;
+        epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &e);
+    }
+#else
+    (void)epfd; (void)fd; (void)ptr;
+#endif
+}
+
+static client_entry_t *make_client(worker_ctx_t *w, struct sockaddr_in *client_addr,
+                                   int is_static, uint16_t local_port) {
+    client_entry_t *entry = malloc(sizeof(client_entry_t));
+    if (!entry) {
+        log(LL_ERROR, "Failed to allocate memory for client entry");
+        return NULL;
+    }
+    memset(entry, 0, sizeof(*entry));
+    entry->version = OBFUSCATION_VERSION;
+    memcpy(&entry->client_addr, client_addr, sizeof(entry->client_addr));
+    entry->server_sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    if (entry->server_sock < 0) {
+        serror("Failed to create server socket for client");
+        free(entry);
+        return NULL;
+    }
+    if (is_static) {
+        entry->masking_handler = w->config->masking_handler;
+        struct sockaddr_in bind_addr;
+        memset(&bind_addr, 0, sizeof(bind_addr));
+        bind_addr.sin_family = AF_INET;
+        bind_addr.sin_addr.s_addr = INADDR_ANY;
+        bind_addr.sin_port = htons(local_port);
+        if (bind(entry->server_sock, (struct sockaddr *)&bind_addr, sizeof(bind_addr)) < 0) {
+            serror("Failed to bind static server socket to port %d", local_port);
+            close(entry->server_sock);
+            free(entry);
+            return NULL;
+        }
+        entry->is_static = 1;
+    }
+    configure_udp_socket(entry->server_sock, w->config);
+    connect(entry->server_sock, (struct sockaddr *)w->forward_addr, sizeof(*w->forward_addr));
+    epoll_add(w->epfd, entry->server_sock, entry);
+    HASH_ADD(hh, conn_table[shard_of(client_addr)], client_addr, sizeof(entry->client_addr), entry);
+    __atomic_fetch_add(&client_count, 1, __ATOMIC_RELAXED);
+    return entry;
+}
+
+static client_entry_t *worker_get_or_create(worker_ctx_t *w, struct sockaddr_in *sender, int allow_dynamic) {
+    client_entry_t *entry;
+    int s = shard_of(sender);
+    pthread_rwlock_wrlock(&table_lock[s]);
+    HASH_FIND(hh, conn_table[s], sender, sizeof(*sender), entry);
+    if (entry) {
+        pthread_rwlock_unlock(&table_lock[s]);
+        return entry;
+    }
+    if (__atomic_load_n(&client_count, __ATOMIC_RELAXED) >= (unsigned)w->config->max_clients) {
+        pthread_rwlock_unlock(&table_lock[s]);
+        log(LL_ERROR, "Maximum number of clients reached (%d)", w->config->max_clients);
+        return NULL;
+    }
+    for (int i = 0; i < w->config->static_spec_count; i++) {
+        static_binding_t *sp = &w->config->static_specs[i];
+        if (sp->client_ip.s_addr == sender->sin_addr.s_addr && htons(sp->remote_port) == sender->sin_port) {
+            entry = make_client(w, sender, 1, sp->local_port);
+            pthread_rwlock_unlock(&table_lock[s]);
+            if (entry) log(LL_INFO, "Activated static binding: %s:%d",
+                           inet_ntoa(entry->client_addr.sin_addr), ntohs(entry->client_addr.sin_port));
+            return entry;
+        }
+    }
+    if (allow_dynamic) {
+        entry = make_client(w, sender, 0, 0);
+    }
+    pthread_rwlock_unlock(&table_lock[s]);
+    return entry;
+}
+
+static int process_packet(worker_ctx_t *w, client_entry_t **pclient,
+                          struct sockaddr_in *sender, direction_t dir,
+                          masking_handler_t *masking_handler, int obfuscated,
+                          uint8_t *buffer, int length, long now,
+                          uint8_t *frame, int *frame_len) {
+    obfuscator_config_t *config = w->config;
+    client_entry_t *client_entry = *pclient;
     uint8_t version = client_entry ? client_entry->version : OBFUSCATION_VERSION;
 
     if (obfuscated) {
         int original_length = length;
-        length = decode(buffer, length, xor_key, key_length, &version, config->obfuscate_bytes);
-        if (length < 4 || length > original_length) return;
-    }
-
-    uint32_t packet_type = WG_TYPE(buffer);
-
-    if (packet_type == WG_TYPE_HANDSHAKE) {
-        if (!client_entry) {
-            client_entry = new_client_entry(config, sender_addr, forward_addr);
-            if (!client_entry) return;
-            client_entry->last_activity_time = now;
-            client_entry->masking_handler = masking_handler;
-        }
-        if (!obfuscated) {
-            masking_on_handshake_req_from_client(config, client_entry, listen_sock, sender_addr, forward_addr);
-        }
-        client_entry->handshake_direction = DIR_CLIENT_TO_SERVER;
-        client_entry->last_handshake_request_time = now;
-    } else if (packet_type == WG_TYPE_HANDSHAKE_RESP) {
-        if (!client_entry) return;
-        if (now - client_entry->last_handshake_request_time > HANDSHAKE_TIMEOUT) return;
-        if (client_entry->handshake_direction != DIR_SERVER_TO_CLIENT) return;
-        client_entry->handshaked = 1;
-        client_entry->client_obfuscated = obfuscated;
-        client_entry->server_obfuscated = !obfuscated;
-        client_entry->last_handshake_time = now;
-    } else if (!client_entry || !client_entry->handshaked) {
-        return;
-    }
-
-    if (version < client_entry->version) {
-        client_entry->version = version;
-    }
-
-    if (!obfuscated && client_entry) {
-        length = encode(buffer, length, xor_key, key_length, client_entry->version,
-                       config->max_dummy_length_data, config->obfuscate_bytes);
-        if (length < 4) return;
-        length = masking_data_wrap_to_server(buffer, length, config, client_entry, listen_sock, forward_addr);
-    }
-
-    if (client_entry) {
-        while (client_entry->pending_head != client_entry->pending_tail) {
-            pending_packet_t *pp = &client_entry->pending_sends[client_entry->pending_tail % PENDING_SEND_SIZE];
-            ssize_t r = send(client_entry->server_sock, pp->data, pp->length, MSG_DONTWAIT);
-            if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-                break;
-            client_entry->pending_tail++;
-        }
-
-        ssize_t r = send(client_entry->server_sock, buffer, length, MSG_DONTWAIT);
-        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-            int pending_count = client_entry->pending_head - client_entry->pending_tail;
-            if (pending_count < PENDING_SEND_SIZE) {
-                pending_packet_t *pp = &client_entry->pending_sends[client_entry->pending_head % PENDING_SEND_SIZE];
-                memcpy(pp->data, buffer, length);
-                pp->length = length;
-                client_entry->pending_head++;
-            }
-        }
-        client_entry->last_activity_time = now;
-    }
-}
-
-static int process_packet_from_server(packet_job_t *job, obfuscator_config_t *config,
-                                      char *xor_key, int key_length, int listen_sock,
-                                      struct sockaddr_in *forward_addr) {
-    uint8_t *buffer = job->buffer;
-    int length = job->length;
-    client_entry_t *client_entry = job->client;
-
-    if (!client_entry) return 0;
-
-    long now = job->timestamp_ms;
-
-    uint8_t obfuscated = length >= 4 && is_obfuscated(buffer);
-
-    if (obfuscated) {
-        length = masking_unwrap_from_server(buffer, length, config, client_entry, listen_sock, forward_addr);
-        if (length <= 0) return 0;
-    }
-
-    if (length < 4) return 0;
-
-    uint8_t version = client_entry->version;
-
-    if (obfuscated) {
-        int original_length = length;
-        length = decode(buffer, length, xor_key, key_length, &version, config->obfuscate_bytes);
+        length = decode(buffer, length, w->xor_key, w->key_length, &version, config->obfuscate_bytes);
         if (length < 4 || length > original_length) return 0;
     }
 
     uint32_t packet_type = WG_TYPE(buffer);
+    direction_t resp_expect = (dir == DIR_CLIENT_TO_SERVER) ? DIR_SERVER_TO_CLIENT : DIR_CLIENT_TO_SERVER;
 
     if (packet_type == WG_TYPE_HANDSHAKE) {
-        if (!obfuscated) {
-            masking_on_handshake_req_from_server(config, client_entry, listen_sock, &client_entry->client_addr, forward_addr);
+        if (!client_entry && sender) {
+            client_entry = worker_get_or_create(w, sender, 1);
+            if (!client_entry) return 0;
+            client_entry->last_activity_time = now;
+            client_entry->masking_handler = masking_handler;
+            *pclient = client_entry;
         }
-        client_entry->handshake_direction = DIR_SERVER_TO_CLIENT;
+        if (!client_entry) return 0;
+        if (!obfuscated) {
+            masking_send_handshake_req(config, client_entry, w->listen_sock, w->forward_addr, dir);
+        }
+        client_entry->handshake_direction = dir;
         client_entry->last_handshake_request_time = now;
     } else if (packet_type == WG_TYPE_HANDSHAKE_RESP) {
+        if (!client_entry) return 0;
         if (now - client_entry->last_handshake_request_time > HANDSHAKE_TIMEOUT) return 0;
-        if (client_entry->handshake_direction != DIR_CLIENT_TO_SERVER) return 0;
+        if (client_entry->handshake_direction != resp_expect) return 0;
+        if (dir == DIR_SERVER_TO_CLIENT && !client_entry->handshaked
+            && client_entry->masking_handler && !config->masking_handler_set) {
+            log(LL_INFO, "Autodetected masking handler for client %s:%d: %s",
+                inet_ntoa(client_entry->client_addr.sin_addr), ntohs(client_entry->client_addr.sin_port),
+                client_entry->masking_handler->name);
+        }
         client_entry->handshaked = 1;
-        client_entry->client_obfuscated = !obfuscated;
-        client_entry->server_obfuscated = obfuscated;
-        client_entry->last_handshake_time = now;
-    } else if (!client_entry->handshaked) {
+        client_entry->client_obfuscated = (dir == DIR_CLIENT_TO_SERVER) ? obfuscated : !obfuscated;
+        client_entry->server_obfuscated = (dir == DIR_CLIENT_TO_SERVER) ? !obfuscated : obfuscated;
+    } else if (!client_entry || !client_entry->handshaked) {
         return 0;
     }
 
@@ -168,204 +351,380 @@ static int process_packet_from_server(packet_job_t *job, obfuscator_config_t *co
         client_entry->version = version;
     }
 
+    *frame_len = 0;
     if (!obfuscated) {
-        length = encode(buffer, length, xor_key, key_length, client_entry->version,
-                       config->max_dummy_length_data, config->obfuscate_bytes);
+        length = encode(buffer, length, w->xor_key, w->key_length, client_entry->version,
+                        config->max_dummy_length_data, config->obfuscate_bytes);
         if (length < 4) return 0;
-        length = masking_data_wrap_to_client(buffer, length, config, client_entry, listen_sock, forward_addr);
+        *frame_len = (dir == DIR_CLIENT_TO_SERVER)
+            ? masking_build_frame_to_server(frame, length, config, client_entry)
+            : masking_build_frame_to_client(frame, length, config, client_entry);
     }
 
     client_entry->last_activity_time = now;
-    job->length = length;
     return length;
 }
 
-#if defined(__linux__)
-#define SEND_BATCH 16
-
-static void *worker_thread_server_func(void *arg) {
-    worker_thread_t *worker = (worker_thread_t *)arg;
-    int idle_count = 0;
-    struct mmsghdr send_hdrs[SEND_BATCH];
-    struct iovec send_iovs[SEND_BATCH];
-
-    log(LL_DEBUG, "Worker thread #%d started (sendmmsg)", worker->worker_index);
-
-    while (worker->running) {
-        int batch_count = 0;
-
-        while (batch_count < SEND_BATCH) {
-            packet_job_t *job = queue_peek(worker->queue);
-            if (!job) break;
-
-            uint32_t next_t = (worker->queue->tail + 1) & QUEUE_MASK;
-            __builtin_prefetch(&worker->queue->jobs[next_t], 0, 1);
-
-            int result = process_packet_from_server(job, worker->config, worker->xor_key,
-                                                    worker->key_length, worker->listen_sock,
-                                                    worker->forward_addr);
-            if (result > 0 && job->client) {
-                int idx = batch_count;
-                send_iovs[idx].iov_base = job->buffer;
-                send_iovs[idx].iov_len = job->length;
-                send_hdrs[idx].msg_hdr.msg_name = &job->client->client_addr;
-                send_hdrs[idx].msg_hdr.msg_namelen = sizeof(job->client->client_addr);
-                send_hdrs[idx].msg_hdr.msg_iov = &send_iovs[idx];
-                send_hdrs[idx].msg_hdr.msg_iovlen = 1;
-                send_hdrs[idx].msg_hdr.msg_control = NULL;
-                send_hdrs[idx].msg_hdr.msg_controllen = 0;
-                send_hdrs[idx].msg_hdr.msg_flags = 0;
-                batch_count++;
-            }
-            queue_consume(worker->queue);
+static int process_from_client(worker_ctx_t *w, uint8_t *buffer, int length,
+                               struct sockaddr_in *sender, long now,
+                               client_entry_t **client_out, uint8_t *frame, int *frame_len,
+                               int *payload_off) {
+    obfuscator_config_t *config = w->config;
+    unsigned long gen = __atomic_load_n(&table_gen, __ATOMIC_ACQUIRE);
+    client_entry_t *client_entry;
+    if (lc_entry && lc_gen == gen && sa_eq(&lc_addr, sender)) {
+        client_entry = lc_entry;
+    } else {
+        client_entry = table_find(sender);
+        if (!client_entry) {
+            client_entry = worker_get_or_create(w, sender, 0);
         }
-
-        if (batch_count > 0) {
-            sendmmsg(worker->listen_sock, send_hdrs, batch_count, MSG_DONTWAIT);
-            idle_count = 0;
-        } else {
-            if (__atomic_load_n(&worker->queue->shutdown, __ATOMIC_RELAXED))
-                break;
-            if (++idle_count > 256) {
-                usleep(100);
-                idle_count = 256;
-            } else {
-                sched_yield();
-            }
+        if (client_entry) {
+            lc_addr = *sender;
+            lc_entry = client_entry;
+            lc_gen = gen;
         }
     }
 
-    log(LL_DEBUG, "Worker thread #%d stopped", worker->worker_index);
-    return NULL;
+    uint8_t obfuscated = length >= 4 && is_obfuscated(buffer);
+    masking_handler_t *masking_handler = config->masking_handler;
+    int off = 0;
+    if (obfuscated) {
+        length = masking_unwrap_from_client(buffer, length, config, client_entry, w->listen_sock,
+                                            sender, w->forward_addr, &masking_handler, &off);
+        if (length <= 0) return 0;
+    }
+    if (length < 4) return 0;
+
+    int out = process_packet(w, &client_entry, sender, DIR_CLIENT_TO_SERVER, masking_handler,
+                             obfuscated, buffer + off, length, now, frame, frame_len);
+    if (out > 0) {
+        *client_out = client_entry;
+        *payload_off = off;
+        lc_addr = *sender;
+        lc_entry = client_entry;
+        lc_gen = gen;
+    }
+    return out;
 }
+
+static int process_from_server(worker_ctx_t *w, client_entry_t *client_entry,
+                               uint8_t *buffer, int length, long now,
+                               uint8_t *frame, int *frame_len, int *payload_off) {
+    obfuscator_config_t *config = w->config;
+
+    uint8_t obfuscated = length >= 4 && is_obfuscated(buffer);
+    int off = 0;
+    if (obfuscated) {
+        length = masking_unwrap_from_server(buffer, length, config, client_entry, w->listen_sock, w->forward_addr, &off);
+        if (length <= 0) return 0;
+    }
+    if (length < 4) return 0;
+
+    int out = process_packet(w, &client_entry, NULL, DIR_SERVER_TO_CLIENT, NULL,
+                             obfuscated, buffer + off, length, now, frame, frame_len);
+    if (out > 0) *payload_off = off;
+    return out;
+}
+
+static void worker_cleanup(worker_ctx_t *w, long now) {
+    client_entry_t *cur, *tmp;
+    for (int s = 0; s < CONN_SHARDS; s++) {
+        pthread_rwlock_wrlock(&table_lock[s]);
+        HASH_ITER(hh, conn_table[s], cur, tmp) {
+            if (((now - cur->last_activity_time >= w->config->idle_timeout)
+                 || (!cur->handshaked && (now - cur->last_activity_time >= HANDSHAKE_TIMEOUT)))
+                && !cur->is_static) {
+                log(cur->handshaked ? LL_INFO : LL_DEBUG, "Removing idle client %s:%d",
+                    inet_ntoa(cur->client_addr.sin_addr), ntohs(cur->client_addr.sin_port));
+#ifdef __linux__
+                epoll_ctl(w->epfd, EPOLL_CTL_DEL, cur->server_sock, NULL);
+#endif
+                close(cur->server_sock);
+                HASH_DEL(conn_table[s], cur);
+                free(cur);
+                __atomic_fetch_sub(&client_count, 1, __ATOMIC_RELAXED);
+                __atomic_fetch_add(&table_gen, 1, __ATOMIC_RELEASE);
+                continue;
+            }
+            if (cur->masking_handler && cur->masking_handler->timer_interval_s > 0
+                && now - cur->last_masking_timer_time >= cur->masking_handler->timer_interval_s * 1000) {
+                cur->last_masking_timer_time = now;
+                masking_on_timer(w->config, cur, w->listen_sock, w->forward_addr);
+            }
+        }
+        pthread_rwlock_unlock(&table_lock[s]);
+    }
+}
+
+#ifdef __linux__
+
+static inline void rx_prep(struct mmsghdr *rxh, struct iovec *rxi, struct sockaddr_in *rxa,
+                           uint8_t (*rxb)[WORKER_BUF_SIZE]) {
+    for (int i = 0; i < RX_BATCH; i++) {
+        rxi[i].iov_base = rxb[i];
+        rxi[i].iov_len = WORKER_BUF_SIZE;
+        rxh[i].msg_hdr.msg_iov = &rxi[i];
+        rxh[i].msg_hdr.msg_iovlen = 1;
+        if (rxa) {
+            rxh[i].msg_hdr.msg_name = &rxa[i];
+            rxh[i].msg_hdr.msg_namelen = sizeof(rxa[i]);
+        } else {
+            rxh[i].msg_hdr.msg_name = NULL;
+            rxh[i].msg_hdr.msg_namelen = 0;
+        }
+    }
+}
+
+static inline void tx_set(struct mmsghdr *h, struct iovec iov[2], uint8_t *frame, int frame_len,
+                          uint8_t *payload, int out, struct sockaddr_in *dst) {
+    if (dst) {
+        h->msg_hdr.msg_name = dst;
+        h->msg_hdr.msg_namelen = sizeof(*dst);
+    } else {
+        h->msg_hdr.msg_name = NULL;
+        h->msg_hdr.msg_namelen = 0;
+    }
+    if (frame_len > 0) {
+        iov[0].iov_base = frame;   iov[0].iov_len = frame_len;
+        iov[1].iov_base = payload; iov[1].iov_len = out;
+        h->msg_hdr.msg_iov = iov;  h->msg_hdr.msg_iovlen = 2;
+    } else {
+        iov[0].iov_base = payload; iov[0].iov_len = out;
+        h->msg_hdr.msg_iov = iov;  h->msg_hdr.msg_iovlen = 1;
+    }
+}
+
+static void worker_run(worker_ctx_t *w) {
+    pin_to_cpu(w->cpu);
+
+    struct epoll_event events[64];
+    struct mmsghdr rxh[RX_BATCH];
+    struct iovec rxi[RX_BATCH];
+    struct sockaddr_in rxa[RX_BATCH];
+    static _Thread_local uint8_t rxb[RX_BATCH][WORKER_BUF_SIZE];
+    struct mmsghdr txh[RX_BATCH];
+    struct iovec txi[RX_BATCH][2];
+    static _Thread_local uint8_t txf[RX_BATCH][WORKER_FRAME_MAX];
+
+    memset(rxh, 0, sizeof(rxh));
+    memset(txh, 0, sizeof(txh));
+
+    while (w->running) {
+        int n = epoll_wait(w->epfd, events, 64, 1000);
+        long now = now_ms();
+
+        for (int e = 0; e < n; e++) {
+            client_entry_t *src_client = events[e].data.ptr;
+
+            if (src_client == NULL) {
+                rx_prep(rxh, rxi, rxa, rxb);
+                int rxn = recvmmsg(w->listen_sock, rxh, RX_BATCH, MSG_DONTWAIT | MSG_TRUNC, NULL);
+                if (rxn <= 0) continue;
+
+                int txn = 0;
+                int txfd = -1;
+                for (int b = 0; b < rxn; b++) {
+                    int len = rxh[b].msg_len;
+                    if (len < 1 || len > WORKER_BUF_SIZE) continue;
+                    client_entry_t *client = NULL;
+                    int frame_len = 0, off = 0;
+                    int out = process_from_client(w, rxb[b], len, &rxa[b], now, &client, txf[txn], &frame_len, &off);
+                    if (out <= 0 || !client) continue;
+
+                    if (txn > 0 && txfd != client->server_sock) {
+                        sendmmsg(txfd, txh, txn, MSG_DONTWAIT);
+                        txn = 0;
+                    }
+                    txfd = client->server_sock;
+                    tx_set(&txh[txn], txi[txn], txf[txn], frame_len, rxb[b] + off, out, NULL);
+                    txn++;
+                }
+                if (txn > 0) sendmmsg(txfd, txh, txn, MSG_DONTWAIT);
+                continue;
+            }
+
+            rx_prep(rxh, rxi, NULL, rxb);
+            int rxn = recvmmsg(src_client->server_sock, rxh, RX_BATCH, MSG_DONTWAIT | MSG_TRUNC, NULL);
+            if (rxn <= 0) continue;
+
+            int txn = 0;
+            for (int b = 0; b < rxn; b++) {
+                int len = rxh[b].msg_len;
+                if (len < 1 || len > WORKER_BUF_SIZE) continue;
+                int frame_len = 0, off = 0;
+                int out = process_from_server(w, src_client, rxb[b], len, now, txf[txn], &frame_len, &off);
+                if (out <= 0) continue;
+
+                tx_set(&txh[txn], txi[txn], txf[txn], frame_len, rxb[b] + off, out, &src_client->client_addr);
+                txn++;
+            }
+            if (txn > 0) sendmmsg(w->listen_sock, txh, txn, MSG_DONTWAIT);
+        }
+
+        if (w->is_maintainer && now - w->last_cleanup_time >= ITERATE_INTERVAL) {
+            worker_cleanup(w, now);
+            w->last_cleanup_time = now;
+        }
+    }
+}
+
+#else
+
+static void worker_run(worker_ctx_t *w) {
+    pin_to_cpu(w->cpu);
+    uint8_t buf[WORKER_BUF_SIZE];
+    uint8_t frame[WORKER_FRAME_MAX];
+    while (w->running) {
+        struct sockaddr_in sender;
+        socklen_t slen = sizeof(sender);
+        int len = recvfrom(w->listen_sock, buf, sizeof(buf), 0, (struct sockaddr *)&sender, &slen);
+        long now = now_ms();
+        if (len > 0) {
+            client_entry_t *client = NULL;
+            int frame_len = 0, off = 0;
+            int out = process_from_client(w, buf, len, &sender, now, &client, frame, &frame_len, &off);
+            if (out > 0 && client) {
+                if (frame_len > 0) {
+                    uint8_t pkt[WORKER_BUF_SIZE + WORKER_FRAME_MAX];
+                    memcpy(pkt, frame, frame_len);
+                    memcpy(pkt + frame_len, buf + off, out);
+                    send(client->server_sock, pkt, frame_len + out, MSG_DONTWAIT);
+                } else {
+                    send(client->server_sock, buf + off, out, MSG_DONTWAIT);
+                }
+            }
+        }
+        if (w->is_maintainer && now - w->last_cleanup_time >= ITERATE_INTERVAL) {
+            worker_cleanup(w, now);
+            w->last_cleanup_time = now;
+        }
+    }
+}
+
 #endif
 
-static void *worker_thread_func(void *arg) {
-    worker_thread_t *worker = (worker_thread_t *)arg;
-    int idle_count = 0;
-
-    log(LL_DEBUG, "Worker thread #%d started", worker->worker_index);
-
-    while (worker->running) {
-        packet_job_t *job = queue_peek(worker->queue);
-        if (!job) {
-            if (__atomic_load_n(&worker->queue->shutdown, __ATOMIC_RELAXED))
-                break;
-            if (++idle_count > 256) {
-                usleep(100);
-                idle_count = 256;
-            } else {
-                sched_yield();
-            }
-            continue;
-        }
-        idle_count = 0;
-
-        uint32_t next_tail = (worker->queue->tail + 1) & QUEUE_MASK;
-        __builtin_prefetch(&worker->queue->jobs[next_tail], 0, 1);
-
-        if (job->is_from_client) {
-            process_packet_from_client(job, worker->config, worker->xor_key,
-                                      worker->key_length, worker->listen_sock,
-                                      worker->forward_addr);
-        } else {
-            int result = process_packet_from_server(job, worker->config, worker->xor_key,
-                                                    worker->key_length, worker->listen_sock,
-                                                    worker->forward_addr);
-            if (result > 0 && job->client) {
-                sendto(worker->listen_sock, job->buffer, job->length, MSG_DONTWAIT,
-                       (struct sockaddr *)&job->client->client_addr,
-                       sizeof(job->client->client_addr));
-            }
-        }
-        queue_consume(worker->queue);
-    }
-
-    log(LL_DEBUG, "Worker thread #%d stopped", worker->worker_index);
+static void *worker_main(void *arg) {
+    worker_ctx_t *w = (worker_ctx_t *)arg;
+    log(LL_DEBUG, "Worker #%d started (cpu %d)", w->worker_index, w->cpu);
+    worker_run(w);
+    log(LL_DEBUG, "Worker #%d stopped", w->worker_index);
     return NULL;
 }
 
 int threading_init(threading_context_t *ctx, obfuscator_config_t *config) {
-    memset(ctx, 0, sizeof(threading_context_t));
+    memset(ctx, 0, sizeof(*ctx));
 
-    ctx->num_cores = detect_cpu_cores();
-    log(LL_INFO, "Detected %d logical CPU(s)", ctx->num_cores);
+    int order[MAX_WORKER_THREADS];
+    int navail = detect_topology(order, MAX_WORKER_THREADS);
 
-    if (ctx->num_cores <= 1) {
-        log(LL_INFO, "Using single-threaded mode");
-        ctx->mode = THREAD_MODE_SINGLE;
-        ctx->num_workers = 0;
-    } else if (ctx->num_cores <= 4) {
-        log(LL_INFO, "Using dual-threaded mode (1 main + 2 workers)");
-        ctx->mode = THREAD_MODE_DUAL;
-        ctx->num_workers = 2;
-    } else {
-        log(LL_INFO, "Using multi-threaded mode (1 main + 2 workers)");
-        ctx->mode = THREAD_MODE_MULTI;
-        ctx->num_workers = 2;
+    int limit = cgroup_cpu_limit();
+    if (limit > 0 && limit < navail) navail = limit;
+
+    int n = config->threads > 0 ? config->threads : navail;
+    if (n < 1) n = 1;
+    if (n > MAX_WORKER_THREADS) n = MAX_WORKER_THREADS;
+
+    ctx->num_workers = n;
+    for (int i = 0; i < n; i++) {
+        ctx->workers[i].worker_index = i;
+        ctx->workers[i].cpu = (i < navail) ? order[i] : -1;
+        ctx->workers[i].is_maintainer = (i == 0);
     }
 
-    if (ctx->mode != THREAD_MODE_SINGLE) {
-        queue_init(&ctx->client_queue);
-        queue_init(&ctx->server_queue);
+    long l1d = detect_cache_level(1, 1);
+    long l2 = detect_cache_level(2, 0);
+    if (l1d > 0) {
+        int cap = (int)((l1d / 2) / (long)sizeof(xor_cache_entry_t));
+        xor_set_cache_cap(cap);
     }
+    log(LL_INFO, "CPU: %d worker(s), L1d=%ldKB L2=%ldKB, xor-cache=%d entries",
+        n, l1d / 1024, l2 / 1024, xor_get_cache_cap());
 
     return 0;
 }
 
-int threading_start(threading_context_t *ctx, int listen_sock, obfuscator_config_t *config,
-                    char *xor_key, int key_length, struct sockaddr_in *forward_addr) {
-    if (ctx->mode == THREAD_MODE_SINGLE) return 0;
+static int open_listen_socket(threading_context_t *ctx, obfuscator_config_t *config) {
+    int sock = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    if (sock < 0) {
+        serror("Can't create listen socket");
+        return -1;
+    }
+    int one = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+#ifdef __linux__
+    int pmtu = IP_PMTUDISC_DONT;
+    setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu));
+    if (config->fwmark) {
+        setsockopt(sock, SOL_SOCKET, SO_MARK, &config->fwmark, sizeof(config->fwmark));
+    }
+#endif
+    int bufsize = 4 * 1024 * 1024;
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+    setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
 
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = ctx->listen_addr;
+    addr.sin_port = htons(ctx->listen_port);
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        serror("Failed to bind listen socket to %s:%d", inet_ntoa(addr.sin_addr), ctx->listen_port);
+        close(sock);
+        return -1;
+    }
+    return sock;
+}
+
+int threading_start(threading_context_t *ctx, obfuscator_config_t *config,
+                    char *xor_key, int key_length, struct sockaddr_in *forward_addr,
+                    in_addr_t listen_addr, uint16_t listen_port) {
+    ctx->listen_addr = listen_addr;
+    ctx->listen_port = listen_port;
     ctx->running = 1;
 
-    packet_queue_t *queues[2] = { &ctx->client_queue, &ctx->server_queue };
+    ctx->listen_sock = open_listen_socket(ctx, config);
+    if (ctx->listen_sock < 0) return -1;
+
+#ifdef __linux__
+    ctx->epfd = epoll_create1(0);
+    if (ctx->epfd < 0) {
+        serror("epoll_create1");
+        return -1;
+    }
+    epoll_add(ctx->epfd, ctx->listen_sock, NULL);
+#endif
 
     for (int i = 0; i < ctx->num_workers; i++) {
-        worker_thread_t *worker = &ctx->workers[i];
-        worker->worker_index = i;
-        worker->queue = queues[i];
-        worker->listen_sock = listen_sock;
-        worker->config = config;
-        worker->xor_key = xor_key;
-        worker->key_length = key_length;
-        worker->forward_addr = forward_addr;
-        worker->running = 1;
-
-        void *(*thread_func)(void *) = worker_thread_func;
-#if defined(__linux__)
-        if (i == 1)
-            thread_func = worker_thread_server_func;
-#endif
-        if (pthread_create(&worker->thread_id, NULL, thread_func, worker) != 0) {
-            log(LL_ERROR, "Failed to create worker thread #%d: %s", i, strerror(errno));
+        worker_ctx_t *w = &ctx->workers[i];
+        w->config = config;
+        w->xor_key = xor_key;
+        w->key_length = key_length;
+        w->forward_addr = forward_addr;
+        w->listen_sock = ctx->listen_sock;
+        w->epfd = ctx->epfd;
+        w->running = 1;
+        w->last_cleanup_time = 0;
+        if (pthread_create(&w->thread_id, NULL, worker_main, w) != 0) {
+            log(LL_ERROR, "Failed to create worker #%d: %s", i, strerror(errno));
             return -1;
         }
     }
-
     log(LL_INFO, "Started %d worker thread(s)", ctx->num_workers);
     return 0;
 }
 
-void threading_shutdown(threading_context_t *ctx) {
-    if (ctx->mode == THREAD_MODE_SINGLE) return;
-
-    log(LL_INFO, "Shutting down threading system...");
-
-    ctx->running = 0;
-
-    __atomic_store_n(&ctx->client_queue.shutdown, 1, __ATOMIC_RELEASE);
-    __atomic_store_n(&ctx->server_queue.shutdown, 1, __ATOMIC_RELEASE);
-
+void threading_join(threading_context_t *ctx) {
     for (int i = 0; i < ctx->num_workers; i++) {
-        worker_thread_t *worker = &ctx->workers[i];
-        worker->running = 0;
-
-        if (worker->thread_id) {
-            pthread_join(worker->thread_id, NULL);
-            log(LL_DEBUG, "Worker thread #%d joined", i);
+        if (ctx->workers[i].thread_id) {
+            pthread_join(ctx->workers[i].thread_id, NULL);
         }
     }
+}
 
-    log(LL_INFO, "Threading system shut down");
+void threading_shutdown(threading_context_t *ctx) {
+    ctx->running = 0;
+    for (int i = 0; i < ctx->num_workers; i++) {
+        ctx->workers[i].running = 0;
+    }
 }
