@@ -28,7 +28,7 @@ export default definePermissionEventHandler(
       'Content-Disposition',
       `attachment; filename="${filename}"`
     );
-    setHeader(event, 'Content-Length', String(buf.length));
+    setHeader(event, 'Content-Length', buf.length);
     return buf;
   }
 );

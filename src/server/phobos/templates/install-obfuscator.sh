@@ -2,40 +2,28 @@ stop_existing_instance() {
   if [ -f "/opt/etc/init.d/${OBF_INIT_NAME}" ]; then
     /opt/etc/init.d/${OBF_INIT_NAME} stop >/dev/null 2>&1 || true
   fi
-
   if [ -f "/etc/init.d/${OBF_SERVICE_NAME}" ]; then
     /etc/init.d/${OBF_SERVICE_NAME} stop >/dev/null 2>&1 || true
   fi
-
   if command -v systemctl >/dev/null 2>&1 && [ -f "/etc/systemd/system/${OBF_SERVICE_NAME}.service" ]; then
     systemctl stop "${OBF_SERVICE_NAME}" >/dev/null 2>&1 || true
   fi
 }
 
 install_obfuscator() {
-  local arch=$1
-
-  log "Установка wg-obfuscator (${OBF_BINARY_NAME}) для архитектуры $arch..."
+  local arch="$1"
+  local binary_name="wg-obfuscator-${arch}"
 
   stop_existing_instance
 
-  local binary_name="wg-obfuscator-$arch"
-
-  if [ ! -f "bin/$binary_name" ]; then
-    log "Ошибка: бинарник $binary_name не найден в архиве"
-    log "Доступные бинарники:"
-    ls -1 bin/
+  if [ ! -f "bin/${binary_name}" ]; then
+    msg "ОШИБКА: бинарник ${binary_name} не найден в архиве"
+    ls -1 bin/ 2>/dev/null || true
     exit 1
   fi
 
   local target_path="/opt/bin/${OBF_BINARY_NAME}"
-  if [ "$ROUTER_PLATFORM" = "openwrt" ]; then
-    target_path="/usr/bin/${OBF_BINARY_NAME}"
-  fi
-
-  if [ -f "$target_path" ]; then
-    rm "$target_path"
-  fi
+  [ "$ROUTER_PLATFORM" = "openwrt" ] && target_path="/usr/bin/${OBF_BINARY_NAME}"
 
   if [ "$ROUTER_PLATFORM" = "openwrt" ]; then
     mkdir -p /usr/bin
@@ -43,15 +31,13 @@ install_obfuscator() {
     mkdir -p /opt/bin
   fi
 
-  cp "bin/$binary_name" "$target_path"
+  [ -f "$target_path" ] && rm "$target_path"
+  cp "bin/${binary_name}" "$target_path"
   chmod +x "$target_path"
-
-  log "Бинарник wg-obfuscator установлен в $target_path"
 }
 
 create_init_script() {
-  log "Создание init-скрипта для obfuscator..."
-
+  mkdir -p /opt/etc/init.d
   cat > /opt/etc/init.d/${OBF_INIT_NAME} <<EOF
 #!/bin/sh
 
@@ -64,59 +50,41 @@ PATH=/opt/sbin:/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:
 
 . /opt/etc/init.d/rc.func
 EOF
-
   chmod +x /opt/etc/init.d/${OBF_INIT_NAME}
-
-  log "Init-скрипт создан: /opt/etc/init.d/${OBF_INIT_NAME}"
 }
 
 start_obfuscator() {
-  log "Запуск wg-obfuscator..."
-
-  if [ "$ROUTER_PLATFORM" = "keenetic" ] || [ -f /opt/etc/init.d/${OBF_INIT_NAME} ]; then
-    /opt/etc/init.d/${OBF_INIT_NAME} start
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/${OBF_SERVICE_NAME} ]; then
-    /etc/init.d/${OBF_SERVICE_NAME} start
-    /etc/init.d/${OBF_SERVICE_NAME} enable
+  if [ -f "/opt/etc/init.d/${OBF_INIT_NAME}" ]; then
+    /opt/etc/init.d/${OBF_INIT_NAME} start >/dev/null 2>&1 || true
+  elif [ -f "/etc/init.d/${OBF_SERVICE_NAME}" ]; then
+    /etc/init.d/${OBF_SERVICE_NAME} start >/dev/null 2>&1 || true
+    /etc/init.d/${OBF_SERVICE_NAME} enable >/dev/null 2>&1 || true
   fi
 
   sleep 2
 
-  local process_found=0
-
-  if command -v pidof >/dev/null 2>&1 && pidof ${OBF_BINARY_NAME} >/dev/null 2>&1; then
-    process_found=1
-  elif command -v pgrep >/dev/null 2>&1 && pgrep -f "${OBF_BINARY_NAME}" >/dev/null 2>&1; then
-    process_found=1
-  elif ps w 2>/dev/null | grep -v grep | grep -q "${OBF_BINARY_NAME}"; then
-    process_found=1
-  elif ps 2>/dev/null | grep -v grep | grep -q "${OBF_BINARY_NAME}"; then
-    process_found=1
+  if command -v pidof >/dev/null 2>&1 && pidof "${OBF_BINARY_NAME}" >/dev/null 2>&1; then
+    return 0
   fi
-
-  if [ $process_found -eq 0 ]; then
-    if [ "$ROUTER_PLATFORM" = "keenetic" ] && [ -f /opt/etc/init.d/${OBF_INIT_NAME} ]; then
-      local status_output=$(/opt/etc/init.d/${OBF_INIT_NAME} status 2>&1 || echo "")
-      if echo "$status_output" | grep -q "alive"; then
-        process_found=1
-      fi
-    elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/${OBF_SERVICE_NAME} ]; then
-      if /etc/init.d/${OBF_SERVICE_NAME} status >/dev/null 2>&1; then
-        process_found=1
-      fi
-    fi
+  if command -v pgrep >/dev/null 2>&1 && pgrep -f "${OBF_BINARY_NAME}" >/dev/null 2>&1; then
+    return 0
   fi
-
-  if [ $process_found -eq 1 ]; then
-    log "✓ wg-obfuscator успешно запущен"
-  else
-    log "✗ wg-obfuscator не запущен. Проверьте логи."
+  if ps w 2>/dev/null | grep -v grep | grep -q "${OBF_BINARY_NAME}"; then
+    return 0
   fi
+  if ps 2>/dev/null | grep -v grep | grep -q "${OBF_BINARY_NAME}"; then
+    return 0
+  fi
+  if [ -f "/opt/etc/init.d/${OBF_INIT_NAME}" ]; then
+    /opt/etc/init.d/${OBF_INIT_NAME} status 2>&1 | grep -q "alive" && return 0
+  fi
+  if [ -f "/etc/init.d/${OBF_SERVICE_NAME}" ]; then
+    /etc/init.d/${OBF_SERVICE_NAME} status >/dev/null 2>&1 && return 0
+  fi
+  return 1
 }
 
 create_procd_init_script() {
-  log "Создание procd init-скрипта для obfuscator..."
-
   cat > /etc/init.d/${OBF_SERVICE_NAME} <<EOF
 #!/bin/sh /etc/rc.common
 
@@ -147,15 +115,10 @@ start_service() {
   procd_close_instance
 }
 EOF
-
   chmod +x /etc/init.d/${OBF_SERVICE_NAME}
-
-  log "Procd init-скрипт создан: /etc/init.d/${OBF_SERVICE_NAME}"
 }
 
 create_systemd_obfuscator_service() {
-  log "Создание systemd service для obfuscator..."
-
   cat > /etc/systemd/system/${OBF_SERVICE_NAME}.service <<EOFS
 [Unit]
 Description=Phobos WireGuard Obfuscator (${CLIENT_NAME})
@@ -173,35 +136,25 @@ StandardError=journal
 WantedBy=multi-user.target
 EOFS
 
-  if [ ! -f /usr/local/bin/${OBF_BINARY_NAME} ]; then
-    local target_path="/usr/local/bin/${OBF_BINARY_NAME}"
-    if [ -f /opt/bin/${OBF_BINARY_NAME} ]; then
-      cp /opt/bin/${OBF_BINARY_NAME} "$target_path"
-      chmod +x "$target_path"
-    elif [ -f /usr/bin/${OBF_BINARY_NAME} ]; then
-      cp /usr/bin/${OBF_BINARY_NAME} "$target_path"
-      chmod +x "$target_path"
+  if [ ! -f "/usr/local/bin/${OBF_BINARY_NAME}" ]; then
+    if [ -f "/opt/bin/${OBF_BINARY_NAME}" ]; then
+      cp "/opt/bin/${OBF_BINARY_NAME}" "/usr/local/bin/${OBF_BINARY_NAME}"
+      chmod +x "/usr/local/bin/${OBF_BINARY_NAME}"
+    elif [ -f "/usr/bin/${OBF_BINARY_NAME}" ]; then
+      cp "/usr/bin/${OBF_BINARY_NAME}" "/usr/local/bin/${OBF_BINARY_NAME}"
+      chmod +x "/usr/local/bin/${OBF_BINARY_NAME}"
     fi
   fi
 
-  systemctl daemon-reload
-  systemctl enable ${OBF_SERVICE_NAME}
-  systemctl start ${OBF_SERVICE_NAME}
+  systemctl daemon-reload >/dev/null 2>&1
+  systemctl enable "${OBF_SERVICE_NAME}" >/dev/null 2>&1
+  systemctl start "${OBF_SERVICE_NAME}" >/dev/null 2>&1
 
-  log "Ожидание запуска obfuscator (до 10 секунд)..."
   local wait_count=0
   while [ $wait_count -lt 10 ]; do
     sleep 1
-    if systemctl is-active --quiet ${OBF_SERVICE_NAME}; then
-      log "✓ Obfuscator успешно запущен"
-      break
-    fi
+    systemctl is-active --quiet "${OBF_SERVICE_NAME}" && return 0
     wait_count=$((wait_count + 1))
   done
-
-  if [ $wait_count -ge 10 ]; then
-    log "ПРЕДУПРЕЖДЕНИЕ: Obfuscator может быть не готов (таймаут 10 сек)"
-  fi
-
-  log "Systemd service создан: /etc/systemd/system/${OBF_SERVICE_NAME}.service"
+  return 1
 }

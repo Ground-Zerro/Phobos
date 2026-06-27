@@ -28,7 +28,6 @@ const TEMPLATES = [
   'install-wireguard.sh',
   'router-configure-wireguard.sh',
   'router-configure-wireguard-openwrt.sh',
-  '3xui.sh',
   'detect-router-arch.sh',
   'phobos-uninstall.sh',
 ] as const;

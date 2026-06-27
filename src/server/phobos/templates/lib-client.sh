@@ -107,6 +107,8 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
+msg() { printf '%s\n' "$*"; }
+
 print_status() {
   local status="$1"
   local message="$2"

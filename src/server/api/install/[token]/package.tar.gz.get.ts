@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     'Content-Disposition',
     `attachment; filename="${filename}"`
   );
-  setHeader(event, 'Content-Length', String(buf.length));
+  setHeader(event, 'Content-Length', buf.length);
   setHeader(event, 'Cache-Control', 'no-store');
   return buf;
 });

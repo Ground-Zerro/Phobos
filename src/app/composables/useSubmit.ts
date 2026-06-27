@@ -1,32 +1,15 @@
-import type {
-  NitroFetchRequest,
-  NitroFetchOptions,
-  TypedInternalResponse,
-  ExtractedRouteMethod,
-} from 'nitropack/types';
+import type { NitroFetchRequest, NitroFetchOptions } from 'nitropack/types';
 import { FetchError } from 'ofetch';
 
-type RevertFn<
-  R extends NitroFetchRequest,
-  T = unknown,
-  O extends NitroFetchOptions<R> = NitroFetchOptions<R>,
-> = (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RevertFn<T = any> = (
   success: boolean,
-  data:
-    | TypedInternalResponse<
-        R,
-        T,
-        NitroFetchOptions<R> extends O ? 'get' : ExtractedRouteMethod<R, O>
-      >
-    | undefined
+  data: T | undefined
 ) => Promise<void>;
 
-type SubmitOpts<
-  R extends NitroFetchRequest,
-  T = unknown,
-  O extends NitroFetchOptions<R> = NitroFetchOptions<R>,
-> = {
-  revert: RevertFn<R, T, O>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SubmitOpts<T = any> = {
+  revert: RevertFn<T>;
   successMsg?: string;
   noSuccessToast?: boolean;
 };
@@ -34,8 +17,9 @@ type SubmitOpts<
 export function useSubmit<
   R extends NitroFetchRequest,
   O extends NitroFetchOptions<R> & { body?: never },
-  T = unknown,
->(url: R, options: O, opts: SubmitOpts<R, T, O>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  T = any,
+>(url: R, options: O, opts: SubmitOpts<T>) {
   const toast = useToast();
 
   return async (data: unknown) => {

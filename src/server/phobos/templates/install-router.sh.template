@@ -11,91 +11,79 @@ LPORT=""
 . "$(dirname "$0")/install-obfuscator.sh"
 . "$(dirname "$0")/install-wireguard.sh"
 
+PHASE_TOTAL=3
+
+phase_start() {
+  msg ""
+  msg "[${1}/${PHASE_TOTAL}] ${2}..."
+}
+
+phase_ok() {
+  msg "[${1}/${PHASE_TOTAL}] ✓ ${2}"
+}
+
+phase_fail() {
+  msg "[${1}/${PHASE_TOTAL}] ✗ ${2}"
+}
+
 detect_3xui_mode() {
   local platform="$1"
-
   [ "$platform" = "linux" ] || { echo "false"; return; }
   [ "$(detect_arch)" = "x86_64" ] || { echo "false"; return; }
-  [ -f /etc/x-ui/x-ui.db ] || { echo "false"; return; }
-
-  echo "true"
+  if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet x-ui 2>/dev/null; then
+    echo "true"; return
+  fi
+  for _db in /etc/x-ui/x-ui.db /usr/local/x-ui/x-ui.db /opt/x-ui/x-ui.db; do
+    [ -f "$_db" ] && { echo "true"; return; }
+  done
+  command -v x-ui >/dev/null 2>&1 && { echo "true"; return; }
+  echo "false"
 }
 
 check_dependencies() {
   local platform="$1"
   local deps
-
   case "$platform" in
     keenetic) deps="grep cut date tar curl jq" ;;
     openwrt)  deps="grep cut date tar uci" ;;
     *)        deps="grep cut date tar" ;;
   esac
-
   local missing=""
   for cmd in $deps; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      missing="$missing $cmd"
-    fi
+    command -v "$cmd" >/dev/null 2>&1 || missing="$missing $cmd"
   done
-
   [ -z "$missing" ] && return 0
-
-  log "ВНИМАНИЕ: Отсутствуют необходимые утилиты:$missing"
-
   if [ -z "$PKG_MGR" ]; then
-    log "ОШИБКА: пакетный менеджер не найден. Невозможно установить зависимости."
+    msg "ОШИБКА: отсутствуют утилиты:${missing} — установите вручную"
     return 1
   fi
-
-  log "Установка недостающих пакетов через ${PKG_MGR}..."
-  if ! pkg_update; then
-    log "ОШИБКА: Не удалось обновить пакетную базу (${PKG_MGR})"
-    return 1
-  fi
-
+  pkg_update >/dev/null 2>&1 || true
   for cmd in $missing; do
-    log "Установка $cmd..."
-    if ! pkg_install "$cmd" 2>/dev/null; then
-      log "ПРЕДУПРЕЖДЕНИЕ: Не удалось установить $cmd через ${PKG_MGR}"
-    fi
+    pkg_install "$cmd" >/dev/null 2>&1 || true
   done
-
   return 0
 }
 
 setup_configs() {
-  log "Настройка конфигураций..."
-
   mkdir -p "$PHOBOS_DIR"
-
   cp wg-obfuscator.conf "$PHOBOS_DIR/${OBF_CONF_NAME}"
   chmod 600 "$PHOBOS_DIR/${OBF_CONF_NAME}"
-
   cp "${CLIENT_NAME}.conf" "$PHOBOS_DIR/${CLIENT_NAME}.conf"
   chmod 600 "$PHOBOS_DIR/${CLIENT_NAME}.conf"
-
   sed -i "s/^source-lport = .*/source-lport = ${LPORT}/" "$PHOBOS_DIR/${OBF_CONF_NAME}"
   sed -i "s/^Endpoint = 127\.0\.0\.1:.*/Endpoint = 127.0.0.1:${LPORT}/" "$PHOBOS_DIR/${CLIENT_NAME}.conf"
-
-  log "Конфигурации установлены:"
-  log "  - Obfuscator: $PHOBOS_DIR/${OBF_CONF_NAME} (порт ${LPORT})"
-  log "  - WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
 }
 
 allocate_slot() {
   local existing
   existing=$(registry_line_for_client "$CLIENT_NAME")
-
   if [ -n "$existing" ]; then
     SLOT=$(registry_field "$existing" 2)
     LPORT=$(registry_field "$existing" 3)
-    log "Клиент ${CLIENT_NAME} уже зарегистрирован — переустановка (слот=${SLOT}, порт=${LPORT})"
   else
     SLOT=$(registry_alloc_slot)
     LPORT=$(registry_alloc_port 13255)
-    log "Новый слот для ${CLIENT_NAME}: слот=${SLOT}, порт=${LPORT}"
   fi
-
   compute_slot_names "$SLOT"
 }
 
@@ -103,163 +91,103 @@ register_client() {
   local target masking iface_ref
   target=$(grep '^target' "$PHOBOS_DIR/${OBF_CONF_NAME}" 2>/dev/null | head -1 | cut -d'=' -f2 | tr -d ' ')
   masking=$(grep '^masking' "$PHOBOS_DIR/${OBF_CONF_NAME}" 2>/dev/null | head -1 | cut -d'=' -f2 | tr -d ' ')
-
   if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
     iface_ref="Phobos-${CLIENT_NAME}"
   else
     iface_ref="${OBF_WG_IFACE}"
   fi
-
   registry_remove_client "$CLIENT_NAME"
   registry_add "${CLIENT_NAME}|${SLOT}|${LPORT}|${OBF_CONF_NAME}|${OBF_BINARY_NAME}|${OBF_INIT_NAME}|${OBF_SERVICE_NAME}|${iface_ref}|${target}|${masking}|$(date '+%Y-%m-%d %H:%M:%S')"
-  log "Клиент зарегистрирован в ${PHOBOS_DIR}/registry"
 }
 
 deploy_lib_client() {
-  if [ -f "lib-client.sh" ]; then
-    cp "lib-client.sh" "$PHOBOS_DIR/lib-client.sh"
-  fi
+  [ -f "lib-client.sh" ] && cp "lib-client.sh" "$PHOBOS_DIR/lib-client.sh"
 }
 
-
 deploy_uninstall_script() {
-  log "Развертывание скрипта удаления Phobos..."
-
   if [ -f "phobos-uninstall.sh" ]; then
     cp "phobos-uninstall.sh" "$PHOBOS_DIR/phobos-uninstall.sh"
     chmod +x "$PHOBOS_DIR/phobos-uninstall.sh"
-    log "Скрипт удаления установлен: $PHOBOS_DIR/phobos-uninstall.sh"
-  else
-    log "ПРЕДУПРЕЖДЕНИЕ: phobos-uninstall.sh не найден в архиве"
   fi
 }
 
-deploy_3xui_script() {
-  log "Развертывание скрипта 3xui.sh..."
-
-  if [ -f "3xui.sh" ]; then
-    cp "3xui.sh" "$PHOBOS_DIR/3xui.sh"
-    chmod +x "$PHOBOS_DIR/3xui.sh"
-    log "Скрипт 3xui.sh установлен: $PHOBOS_DIR/3xui.sh"
-  else
-    log "ПРЕДУПРЕЖДЕНИЕ: 3xui.sh не найден в архиве"
-  fi
+verify_obfuscator_service() {
+  [ -f "/etc/systemd/system/${OBF_SERVICE_NAME}.service" ] || return 1
+  systemctl is-enabled --quiet "${OBF_SERVICE_NAME}" 2>/dev/null || return 1
+  systemctl is-active --quiet "${OBF_SERVICE_NAME}" 2>/dev/null || return 1
 }
 
-run_3xui_integration() {
-  log ""
-  log "==> Интеграция WireGuard конфигурации в 3x-ui..."
-
-  if [ ! -f "$PHOBOS_DIR/3xui.sh" ]; then
-    log "ОШИБКА: Скрипт $PHOBOS_DIR/3xui.sh не найден"
-    return 1
-  fi
-
-  for cmd in jq sqlite3; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      log "Устанавливаю $cmd..."
-      if command -v apt-get >/dev/null 2>&1; then
-        apt-get update -qq && apt-get install -y -qq "$cmd" >/dev/null 2>&1
-      elif command -v yum >/dev/null 2>&1; then
-        yum install -y -q "${cmd/sqlite3/sqlite}" >/dev/null 2>&1
-      elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y -q "${cmd/sqlite3/sqlite}" >/dev/null 2>&1
-      elif command -v apk >/dev/null 2>&1; then
-        apk add --quiet "${cmd/sqlite3/sqlite}" >/dev/null 2>&1
-      fi
-      if ! command -v "$cmd" >/dev/null 2>&1; then
-        log "ОШИБКА: не удалось установить $cmd"
-        return 1
+_json_str_array() {
+  local raw="$1" indent="$2"
+  local result="" item first=1 _ifs
+  _ifs="$IFS"
+  IFS=','
+  for item in $raw; do
+    IFS="$_ifs"
+    item=$(printf '%s' "$item" | tr -d ' \t')
+    if [ -n "$item" ]; then
+      if [ "$first" = "1" ]; then
+        result="${indent}\"${item}\""; first=0
+      else
+        result="${result},
+${indent}\"${item}\""
       fi
     fi
+    IFS=','
   done
-
-  local wg_config="$PHOBOS_DIR/${CLIENT_NAME}.conf"
-
-  if [ ! -f "$wg_config" ]; then
-    log "ОШИБКА: Конфигурация WireGuard не найдена: $wg_config"
-    return 1
-  fi
-
-  log "Запуск интеграции: $PHOBOS_DIR/3xui.sh $wg_config"
-
-  if "$PHOBOS_DIR/3xui.sh" "$wg_config"; then
-    log "[OK] WireGuard конфигурация успешно интегрирована в 3x-ui"
-    log "[OK] Outbound 'Phobos' добавлен в конфигурацию 3x-ui"
-    return 0
-  else
-    log "ОШИБКА: Не удалось интегрировать конфигурацию в 3x-ui"
-    return 1
-  fi
+  IFS="$_ifs"
+  printf '%s' "$result"
 }
 
-cleanup_3xui_script() {
-  local keep_script="$1"
+print_xray_wireguard_json() {
+  local conf="${PHOBOS_DIR}/${CLIENT_NAME}.conf"
+  local secret_key mtu public_key preshared_key keepalive raw_addr raw_allowed
 
-  if [ "$keep_script" = "true" ]; then
-    log "Скрипт 3xui.sh сохранен для использования в 3x-ui режиме"
-  else
-    if [ -f "$PHOBOS_DIR/3xui.sh" ]; then
-      rm -f "$PHOBOS_DIR/3xui.sh"
-      log "Скрипт 3xui.sh удален (не требуется в обычном режиме)"
-    fi
-  fi
+  secret_key=$(  grep '^PrivateKey'                        "$conf" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+  mtu=$(         grep '^MTU'                               "$conf" | head -1 | cut -d'=' -f2  | tr -d ' \t\r\n')
+  public_key=$(  grep '^PublicKey'                         "$conf" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+  preshared_key=$(grep -E '^PresharedKey|^PreSharedKey'   "$conf" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+  keepalive=$(   grep '^PersistentKeepalive'               "$conf" | head -1 | cut -d'=' -f2  | tr -d ' \t\r\n')
+  raw_addr=$(    grep '^Address'                           "$conf" | head -1 | cut -d'=' -f2- | tr -d '\t\r\n')
+  raw_allowed=$( grep '^AllowedIPs'                        "$conf" | head -1 | cut -d'=' -f2- | tr -d '\t\r\n')
+
+  [ -z "$mtu"       ] && mtu=1420
+  [ -z "$keepalive" ] && keepalive=0
+
+  local addr_arr allowed_arr
+  addr_arr=$(    _json_str_array "$raw_addr"     "      ")
+  allowed_arr=$( _json_str_array "$raw_allowed"  "          ")
+
+  printf '{
+  "protocol": "wireguard",
+  "settings": {
+    "mtu": %s,
+    "secretKey": "%s",
+    "address": [
+%s
+    ],
+    "workers": 2,
+    "peers": [
+      {
+        "publicKey": "%s",
+        "preSharedKey": "%s",
+        "allowedIPs": [
+%s
+        ],
+        "endpoint": "127.0.0.1:%s",
+        "keepAlive": %s
+      }
+    ],
+    "noKernelTun": false
+  },
+  "tag": "Phobos-%s"
 }
-
-install_wireguard_openwrt() {
-  log "Установка пакетов WireGuard для OpenWRT (${PKG_MGR})..."
-
-  if command -v wg >/dev/null 2>&1; then
-    log "WireGuard уже установлен"
-    return 0
-  fi
-
-  pkg_update || log "ПРЕДУПРЕЖДЕНИЕ: не удалось обновить пакетную базу (${PKG_MGR})"
-
-  if ! pkg_install kmod-wireguard wireguard-tools luci-proto-wireguard; then
-    log "ОШИБКА: не удалось установить пакеты WireGuard"
-    return 1
-  fi
-
-  log "✓ Пакеты WireGuard установлены"
-}
-
-configure_wireguard_openwrt() {
-  log ""
-  log "==> Автоматическая настройка WireGuard через UCI..."
-
-  extract_wireguard_params || return 1
-
-  if [ ! -f "./router-configure-wireguard-openwrt.sh" ]; then
-    log "⚠ Скрипт router-configure-wireguard-openwrt.sh не найден"
-    log "   Используйте ручную настройку через LuCI или UCI"
-    return 1
-  fi
-
-  chmod +x ./router-configure-wireguard-openwrt.sh
-
-  if ./router-configure-wireguard-openwrt.sh \
-      --client-name "$CLIENT_NAME" \
-      --interface "$OBF_WG_IFACE" \
-      --client-private-key "$WG_PRIVATE_KEY" \
-      --client-ip "$CLIENT_IP" \
-      --client-ipv6 "$CLIENT_IPV6" \
-      --server-public-key "$WG_SERVER_PUBKEY" \
-      --preshared-key "$WG_PRESHARED_KEY" \
-      --endpoint-port "$WG_ENDPOINT_PORT" \
-      --keepalive 25 \
-      --mtu 1420 \
-      --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf"; then
-
-    return 0
-  else
-    return 1
-  fi
+' "$mtu" "$secret_key" "$addr_arr" \
+  "$public_key" "$preshared_key" "$allowed_arr" \
+  "$LPORT" "$keepalive" "$CLIENT_NAME"
 }
 
 extract_wireguard_params() {
-  log "Извлечение параметров WireGuard из конфигурации..."
-
   local config_file="$PHOBOS_DIR/${CLIENT_NAME}.conf"
 
   WG_PRIVATE_KEY=$(grep '^PrivateKey' "$config_file" | cut -d'=' -f2- | tr -d ' \t\n\r')
@@ -279,42 +207,30 @@ extract_wireguard_params() {
   if [ -z "$CLIENT_IPV6" ] || [ "$CLIENT_IPV6" = "$CLIENT_IP" ]; then
     CLIENT_IPV6=$(grep -A 10 '\[Interface\]' "$config_file" | grep '^Address' | grep -o 'fd[0-9a-f:\/]*' | head -1)
   fi
-
-  if [ -z "$CLIENT_IPV6" ]; then
-    CLIENT_IPV6="none"
-  fi
-
-  if [ -z "$WG_ENDPOINT_PORT" ]; then
-    WG_ENDPOINT_PORT=13255
-  fi
-
-  log "  Private Key: $(printf '%s' "$WG_PRIVATE_KEY" | cut -c1-20)..."
-  log "  IPv4: $CLIENT_IP"
-  log "  IPv6: $CLIENT_IPV6"
-  log "  Server PubKey: $(printf '%s' "$WG_SERVER_PUBKEY" | cut -c1-20)..."
-  log "  Preshared key: $( [ -n "$WG_PRESHARED_KEY" ] && echo "$(printf '%s' "$WG_PRESHARED_KEY" | cut -c1-12)..." || echo MISSING )"
-  log "  Endpoint port: $WG_ENDPOINT_PORT"
+  [ -z "$CLIENT_IPV6" ] && CLIENT_IPV6="none"
+  [ -z "$WG_ENDPOINT_PORT" ] && WG_ENDPOINT_PORT=13255
 
   if [ -z "$WG_PRESHARED_KEY" ]; then
-    log "ОШИБКА: в $config_file нет строки PresharedKey/PreSharedKey — handshake с сервером wg-easy невозможен"
+    msg "  PrivateKey:   $(printf '%s' "$WG_PRIVATE_KEY"   | cut -c1-20)..."
+    msg "  Address:      $WG_ADDRESS"
+    msg "  PublicKey:    $(printf '%s' "$WG_SERVER_PUBKEY" | cut -c1-20)..."
+    msg "  EndpointPort: $WG_ENDPOINT_PORT"
+    msg "ОШИБКА: PresharedKey не найден в ${config_file}"
     return 1
   fi
 }
 
+install_wireguard_openwrt() {
+  command -v wg >/dev/null 2>&1 && return 0
+  pkg_update >/dev/null 2>&1 || true
+  pkg_install kmod-wireguard wireguard-tools luci-proto-wireguard >/dev/null 2>&1
+}
+
 configure_wireguard_rci() {
-  log ""
-  log "==> Автоматическая настройка WireGuard через RCI API..."
-
   extract_wireguard_params || return 1
-
-  if [ ! -f "./router-configure-wireguard.sh" ]; then
-    log "⚠ Скрипт router-configure-wireguard.sh не найден"
-    log "   Используйте ручной импорт (см. инструкции ниже)"
-    return 1
-  fi
-
+  [ -f "./router-configure-wireguard.sh" ] || return 1
   chmod +x ./router-configure-wireguard.sh
-
+  local _log="${PHOBOS_DIR}/.rci.log"
   if ./router-configure-wireguard.sh \
       --client-name "$CLIENT_NAME" \
       --client-private-key "$WG_PRIVATE_KEY" \
@@ -325,95 +241,273 @@ configure_wireguard_rci() {
       --endpoint-port "$WG_ENDPOINT_PORT" \
       --keepalive 25 \
       --mtu 1420 \
-      --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf"; then
-
+      --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf" >"$_log" 2>&1; then
+    rm -f "$_log"
     return 0
+  fi
+  cat "$_log" 2>/dev/null || true
+  rm -f "$_log"
+  return 1
+}
+
+configure_wireguard_openwrt() {
+  extract_wireguard_params || return 1
+  [ -f "./router-configure-wireguard-openwrt.sh" ] || return 1
+  chmod +x ./router-configure-wireguard-openwrt.sh
+  local _log="${PHOBOS_DIR}/.uci.log"
+  if ./router-configure-wireguard-openwrt.sh \
+      --client-name "$CLIENT_NAME" \
+      --interface "$OBF_WG_IFACE" \
+      --client-private-key "$WG_PRIVATE_KEY" \
+      --client-ip "$CLIENT_IP" \
+      --client-ipv6 "$CLIENT_IPV6" \
+      --server-public-key "$WG_SERVER_PUBKEY" \
+      --preshared-key "$WG_PRESHARED_KEY" \
+      --endpoint-port "$WG_ENDPOINT_PORT" \
+      --keepalive 25 \
+      --mtu 1420 \
+      --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf" >"$_log" 2>&1; then
+    rm -f "$_log"
+    return 0
+  fi
+  cat "$_log" 2>/dev/null || true
+  rm -f "$_log"
+  return 1
+}
+
+show_3xui_final_info() {
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${CLIENT_NAME}.conf         — конфигурация WireGuard клиента"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/usr/local/bin/${OBF_BINARY_NAME}"
+  msg "/etc/systemd/system/${OBF_SERVICE_NAME}.service"
+  msg ""
+  msg "Управление:"
+  msg "  systemctl status ${OBF_SERVICE_NAME}"
+  msg "  systemctl restart ${OBF_SERVICE_NAME}"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+  msg ""
+  msg "─────────────────────────────────────────────────"
+  msg "WireGuard outbound для 3x-ui (добавить вручную):"
+  msg "─────────────────────────────────────────────────"
+  print_xray_wireguard_json
+  msg "─────────────────────────────────────────────────"
+}
+
+show_keenetic_final_info() {
+  local rci_ok="$1"
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${CLIENT_NAME}.conf         — конфигурация WireGuard клиента"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/opt/bin/${OBF_BINARY_NAME}"
+  msg "/opt/etc/init.d/${OBF_INIT_NAME}"
+  msg ""
+  msg "Управление:"
+  msg "  /opt/etc/init.d/${OBF_INIT_NAME} status"
+  msg "  /opt/etc/init.d/${OBF_INIT_NAME} restart"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+  if [ "$rci_ok" != "1" ]; then
+    msg ""
+    msg "Ручная настройка WireGuard (Keenetic):"
+    msg "  1. Веб-панель → Интернет → Другие подключения"
+    msg "  2. WireGuard → Загрузить конфигурацию из файла"
+    msg "  3. Файл: ${PHOBOS_DIR}/${CLIENT_NAME}.conf"
+    msg "  4. Активируйте подключение"
+  fi
+}
+
+show_openwrt_final_info() {
+  local uci_ok="$1"
+  local init_path="$2"
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${CLIENT_NAME}.conf         — конфигурация WireGuard клиента"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/usr/bin/${OBF_BINARY_NAME}"
+  msg "${init_path}"
+  msg ""
+  msg "Управление:"
+  msg "  ${init_path} status"
+  msg "  ${init_path} restart"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+  if [ "$uci_ok" != "1" ]; then
+    msg ""
+    msg "Ручная настройка WireGuard (OpenWRT):"
+    msg "  1. LuCI → Network → Interfaces → Add new"
+    msg "  2. Протокол: WireGuard VPN"
+    msg "  3. Параметры из файла: ${PHOBOS_DIR}/${CLIENT_NAME}.conf"
+    msg "  4. Настройте firewall zone"
+  fi
+}
+
+show_linux_final_info() {
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${CLIENT_NAME}.conf         — конфигурация WireGuard клиента"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/usr/local/bin/${OBF_BINARY_NAME}"
+  msg "/etc/systemd/system/${OBF_SERVICE_NAME}.service"
+  msg "/etc/wireguard/${OBF_WG_IFACE}.conf"
+  msg ""
+  msg "Управление:"
+  msg "  systemctl status ${OBF_SERVICE_NAME}"
+  msg "  systemctl status wg-quick@${OBF_WG_IFACE}"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+}
+
+_run_3xui() {
+  PHASE_TOTAL=3
+
+  phase_start 1 "Установка службы обфускатора"
+  install_obfuscator "$ARCH"
+  setup_configs
+  if create_systemd_obfuscator_service; then
+    phase_ok 1 "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
   else
-    return 1
+    phase_fail 1 "служба создана, но не запустилась (таймаут 10 сек)"
   fi
+
+  phase_start 2 "Проверка ${OBF_SERVICE_NAME}"
+  if verify_obfuscator_service; then
+    phase_ok 2 "служба установлена, включена и запущена"
+  else
+    phase_fail 2 "служба не полностью активирована — systemctl status ${OBF_SERVICE_NAME}"
+  fi
+
+  phase_start 3 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_3xui_final_info
 }
 
-show_manual_instructions() {
-  log ""
-  log "╔════════════════════════════════════════════════════════════╗"
-  log "║  Требуется ручной импорт WireGuard конфигурации            ║"
-  log "╚════════════════════════════════════════════════════════════╝"
-  log ""
-  log "Выполните следующие шаги:"
-  log ""
+_run_keenetic() {
+  PHASE_TOTAL=3
+  local rci_ok=0
 
-  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
-    log "1. Откройте веб-панель администрирования роутера Keenetic"
-    log "   (http://192.168.1.1 или http://my.keenetic.net)"
-    log ""
-    log "2. Перейдите в раздел: Интернет → Другие подключения"
-    log ""
-    log "3. Выберите 'Загрузить конфигурацию из файла' в разделе 'WireGuard'"
-    log ""
-    log "4. Укажите путь к файлу:"
-    log "   $PHOBOS_DIR/${CLIENT_NAME}.conf"
-    log ""
-    log "5. Активируйте подключение"
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
-    log "1. Откройте веб-интерфейс LuCI роутера OpenWRT"
-    log "   (обычно http://192.168.1.1)"
-    log ""
-    log "2. Перейдите в: Network → Interfaces"
-    log ""
-    log "3. Создайте новый интерфейс с протоколом WireGuard"
-    log ""
-    log "4. Используйте параметры из файла:"
-    log "   $PHOBOS_DIR/${CLIENT_NAME}.conf"
-    log ""
-    log "5. Настройте файрволл зону для интерфейса"
+  phase_start 1 "Установка обфускатора"
+  install_obfuscator "$ARCH"
+  setup_configs
+  create_init_script
+  if start_obfuscator; then
+    phase_ok 1 "wg-obfuscator запущен → /opt/bin/${OBF_BINARY_NAME}"
+  else
+    phase_fail 1 "wg-obfuscator не запущен — /opt/etc/init.d/${OBF_INIT_NAME} status"
   fi
 
-  log ""
+  phase_start 2 "Настройка WireGuard (RCI API)"
+  if configure_wireguard_rci; then
+    rci_ok=1
+    phase_ok 2 "интерфейс Phobos-${CLIENT_NAME} создан"
+  else
+    phase_fail 2 "WireGuard не настроен — потребуется ручная конфигурация"
+  fi
+
+  phase_start 3 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_keenetic_final_info "$rci_ok"
 }
 
-show_final_info() {
-  log ""
-  log "╔════════════════════════════════════════════════════════════╗"
-  log "║  Информация об установке                                   ║"
-  log "╚════════════════════════════════════════════════════════════╝"
-  log ""
-  log "Файлы установки:"
+_run_openwrt() {
+  PHASE_TOTAL=4
+  local uci_ok=0
+  local init_path=""
 
-  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
-    log "  Бинарник: /opt/bin/${OBF_BINARY_NAME}"
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
-    log "  Бинарник: /usr/bin/${OBF_BINARY_NAME}"
-  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
-    log "  Бинарник: /usr/local/bin/${OBF_BINARY_NAME}"
+  phase_start 1 "Установка пакетов WireGuard"
+  if install_wireguard_openwrt; then
+    phase_ok 1 "kmod-wireguard + wireguard-tools"
+  else
+    phase_fail 1 "не удалось установить пакеты WireGuard"
   fi
 
-  log "  Конфиг obfuscator: $PHOBOS_DIR/${OBF_CONF_NAME}"
-  log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
-
-  if [ "$ROUTER_PLATFORM" = "keenetic" ] || [ -f /opt/etc/init.d/${OBF_INIT_NAME} ]; then
-    log "  Init-скрипт: /opt/etc/init.d/${OBF_INIT_NAME}"
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/${OBF_SERVICE_NAME} ]; then
-    log "  Init-скрипт: /etc/init.d/${OBF_SERVICE_NAME}"
-  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
-    log "  Systemd service: /etc/systemd/system/${OBF_SERVICE_NAME}.service"
-    log "  WireGuard конфиг: /etc/wireguard/${OBF_WG_IFACE}.conf"
+  phase_start 2 "Установка обфускатора"
+  install_obfuscator "$ARCH"
+  setup_configs
+  if [ -d "/opt/etc" ]; then
+    create_init_script
+    init_path="/opt/etc/init.d/${OBF_INIT_NAME}"
+  else
+    create_procd_init_script
+    init_path="/etc/init.d/${OBF_SERVICE_NAME}"
+  fi
+  if start_obfuscator; then
+    phase_ok 2 "wg-obfuscator запущен → /usr/bin/${OBF_BINARY_NAME}"
+  else
+    phase_fail 2 "wg-obfuscator не запущен — ${init_path} status"
   fi
 
-  log "  Uninstall: $PHOBOS_DIR/phobos-uninstall.sh"
-  log ""
-  log "Управление:"
-
-  if [ "$ROUTER_PLATFORM" = "keenetic" ] || [ -f /opt/etc/init.d/${OBF_INIT_NAME} ]; then
-    log "  /opt/etc/init.d/${OBF_INIT_NAME} status    # Проверить что obfuscator запущен"
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ -f /etc/init.d/${OBF_SERVICE_NAME} ]; then
-    log "  /etc/init.d/${OBF_SERVICE_NAME} status       # Проверить что obfuscator запущен"
-  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
-    log "  systemctl status ${OBF_SERVICE_NAME}         # Проверить что obfuscator запущен"
-    log "  systemctl status wg-quick@${OBF_WG_IFACE}           # Проверить что WireGuard запущен"
+  phase_start 3 "Настройка WireGuard (UCI)"
+  if configure_wireguard_openwrt; then
+    uci_ok=1
+    phase_ok 3 "интерфейс ${OBF_WG_IFACE} создан"
+  else
+    phase_fail 3 "WireGuard не настроен — потребуется ручная конфигурация"
   fi
 
-  log "  $PHOBOS_DIR/phobos-uninstall.sh     # Удалить Phobos"
-  log ""
+  phase_start 4 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_openwrt_final_info "$uci_ok" "$init_path"
+}
+
+_run_linux() {
+  PHASE_TOTAL=4
+
+  phase_start 1 "Установка WireGuard"
+  if install_wireguard_linux; then
+    phase_ok 1 "WireGuard установлен"
+  else
+    msg "ОШИБКА: не удалось установить WireGuard"
+    exit 1
+  fi
+
+  phase_start 2 "Установка обфускатора"
+  install_obfuscator "$ARCH"
+  setup_configs
+  if create_systemd_obfuscator_service; then
+    phase_ok 2 "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
+  else
+    phase_fail 2 "служба создана, но не запустилась (таймаут 10 сек)"
+  fi
+
+  phase_start 3 "Настройка WireGuard"
+  if configure_wireguard_linux; then
+    configure_ufw_linux
+    phase_ok 3 "интерфейс ${OBF_WG_IFACE} настроен через systemd"
+  else
+    phase_fail 3 "WireGuard настроен с предупреждениями — systemctl status wg-quick@${OBF_WG_IFACE}"
+  fi
+
+  phase_start 4 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_linux_final_info
 }
 
 main() {
@@ -422,180 +516,47 @@ main() {
   IS_3XUI_MODE=$(detect_3xui_mode "$ROUTER_PLATFORM")
   detect_pkg_manager
 
-  log "==> Определена платформа: $ROUTER_PLATFORM"
-  log "==> Директория Phobos: $PHOBOS_DIR"
-  log "==> Пакетный менеджер: ${PKG_MGR:-не найден}"
-
-  mkdir -p "$PHOBOS_DIR"
-  allocate_slot
-  log "==> Слот obfuscator: binary=${OBF_BINARY_NAME}, conf=${OBF_CONF_NAME}, init=${OBF_INIT_NAME}, service=${OBF_SERVICE_NAME}, iface=${OBF_WG_IFACE}"
-
-  if [ "$IS_3XUI_MODE" = "true" ]; then
-    log "==> Обнаружен режим установки: 3x-ui"
-    log "==> В этом режиме WireGuard не устанавливается"
-    log "==> Будет развернут только wg-obfuscator и интеграция с 3x-ui"
-  fi
-
   if [ "$ROUTER_PLATFORM" = "unknown" ]; then
-    log "ОШИБКА: Неподдерживаемая платформа"
-    log "Вывод uname -a: $(uname -a)"
-    log ""
-    log "Поддерживаемые платформы:"
-    log "  - Keenetic/Netcraze (определяется по 'Keenetic' или 'Netcraze' в uname)"
-    log "  - OpenWRT (определяется по 'OpenWrt', 'LEDE' или 'ImmortalWrt' в uname)"
-    log "  - Linux (Ubuntu/Debian)"
+    msg "ОШИБКА: Неподдерживаемая платформа ($(uname -a))"
+    msg "Поддерживаются: Keenetic, OpenWRT, Linux (Ubuntu/Debian)"
     exit 1
   fi
-
-  mkdir -p "$PHOBOS_DIR"
-  log "==> Начало установки Phobos на роутер $ROUTER_PLATFORM"
-  log "==> Клиент: $CLIENT_NAME"
 
   check_root
-
-  if ! check_dependencies "$ROUTER_PLATFORM"; then
-    log "ОШИБКА: Не удалось установить зависимости"
-    exit 1
-  fi
+  mkdir -p "$PHOBOS_DIR"
+  allocate_slot
 
   ARCH=$(detect_arch)
-  log "Определена архитектура: $ARCH"
-
   if [ "$ARCH" = "unknown" ]; then
-    log "Ошибка: неподдерживаемая архитектура"
-    log "Вывод uname -m: $(uname -m)"
+    msg "ОШИБКА: Неподдерживаемая архитектура ($(uname -m))"
     exit 1
   fi
 
-  install_obfuscator "$ARCH"
-  setup_configs
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-
   if [ "$IS_3XUI_MODE" = "true" ]; then
-    deploy_3xui_script
+    MODE_LABEL="3x-ui"
+  elif [ "$ROUTER_PLATFORM" = "keenetic" ]; then
+    MODE_LABEL="роутер"
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
+    MODE_LABEL="OpenWRT"
+  else
+    MODE_LABEL="linux"
+  fi
+
+  msg "PhobosWG  ·  клиент: ${CLIENT_NAME}  ·  ${ROUTER_PLATFORM} (${ARCH})  ·  ${MODE_LABEL}  ·  ${PHOBOS_DIR}"
+
+  if ! check_dependencies "$ROUTER_PLATFORM"; then
+    exit 1
   fi
 
   if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
-    create_init_script
-    start_obfuscator
-
-    if configure_wireguard_rci; then
-      log ""
-      log "╔════════════════════════════════════════════════════════════╗"
-      log "║  ✓ Установка завершена успешно!                            ║"
-      log "║  ✓ WireGuard настроен автоматически через RCI API          ║"
-      log "╚════════════════════════════════════════════════════════════╝"
-      show_final_info
-    else
-      log ""
-      log "╔════════════════════════════════════════════════════════════╗"
-      log "║  ✓ Obfuscator установлен успешно                           ║"
-      log "║  ⚠ WireGuard требует ручной настройки                     ║"
-      log "╚════════════════════════════════════════════════════════════╝"
-      show_manual_instructions
-      show_final_info
-    fi
-
+    _run_keenetic
   elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
-    install_wireguard_openwrt
-
-    if [ -d "/opt/etc" ]; then
-      create_init_script
-    else
-      create_procd_init_script
-    fi
-
-    start_obfuscator
-
-    if configure_wireguard_openwrt; then
-      log ""
-      log "╔════════════════════════════════════════════════════════════╗"
-      log "║  ✓ Установка завершена успешно!                            ║"
-      log "║  ✓ WireGuard настроен автоматически через UCI              ║"
-      log "╚════════════════════════════════════════════════════════════╝"
-      show_final_info
-    else
-      log ""
-      log "╔════════════════════════════════════════════════════════════╗"
-      log "║  ✓ Obfuscator установлен успешно                           ║"
-      log "║  ⚠ WireGuard требует ручной настройки                     ║"
-      log "╚════════════════════════════════════════════════════════════╝"
-      show_manual_instructions
-      show_final_info
-    fi
-
-  elif [ "$ROUTER_PLATFORM" = "linux" ]; then
-    if [ "$IS_3XUI_MODE" = "true" ]; then
-      log ""
-      log "╔════════════════════════════════════════════════════════════╗"
-      log "║  Режим установки: 3x-ui                                    ║"
-      log "╚════════════════════════════════════════════════════════════╝"
-      log ""
-
-      create_systemd_obfuscator_service
-
-      if run_3xui_integration; then
-        cleanup_3xui_script "true"
-        log ""
-        log "╔════════════════════════════════════════════════════════════╗"
-        log "║  ✓ Установка в режиме 3x-ui завершена успешно!            ║"
-        log "║  ✓ Obfuscator настроен через systemd                      ║"
-        log "║  ✓ Outbound 'Phobos' добавлен в конфигурацию 3x-ui        ║"
-        log "╚════════════════════════════════════════════════════════════╝"
-        log ""
-        log "Файлы установки:"
-        log "  Бинарник: /usr/local/bin/${OBF_BINARY_NAME}"
-        log "  Конфиг obfuscator: $PHOBOS_DIR/${OBF_CONF_NAME}"
-        log "  Конфиг WireGuard: $PHOBOS_DIR/${CLIENT_NAME}.conf"
-        log "  Скрипт 3xui.sh: $PHOBOS_DIR/3xui.sh"
-        log "  Systemd service: /etc/systemd/system/${OBF_SERVICE_NAME}.service"
-        log ""
-        log "Управление:"
-        log "  systemctl status ${OBF_SERVICE_NAME}         # Проверить что obfuscator запущен"
-        log ""
-        log "Примечание:"
-        log "  WireGuard управляется через 3x-ui панель"
-        log "  Скрипт 3xui.sh сохранен для повторной интеграции при необходимости"
-        log ""
-      else
-        log ""
-        log "╔════════════════════════════════════════════════════════════╗"
-        log "║  ✗ Установка в режиме 3x-ui завершена с ошибками          ║"
-        log "╚════════════════════════════════════════════════════════════╝"
-        exit 1
-      fi
-    else
-      install_wireguard_linux || {
-        log "ОШИБКА: Не удалось установить WireGuard"
-        exit 1
-      }
-
-      create_systemd_obfuscator_service
-
-      if configure_wireguard_linux; then
-        configure_ufw_linux
-        cleanup_3xui_script "false"
-        log ""
-        log "╔════════════════════════════════════════════════════════════╗"
-        log "║  ✓ Установка завершена успешно!                            ║"
-        log "║  ✓ WireGuard и Obfuscator настроены через systemd         ║"
-        log "╚════════════════════════════════════════════════════════════╝"
-        show_final_info
-      else
-        cleanup_3xui_script "false"
-        log ""
-        log "╔════════════════════════════════════════════════════════════╗"
-        log "║  ⚠ Установка завершена с предупреждениями                 ║"
-        log "║  ⚠ Проверьте статус служб вручную                         ║"
-        log "╚════════════════════════════════════════════════════════════╝"
-        show_final_info
-      fi
-    fi
+    _run_openwrt
+  elif [ "$IS_3XUI_MODE" = "true" ]; then
+    _run_3xui
+  else
+    _run_linux
   fi
-
-  log "==> Установка завершена."
 }
 
 main "$@"
