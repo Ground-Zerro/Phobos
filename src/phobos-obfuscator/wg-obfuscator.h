@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include "uthash.h"
+#include "socks5_proto.h"
 
 #ifdef __linux__
 #define USE_EPOLL
@@ -64,6 +65,17 @@ typedef enum {
     DIR_SERVER_TO_CLIENT = 1,
 } direction_t;
 
+typedef enum {
+    MODE_WIREGUARD = 0,
+    MODE_SOCKS5 = 1,
+} obfuscation_mode_t;
+
+typedef enum {
+    S5_ROLE_RELAY = 0,
+    S5_ROLE_CLIENT = 1,
+    S5_ROLE_SERVER = 2,
+} socks5_role_t;
+
 struct masking_handler;
 typedef struct masking_handler masking_handler_t;
 
@@ -73,7 +85,19 @@ typedef struct {
     uint16_t local_port;
 } static_binding_t;
 
+// A single RFC1929 username/password pair accepted by a SOCKS5 role=server
+// instance. Populated from --socks5-users; checked against real SOCKS5
+// USERNAME/PASSWORD subnegotiation frames terminated by the server itself.
+#define MAX_SOCKS5_USERS 2048
 typedef struct {
+    char login[S5_CRED_MAX];
+    uint8_t login_len;
+    char password[S5_CRED_MAX];
+    uint8_t password_len;
+} socks5_cred_t;
+
+typedef struct {
+    obfuscation_mode_t mode;
     int listen_port;
     char forward_host_port[256];
     char xor_key[256];
@@ -88,6 +112,12 @@ typedef struct {
     uint32_t fwmark;
     int threads;
     masking_handler_t *masking_handler;
+    uint8_t socks5_mask;
+    uint8_t socks5_role;
+
+    socks5_cred_t socks5_users[MAX_SOCKS5_USERS];
+    int socks5_user_count;
+    char socks5_stats_path[256];
 
     uint8_t media_payload_type;
     uint32_t media_ssrc;

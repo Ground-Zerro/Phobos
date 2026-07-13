@@ -30,6 +30,12 @@ static const media_preset_t media_presets[] = {
 };
 #define MEDIA_PRESET_COUNT (sizeof(media_presets) / sizeof(media_presets[0]))
 
+uint16_t media_pick_preset(uint8_t *pt_out) {
+    const media_preset_t *preset = &media_presets[fast_rand() % MEDIA_PRESET_COUNT];
+    *pt_out = preset->pt;
+    return preset->ts_step;
+}
+
 typedef struct {
     uint16_t seq[2];
     uint32_t timestamp[2];

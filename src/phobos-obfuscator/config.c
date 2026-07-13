@@ -7,6 +7,7 @@
 #include "wg-obfuscator.h"
 #include "mini_argp.h"
 #include "masking.h"
+#include "socks5_mask.h"
 
 // Executable name
 static const char *arg0;
@@ -15,12 +16,16 @@ static const char *arg0;
 static const mini_argp_opt options[] = {
     { "help", '?', 0 },
     { "config", 'c', 1 },
+    { "mode", 'M', 1 },
+    { "role", 'R', 1 },
     { "source-if", 'i', 1 },
     { "source-lport", 'p', 1 },
     { "target", 't', 1 },
     { "key", 'k', 1 },
     { "masking", 'a', 1 },
     { "static-bindings", 'b', 1 },
+    { "socks5-users", 'U', 1 },
+    { "socks5-stats", 's', 1 },
     { "max-clients" , 'm', 1 },
     { "idle-timeout", 'l', 1 },
     { "max-dummy", 'd', 1 },
@@ -42,6 +47,12 @@ static void show_usage(void)
         "Main settings:\n"
         "  -c, --config=<config_file> Read configuration from file\n"
         "                             (can be used instead of the rest arguments)\n"
+        "  -M, --mode=<mode>          Obfuscation mode (optional, default - wireguard)\n"
+        "                             Supported values: wireguard (wg), socks5\n"
+        "  -R, --role=<role>          SOCKS5 role (optional, default - relay)\n"
+        "                             relay  - transport-only relay to a SOCKS5 server\n"
+        "                             client - local SOCKS5 server, tunnels to server role\n"
+        "                             server - exit, terminates SOCKS5, dials targets\n"
         "  -i, --source-if=<ip>       Source interface to listen on\n"
         "                             (optional, default - 0.0.0.0, e.g. all)\n"
         "  -p, --source-lport=<port>  Source port to listen\n"
@@ -49,10 +60,24 @@ static void show_usage(void)
         "  -k, --key=<key>            Obfuscation key \n"
         "                             (required, must be 1-255 characters long)\n"
         "  -a, --masking=<type>       Masking type (optional, default - AUTO)\n"
-        "                             Supported values: STUN, MEDIA, AUTO, NONE\n"
+        "                             Supported values: STUN, MEDIA, TLS, AUTO, NONE\n"
+        "                             TLS is socks5 mode only. AUTO in socks5 mode\n"
+        "                             behaves like NONE (no per-connection autodetect)\n"
         "  -b, --static-bindings=<ip>:<port>:<port>,...\n"
-        "                             Comma-separated static bindings for two-way mode\n"
-        "                             as <client_ip>:<client_port>:<forward_port>\n"
+        "                             WireGuard mode: comma-separated static bindings for\n"
+        "                             two-way mode as <client_ip>:<client_port>:<forward_port>\n"
+        "                             SOCKS5 relay: extra listen->target TCP routes as\n"
+        "                             <listen_port>:<target_host>:<target_port>,...\n"
+        "  -U, --socks5-users=<login>:<password>,...\n"
+        "                             SOCKS5 role=server only: accepted RFC1929\n"
+        "                             username/password pairs. If set, the server\n"
+        "                             requires real SOCKS5 auth from the client\n"
+        "                             application; role=client never needs this\n"
+        "                             (it transparently relays the real handshake).\n"
+        "  -s, --socks5-stats=<path>  SOCKS5 role=server only: periodically dump\n"
+        "                             per-login traffic counters to <path>\n"
+        "                             (atomic rewrite, one line per login:\n"
+        "                             login up_bytes down_bytes conns idle_ms)\n"
         "  -f, --fwmark=<mark>        Firewall mark to set on all packets\n"
         "                             (optional, default - 0, e.g. disabled)\n"
         "  -T, --threads=<number>     Worker threads (0 = auto-detect, default: 0)\n"
@@ -244,6 +269,34 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
         case 'c':
             read_config_file(val, config);
             break;
+        case 'M':
+            strncpy(val_lower, val, sizeof(val_lower) - 1);
+            val_lower[sizeof(val_lower) - 1] = 0;
+            for (char *p = val_lower; *p; ++p) *p = tolower((unsigned char)*p);
+            if (strcmp(val_lower, "wireguard") == 0 || strcmp(val_lower, "wg") == 0) {
+                config->mode = MODE_WIREGUARD;
+            } else if (strcmp(val_lower, "socks5") == 0) {
+                config->mode = MODE_SOCKS5;
+            } else {
+                log(LL_ERROR, "Unknown mode: %s (must be 'wireguard', 'wg' or 'socks5')", val);
+                exit(EXIT_FAILURE);
+            }
+            break;
+        case 'R':
+            strncpy(val_lower, val, sizeof(val_lower) - 1);
+            val_lower[sizeof(val_lower) - 1] = 0;
+            for (char *p = val_lower; *p; ++p) *p = tolower((unsigned char)*p);
+            if (strcmp(val_lower, "relay") == 0) {
+                config->socks5_role = S5_ROLE_RELAY;
+            } else if (strcmp(val_lower, "client") == 0) {
+                config->socks5_role = S5_ROLE_CLIENT;
+            } else if (strcmp(val_lower, "server") == 0) {
+                config->socks5_role = S5_ROLE_SERVER;
+            } else {
+                log(LL_ERROR, "Unknown role: %s (must be 'relay', 'client' or 'server')", val);
+                exit(EXIT_FAILURE);
+            }
+            break;
         case 'i':
             strncpy(config->client_interface, val, sizeof(config->client_interface) - 1);
             config->client_interface[sizeof(config->client_interface) - 1] = 0; // Ensure null-termination
@@ -262,6 +315,46 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
             strncpy(config->static_bindings, val, sizeof(config->static_bindings) - 1);
             config->static_bindings[sizeof(config->static_bindings) - 1] = 0; // Ensure null-termination
             config->static_bindings_set = 1;
+            break;
+        case 'U':
+            {
+                char users_buf[10 * 1024];
+                strncpy(users_buf, val, sizeof(users_buf) - 1);
+                users_buf[sizeof(users_buf) - 1] = 0;
+                config->socks5_user_count = 0;
+                char *pair = strtok(users_buf, ",");
+                while (pair) {
+                    pair = trim(pair);
+                    char *colon = strchr(pair, ':');
+                    if (!colon) {
+                        log(LL_ERROR, "Invalid socks5-users entry: %s (expected login:password)", pair);
+                        exit(EXIT_FAILURE);
+                    }
+                    *colon = 0;
+                    const char *login = pair;
+                    const char *password = colon + 1;
+                    size_t login_len = strlen(login);
+                    size_t password_len = strlen(password);
+                    if (login_len == 0 || login_len >= S5_CRED_MAX || password_len >= S5_CRED_MAX) {
+                        log(LL_ERROR, "Invalid socks5-users entry: login/password length out of range");
+                        exit(EXIT_FAILURE);
+                    }
+                    if (config->socks5_user_count >= MAX_SOCKS5_USERS) {
+                        log(LL_ERROR, "Too many socks5-users entries (max %d)", MAX_SOCKS5_USERS);
+                        exit(EXIT_FAILURE);
+                    }
+                    socks5_cred_t *u = &config->socks5_users[config->socks5_user_count++];
+                    memcpy(u->login, login, login_len);
+                    u->login_len = (uint8_t)login_len;
+                    memcpy(u->password, password, password_len);
+                    u->password_len = (uint8_t)password_len;
+                    pair = strtok(NULL, ",");
+                }
+            }
+            break;
+        case 's':
+            strncpy(config->socks5_stats_path, val, sizeof(config->socks5_stats_path) - 1);
+            config->socks5_stats_path[sizeof(config->socks5_stats_path) - 1] = 0;
             break;
         case 'k':
             strncpy(config->xor_key, val, sizeof(config->xor_key));
@@ -326,11 +419,19 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
                 if (strcmp(val_lower, "none") == 0) {
                     config->masking_handler = NULL;
                     config->masking_handler_set = 1;
+                    config->socks5_mask = S5_MASK_NONE;
                     break;
                 }
                 if (strcmp(val_lower, "auto") == 0) {
                     config->masking_handler = NULL;
                     config->masking_handler_set = 0;
+                    config->socks5_mask = S5_MASK_NONE;
+                    break;
+                }
+                if (strcmp(val_lower, "tls") == 0) {
+                    config->masking_handler = NULL;
+                    config->masking_handler_set = 1;
+                    config->socks5_mask = S5_MASK_TLS;
                     break;
                 }
                 masking_handler_t *handler = get_masking_handler_by_name(val_lower);
@@ -340,8 +441,12 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
                 }
                 config->masking_handler = handler;
                 config->masking_handler_set = 1;
-                if (strcmp(handler->name, "MEDIA") == 0 && config->obfuscate_bytes == 0) {
-                    config->obfuscate_bytes = MEDIA_OBFUSCATE_BYTES_DEFAULT;
+                if (strcmp(handler->name, "STUN") == 0) config->socks5_mask = S5_MASK_STUN;
+                if (strcmp(handler->name, "MEDIA") == 0) {
+                    config->socks5_mask = S5_MASK_MEDIA;
+                    if (config->obfuscate_bytes == 0) {
+                        config->obfuscate_bytes = MEDIA_OBFUSCATE_BYTES_DEFAULT;
+                    }
                 }
             }
             break;

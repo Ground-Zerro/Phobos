@@ -11,12 +11,15 @@
 #include "obfuscation.h"
 #include "masking.h"
 #include "threading.h"
+#include "socks5.h"
+#include "socks5_mask.h"
 #include "resolve.h"
 
 int verbose = LL_DEFAULT;
 char section_name[256] = DEFAULT_INSTANCE_NAME;
 
 static threading_context_t threading_ctx = {0};
+static socks5_context_t socks5_ctx = {0};
 static volatile sig_atomic_t stop_flag = 0;
 
 static void on_signal(int signal) {
@@ -95,11 +98,13 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    int target_required = !(config.mode == MODE_SOCKS5 && config.socks5_role == S5_ROLE_SERVER);
+
     if (!config.listen_port_set) {
         log(LL_ERROR, "'source-lport' is not set");
         exit(EXIT_FAILURE);
     }
-    if (!config.forward_host_port_set) {
+    if (target_required && !config.forward_host_port_set) {
         log(LL_ERROR, "'target' is not set");
         exit(EXIT_FAILURE);
     }
@@ -107,19 +112,33 @@ int main(int argc, char *argv[]) {
         log(LL_ERROR, "'key' is not set");
         exit(EXIT_FAILURE);
     }
-
-    char *port_delimiter = strchr(config.forward_host_port, ':');
-    if (port_delimiter == NULL) {
-        log(LL_ERROR, "Invalid target host:port format: %s", config.forward_host_port);
+    if (config.mode == MODE_WIREGUARD && config.socks5_mask == S5_MASK_TLS) {
+        log(LL_ERROR, "TLS masking is only available in socks5 mode");
         exit(EXIT_FAILURE);
     }
-    *port_delimiter = 0;
-    strncpy(target_host, config.forward_host_port, sizeof(target_host) - 1);
-    target_host[sizeof(target_host) - 1] = 0;
-    target_port = atoi(port_delimiter + 1);
-    if (target_port <= 0 || target_port > 65535) {
-        log(LL_ERROR, "Invalid target port: %s", port_delimiter + 1);
-        exit(EXIT_FAILURE);
+
+    memset(&forward_addr, 0, sizeof(forward_addr));
+    forward_addr.sin_family = AF_INET;
+
+    if (config.forward_host_port_set) {
+        char *port_delimiter = strchr(config.forward_host_port, ':');
+        if (port_delimiter == NULL) {
+            log(LL_ERROR, "Invalid target host:port format: %s", config.forward_host_port);
+            exit(EXIT_FAILURE);
+        }
+        *port_delimiter = 0;
+        strncpy(target_host, config.forward_host_port, sizeof(target_host) - 1);
+        target_host[sizeof(target_host) - 1] = 0;
+        target_port = atoi(port_delimiter + 1);
+        if (target_port <= 0 || target_port > 65535) {
+            log(LL_ERROR, "Invalid target port: %s", port_delimiter + 1);
+            exit(EXIT_FAILURE);
+        }
+        if (resolve_ipv4(target_host, &forward_addr.sin_addr) != 0) {
+            log(LL_ERROR, "Can't resolve hostname '%s'", target_host);
+            exit(EXIT_FAILURE);
+        }
+        forward_addr.sin_port = htons(target_port);
     }
 
     key_length = strlen(config.xor_key);
@@ -137,16 +156,44 @@ int main(int argc, char *argv[]) {
         listen_addr = a.s_addr;
     }
 
-    memset(&forward_addr, 0, sizeof(forward_addr));
-    forward_addr.sin_family = AF_INET;
-    if (resolve_ipv4(target_host, &forward_addr.sin_addr) != 0) {
-        log(LL_ERROR, "Can't resolve hostname '%s'", target_host);
-        exit(EXIT_FAILURE);
-    }
-    forward_addr.sin_port = htons(target_port);
-
     log(LL_INFO, "Listening on %s:%d", inet_ntoa(*(struct in_addr *)&listen_addr), config.listen_port);
-    log(LL_INFO, "Target: %s:%d", target_host, target_port);
+    if (config.forward_host_port_set) {
+        log(LL_INFO, "Target: %s:%d", target_host, target_port);
+    }
+
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+    signal(SIGPIPE, SIG_IGN);
+
+    if (config.mode == MODE_SOCKS5) {
+        static const char *mask_names[] = { "none", "STUN", "MEDIA", "TLS" };
+        static const char *role_names[] = { "relay", "client", "server" };
+        log(LL_INFO, "SOCKS5 role: %s, masking: %s",
+            role_names[config.socks5_role], mask_names[config.socks5_mask]);
+        if (socks5_init(&socks5_ctx, &config) != 0) {
+            log(LL_ERROR, "Failed to initialize SOCKS5 engine");
+            exit(EXIT_FAILURE);
+        }
+        if (socks5_start(&socks5_ctx, &config, config.xor_key, key_length, &forward_addr,
+                         listen_addr, (uint16_t)config.listen_port) != 0) {
+            log(LL_ERROR, "Failed to start SOCKS5 engine");
+            socks5_shutdown(&socks5_ctx);
+            exit(EXIT_FAILURE);
+        }
+        log(LL_INFO, "SOCKS5 obfuscator successfully started");
+
+        while (!stop_flag) {
+            struct timespec ts = { .tv_sec = 1, .tv_nsec = 0 };
+            nanosleep(&ts, NULL);
+        }
+
+        log(LL_INFO, "Stopping...");
+        socks5_shutdown(&socks5_ctx);
+        socks5_join(&socks5_ctx);
+        log(LL_INFO, "Stopped.");
+        return 0;
+    }
+
     if (config.masking_handler_set) {
         log(LL_INFO, "Using masking type: %s", config.masking_handler ? config.masking_handler->name : "none");
     }
@@ -157,9 +204,6 @@ int main(int argc, char *argv[]) {
         log(LL_ERROR, "Failed to initialize threading");
         exit(EXIT_FAILURE);
     }
-
-    signal(SIGINT, on_signal);
-    signal(SIGTERM, on_signal);
 
     if (threading_start(&threading_ctx, &config, config.xor_key, key_length, &forward_addr,
                         listen_addr, (uint16_t)config.listen_port) != 0) {

@@ -276,6 +276,45 @@ static inline void xor_data(uint8_t *buffer, int length, char *key, int key_leng
     }
 }
 
+typedef struct {
+    uint8_t crc;
+    int ki;
+    int key_length;
+    uint8_t key_adj[256];
+} stream_cipher_t;
+
+static inline void stream_cipher_init(stream_cipher_t *s, const char *key, int key_length) {
+    if (!crc8_table_initialized) init_crc8_table();
+    if (key_length > 256) key_length = 256;
+    s->crc = 0;
+    s->ki = 0;
+    s->key_length = key_length;
+    const uint8_t base = (uint8_t)key_length;
+    for (int k = 0; k < key_length; k++) s->key_adj[k] = (uint8_t)key[k] + base;
+}
+
+static inline void stream_cipher_apply(stream_cipher_t *s, uint8_t *buffer, int length) {
+    uint8_t crc = s->crc;
+    int ki = s->ki;
+    const uint8_t *key_adj = s->key_adj;
+    const int key_length = s->key_length;
+    uint8_t chunk[64];
+    int i = 0;
+    while (i < length) {
+        int n = length - i;
+        if (n > (int)sizeof(chunk)) n = (int)sizeof(chunk);
+        for (int j = 0; j < n; j++) {
+            crc = crc8_table[crc ^ key_adj[ki]];
+            chunk[j] = crc;
+            if (++ki >= key_length) ki = 0;
+        }
+        xor_apply_mask(buffer + i, chunk, n);
+        i += n;
+    }
+    s->crc = crc;
+    s->ki = ki;
+}
+
 static inline int encode(uint8_t *buffer, int length, char *key, int key_length, uint8_t version, int max_dummy_length_data, int obfuscate_bytes) {
     int partial = obfuscate_bytes > 0 && obfuscate_bytes < length;
 
