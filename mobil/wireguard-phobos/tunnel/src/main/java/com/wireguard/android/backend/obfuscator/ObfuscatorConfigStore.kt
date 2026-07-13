@@ -67,14 +67,59 @@ class ObfuscatorConfigStore(private val context: Context) {
         file.writeText(root.toString())
     }
 
+    private fun socks5FileFor(name: String): File = File(context.filesDir, "$name$SUFFIX_SOCKS5")
+
+    fun isSocks5(tunnelName: String): Boolean = socks5FileFor(tunnelName).isFile
+
+    fun loadSocks5(tunnelName: String): Socks5Settings? {
+        val file = socks5FileFor(tunnelName)
+        if (!file.isFile) return null
+        return try {
+            val o = JSONObject(file.readText())
+            Socks5Settings(
+                target = o.optString("target", ""),
+                key = o.optString("key", ""),
+                maskingType = Masking.normalizeSocks5(o.optString("masking", Masking.NONE)),
+                mediaSsrc = o.optLong("mediaSsrc", 0),
+                login = o.optString("login", ""),
+                password = o.optString("password", ""),
+                listenPort = o.optInt("listenPort", Socks5Settings.DEFAULT_LISTEN_PORT)
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read socks5 settings for $tunnelName", e)
+            null
+        }
+    }
+
+    fun saveSocks5(tunnelName: String, settings: Socks5Settings?) {
+        val file = socks5FileFor(tunnelName)
+        if (settings == null) {
+            file.delete()
+            return
+        }
+        val o = JSONObject()
+        o.put("target", settings.target)
+        o.put("key", settings.key)
+        o.put("masking", settings.maskingType)
+        o.put("mediaSsrc", settings.mediaSsrc)
+        o.put("login", settings.login)
+        o.put("password", settings.password)
+        o.put("listenPort", settings.listenPort)
+        file.writeText(o.toString())
+    }
+
     fun delete(tunnelName: String) {
         fileFor(tunnelName).delete()
+        socks5FileFor(tunnelName).delete()
     }
 
     fun rename(oldName: String, newName: String) {
-        val src = fileFor(oldName)
+        renameFile(fileFor(oldName), fileFor(newName))
+        renameFile(socks5FileFor(oldName), socks5FileFor(newName))
+    }
+
+    private fun renameFile(src: File, dst: File) {
         if (!src.isFile) return
-        val dst = fileFor(newName)
         if (!src.renameTo(dst)) {
             dst.writeText(src.readText())
             src.delete()
@@ -84,5 +129,6 @@ class ObfuscatorConfigStore(private val context: Context) {
     companion object {
         private const val TAG = "WireGuard/Obfuscator"
         private const val SUFFIX = ".obfuscator"
+        private const val SUFFIX_SOCKS5 = ".socks5"
     }
 }

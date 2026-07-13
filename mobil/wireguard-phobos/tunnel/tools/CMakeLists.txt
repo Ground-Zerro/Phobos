@@ -45,7 +45,38 @@ add_dependencies(libwg-quick.so elf-cleaner)
 
 set(WG_OBFUSCATOR_JNI "${CMAKE_CURRENT_SOURCE_DIR}/../src/main/jni/wg-obfuscator")
 set(WG_OBFUSCATOR_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/phobos-obfuscator")
-add_library(libwg-obfuscator.so SHARED "${WG_OBFUSCATOR_JNI}/wg-obfuscator-jni.c")
+add_library(libwg-obfuscator.so SHARED
+    "${WG_OBFUSCATOR_JNI}/wg-obfuscator-jni.c"
+    "${WG_OBFUSCATOR_JNI}/wg-obfuscator-socks5-jni.c"
+    "${WG_OBFUSCATOR_SRC}/socks5.c"
+    "${WG_OBFUSCATOR_SRC}/socks5_proto.c"
+    "${WG_OBFUSCATOR_SRC}/socks5_mask.c"
+    "${WG_OBFUSCATOR_SRC}/masking.c"
+    "${WG_OBFUSCATOR_SRC}/masking_media.c"
+    "${WG_OBFUSCATOR_SRC}/masking_stun.c"
+    "${WG_OBFUSCATOR_SRC}/resolve.c"
+    "${WG_OBFUSCATOR_SRC}/runtime.c")
 set_target_properties(libwg-obfuscator.so PROPERTIES PREFIX "" SUFFIX "")
 target_include_directories(libwg-obfuscator.so PRIVATE "${WG_OBFUSCATOR_SRC}")
 target_compile_options(libwg-obfuscator.so PRIVATE -std=gnu11 -O3 -Wno-error)
+
+set(HEV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/hev-socks5-tunnel")
+add_custom_target(libhev-socks5-tunnel.so ALL
+    WORKING_DIRECTORY "${HEV_DIR}"
+    COMMENT "Building hev-socks5-tunnel"
+    VERBATIM
+    COMMAND "${CMAKE_ANDROID_NDK}/ndk-build"
+        "NDK_PROJECT_PATH=null"
+        "APP_BUILD_SCRIPT=${HEV_DIR}/Android.mk"
+        "NDK_APPLICATION_MK=${HEV_DIR}/Application.mk"
+        "APP_ABI=${ANDROID_ABI}"
+        "APP_PLATFORM=${ANDROID_PLATFORM}"
+        "APP_MODULES=hev-socks5-tunnel"
+        "APP_CFLAGS=-O3 -DPKGNAME=com/wireguard/android/backend/tun2socks"
+        "NDK_OUT=${CMAKE_CURRENT_BINARY_DIR}/hev-obj"
+        "NDK_LIBS_OUT=${CMAKE_CURRENT_BINARY_DIR}/hev-libs"
+        "-j4"
+    COMMAND "${CMAKE_COMMAND}" -E copy
+        "${CMAKE_CURRENT_BINARY_DIR}/hev-libs/${ANDROID_ABI}/libhev-socks5-tunnel.so"
+        "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libhev-socks5-tunnel.so"
+)

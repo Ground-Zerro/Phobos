@@ -194,6 +194,9 @@
     <string name="no_tunnels_error">No tunnels exist</string>
     <string name="obfuscation_key">Obfuscation key</string>
     <string name="obfuscation_masking">Traffic masking</string>
+    <string name="socks5_invalid_config">Invalid SOCKS5 configuration</string>
+    <string name="socks5_badge">SOCKS5</string>
+    <string name="socks5_mode_label">SOCKS5 proxy tunnel</string>
     <string name="obfuscation_masking_media">MEDIA (RTP video)</string>
     <string name="obfuscation_masking_none">No masking</string>
     <string name="obfuscation_masking_stun">STUN</string>

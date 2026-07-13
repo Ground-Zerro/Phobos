@@ -6,6 +6,7 @@
 package com.wireguard.android.util
 
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
@@ -74,34 +75,17 @@ object TunnelImporter {
                             continue
                         }
                         val raw = zip.readBytes().toString(StandardCharsets.UTF_8)
-                        val config = try {
-                            Config.parse(ByteArrayInputStream(ObfuscatorConfigParser.stripInstanceSections(raw).toByteArray(StandardCharsets.UTF_8)))
-                        } catch (e: Throwable) {
-                            throwables.add(e)
-                            null
-                        }
-                        if (config != null) {
-                            val nameCopy = name
-                            futureTunnels.add(async(SupervisorJob()) {
-                                val tunnel = Application.getTunnelManager().create(nameCopy, config)
-                                val obfuscator = ObfuscatorConfigParser.peerSettingsFrom(raw, config)
-                                if (obfuscator.isNotEmpty())
-                                    ObfuscatorConfigStore(context).save(tunnel.name, obfuscator)
-                                tunnel
-                            })
-                        }
+                        val nameCopy = name
+                        futureTunnels.add(async(SupervisorJob()) {
+                            createTunnelFromRaw(context, nameCopy, raw)
+                        })
                     }
                 }
             } else {
                 val nameCopy = name
                 futureTunnels.add(async(SupervisorJob()) {
                     val raw = contentResolver.openInputStream(uri)!!.use { it.readBytes().toString(StandardCharsets.UTF_8) }
-                    val config = Config.parse(ByteArrayInputStream(ObfuscatorConfigParser.stripInstanceSections(raw).toByteArray(StandardCharsets.UTF_8)))
-                    val tunnel = Application.getTunnelManager().create(nameCopy, config)
-                    val obfuscator = ObfuscatorConfigParser.peerSettingsFrom(raw, config)
-                    if (obfuscator.isNotEmpty())
-                        ObfuscatorConfigStore(context).save(tunnel.name, obfuscator)
-                    tunnel
+                    createTunnelFromRaw(context, nameCopy, raw)
                 })
             }
 
@@ -126,6 +110,24 @@ object TunnelImporter {
         }
     }
 
+    private suspend fun createTunnelFromRaw(context: Context, name: String, raw: String): ObservableTunnel {
+        if (ObfuscatorConfigParser.hasSocks5Mode(raw)) {
+            val socks5 = requireNotNull(ObfuscatorConfigParser.parseSocks5(raw)) {
+                context.getString(R.string.socks5_invalid_config)
+            }
+            val config = ObfuscatorConfigParser.syntheticSocks5Config()
+            val tunnel = Application.getTunnelManager().create(name, config)
+            ObfuscatorConfigStore(context).saveSocks5(tunnel.name, socks5)
+            return tunnel
+        }
+        val config = Config.parse(ByteArrayInputStream(ObfuscatorConfigParser.stripInstanceSections(raw).toByteArray(StandardCharsets.UTF_8)))
+        val tunnel = Application.getTunnelManager().create(name, config)
+        val obfuscator = ObfuscatorConfigParser.peerSettingsFrom(raw, config)
+        if (obfuscator.isNotEmpty())
+            ObfuscatorConfigStore(context).save(tunnel.name, obfuscator)
+        return tunnel
+    }
+
     fun importTunnel(parentFragmentManager: FragmentManager, configText: String, messageCallback: (CharSequence) -> Unit) {
         try {
             val (rawConf, nameHint) = if (PhobosLinkDecoder.isPhobosLink(configText)) {
@@ -134,7 +136,13 @@ object TunnelImporter {
             } else {
                 configText to null
             }
-            Config.parse(ByteArrayInputStream(ObfuscatorConfigParser.stripInstanceSections(rawConf).toByteArray(StandardCharsets.UTF_8)))
+            if (ObfuscatorConfigParser.hasSocks5Mode(rawConf)) {
+                requireNotNull(ObfuscatorConfigParser.parseSocks5(rawConf)) {
+                    Application.get().getString(R.string.socks5_invalid_config)
+                }
+            } else {
+                Config.parse(ByteArrayInputStream(ObfuscatorConfigParser.stripInstanceSections(rawConf).toByteArray(StandardCharsets.UTF_8)))
+            }
             ConfigNamingDialogFragment.newInstance(rawConf, nameHint).show(parentFragmentManager, null)
         } catch (e: Throwable) {
             onTunnelImportFinished(emptyList(), listOf<Throwable>(e), messageCallback)

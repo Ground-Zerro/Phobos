@@ -37,7 +37,12 @@ class ConfigNamingDialogFragment : DialogFragment() {
         activity.lifecycleScope.launch {
             try {
                 val tunnel = Application.getTunnelManager().create(name, cfg)
-                if (cfg != null) {
+                if (ObfuscatorConfigParser.hasSocks5Mode(rawConfig)) {
+                    val socks5 = ObfuscatorConfigParser.parseSocks5(rawConfig)
+                    if (socks5 != null) withContext(Dispatchers.IO) {
+                        ObfuscatorConfigStore(activity.applicationContext).saveSocks5(tunnel.name, socks5)
+                    }
+                } else if (cfg != null) {
                     val obfuscator = withContext(Dispatchers.IO) {
                         ObfuscatorConfigParser.peerSettingsFrom(rawConfig, cfg)
                     }
@@ -54,10 +59,13 @@ class ConfigNamingDialogFragment : DialogFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val configText = requireArguments().getString(KEY_CONFIG_TEXT)
-        val configBytes = ObfuscatorConfigParser.stripInstanceSections(configText!!).toByteArray(StandardCharsets.UTF_8)
+        val configText = requireArguments().getString(KEY_CONFIG_TEXT)!!
         config = try {
-            Config.parse(ByteArrayInputStream(configBytes))
+            if (ObfuscatorConfigParser.hasSocks5Mode(configText)) {
+                ObfuscatorConfigParser.syntheticSocks5Config()
+            } else {
+                Config.parse(ByteArrayInputStream(ObfuscatorConfigParser.stripInstanceSections(configText).toByteArray(StandardCharsets.UTF_8)))
+            }
         } catch (e: Throwable) {
             when (e) {
                 is BadConfigException, is IOException -> throw IllegalArgumentException("Invalid config passed to ${javaClass.simpleName}", e)

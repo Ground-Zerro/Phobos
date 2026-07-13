@@ -9,6 +9,14 @@
     native <methods>;
 }
 
+-keepclassmembers class com.wireguard.android.backend.obfuscator.NativeSocks5 {
+    boolean protectSocket(int);
+}
+
+-keep class com.wireguard.android.backend.tun2socks.TProxyService {
+    <methods>;
+}
+
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

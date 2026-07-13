@@ -5,7 +5,9 @@
 package com.wireguard.android.backend.obfuscator
 
 import com.wireguard.config.Config
+import com.wireguard.config.Interface
 import com.wireguard.config.Peer
+import com.wireguard.crypto.KeyPair
 
 /**
  * Handles the Phobos `[instance]` section that may accompany a WireGuard config
@@ -15,6 +17,58 @@ import com.wireguard.config.Peer
  */
 object ObfuscatorConfigParser {
     private const val INSTANCE = "instance"
+    private const val SOCKS5 = "socks5"
+    private val SOCKS5_MODE_RE = Regex("(?im)^\\s*mode\\s*=\\s*socks5\\s*$")
+
+    private const val SYNTHETIC_ADDRESSES = "10.42.0.2/32, fdcc:ad94:bacf:61a3::2/128"
+    private const val SYNTHETIC_DNS = "1.1.1.1"
+    private const val SYNTHETIC_MTU = 1500
+
+    /** True if [raw] is a SOCKS5-mode config (an `[instance]` with `mode = socks5`). */
+    fun hasSocks5Mode(raw: String): Boolean = SOCKS5_MODE_RE.containsMatchIn(raw)
+
+    /**
+     * Builds the synthetic WireGuard [Config] shell used to represent a SOCKS5
+     * tunnel in the app's tunnel model. It carries only a local tun address, DNS
+     * and MTU (plus, later, the user's per-app include/exclude); it never runs
+     * wireguard-go — [com.wireguard.android.backend.GoBackend] routes SOCKS5
+     * tunnels through tun2socks instead. The keypair is a throwaway required by
+     * the WireGuard config format and is never used on the wire.
+     */
+    fun syntheticSocks5Config(): Config {
+        val iface = Interface.Builder()
+            .setKeyPair(KeyPair())
+            .parseAddresses(SYNTHETIC_ADDRESSES)
+            .parseDnsServers(SYNTHETIC_DNS)
+            .setMtu(SYNTHETIC_MTU)
+            .build()
+        return Config.Builder().setInterface(iface).build()
+    }
+
+    /**
+     * Parses a SOCKS5-mode config into [Socks5Settings] from its `[instance]`
+     * (obfuscator) and `[socks5]` (credentials) sections. Returns null if [raw]
+     * is not a valid SOCKS5 config.
+     */
+    fun parseSocks5(raw: String): Socks5Settings? {
+        val sections = parseNamedSections(raw)
+        val instance = sections[INSTANCE] ?: return null
+        if (!instance["mode"].equals(SOCKS5, ignoreCase = true)) return null
+        val target = instance["target"].orEmpty().trim()
+        val key = instance["key"].orEmpty().trim()
+        if (target.isEmpty() || key.isEmpty()) return null
+        val socks5 = sections[SOCKS5] ?: emptyMap()
+        return Socks5Settings(
+            target = target,
+            key = key,
+            maskingType = Masking.normalizeSocks5(instance["masking"]),
+            mediaSsrc = parseUnsigned32(instance["media-ssrc"]),
+            login = socks5["login"].orEmpty().trim(),
+            password = socks5["password"].orEmpty().trim(),
+            listenPort = instance["source-lport"]?.toIntOrNull()
+                ?: Socks5Settings.DEFAULT_LISTEN_PORT
+        )
+    }
 
     /** Returns [raw] with every `[instance]` section removed (a plain WireGuard config). */
     fun stripInstanceSections(raw: String): String {
@@ -86,10 +140,44 @@ object ObfuscatorConfigParser {
         else -> "none"
     }
 
-    private fun isInstanceHeader(headerLine: String): Boolean {
+    private fun isInstanceHeader(headerLine: String): Boolean =
+        sectionName(headerLine).equals(INSTANCE, ignoreCase = true)
+
+    private fun sectionName(headerLine: String): String {
         val inner = headerLine.drop(1).substringBefore(']').trim()
-        val section = inner.substringBefore(' ').substringBefore('"').trim()
-        return section.equals(INSTANCE, ignoreCase = true)
+        return inner.substringBefore(' ').substringBefore('"').trim()
+    }
+
+    private fun parseNamedSections(raw: String): Map<String, Map<String, String>> {
+        val result = HashMap<String, MutableMap<String, String>>()
+        var current: MutableMap<String, String>? = null
+        for (rawLine in raw.lineSequence()) {
+            var line = rawLine
+            val hash = line.indexOf('#')
+            if (hash != -1) line = line.substring(0, hash)
+            line = line.trim()
+            if (line.isEmpty()) continue
+            if (line.startsWith("[")) {
+                current = result.getOrPut(sectionName(line).lowercase()) { HashMap() }
+                continue
+            }
+            val fields = current ?: continue
+            val eq = line.indexOf('=')
+            if (eq > 0) {
+                val key = line.substring(0, eq).trim().lowercase()
+                fields[key] = line.substring(eq + 1).trim()
+            }
+        }
+        return result
+    }
+
+    private fun parseUnsigned32(raw: String?): Long {
+        val value = raw?.trim()?.ifEmpty { null } ?: return 0
+        val parsed = if (value.startsWith("0x", ignoreCase = true))
+            value.substring(2).toLongOrNull(16)
+        else
+            value.toLongOrNull()
+        return (parsed ?: 0) and 0xFFFFFFFFL
     }
 
     private fun parseInstances(raw: String): List<InstanceBlock> {
@@ -142,15 +230,6 @@ object ObfuscatorConfigParser {
                 mediaSsrc = parseUnsigned32(fields["media-ssrc"]),
                 mediaClock = fields["media-clock"]?.toIntOrNull() ?: 0
             )
-        }
-
-        private fun parseUnsigned32(raw: String?): Long {
-            val value = raw?.trim()?.ifEmpty { null } ?: return 0
-            val parsed = if (value.startsWith("0x", ignoreCase = true))
-                value.substring(2).toLongOrNull(16)
-            else
-                value.toLongOrNull()
-            return (parsed ?: 0) and 0xFFFFFFFFL
         }
     }
 }

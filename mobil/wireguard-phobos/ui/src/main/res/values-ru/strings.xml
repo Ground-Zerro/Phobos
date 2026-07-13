@@ -203,6 +203,9 @@
     <string name="no_tunnels_error">Туннелей не существует</string>
     <string name="obfuscation_key">Ключ обфускации</string>
     <string name="obfuscation_masking">Маскировка трафика</string>
+    <string name="socks5_invalid_config">Некорректная конфигурация SOCKS5</string>
+    <string name="socks5_badge">SOCKS5</string>
+    <string name="socks5_mode_label">Туннель через SOCKS5-прокси</string>
     <string name="obfuscation_masking_media">MEDIA (видео RTP)</string>
     <string name="obfuscation_masking_none">Без маскировки</string>
     <string name="obfuscation_masking_stun">STUN</string>

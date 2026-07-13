@@ -14,7 +14,12 @@ import android.util.Log;
 
 import com.wireguard.android.backend.BackendException.Reason;
 import com.wireguard.android.backend.Tunnel.State;
+import com.wireguard.android.backend.obfuscator.NativeSocks5;
+import com.wireguard.android.backend.obfuscator.NativeTun2Socks;
+import com.wireguard.android.backend.obfuscator.ObfuscatorConfigStore;
 import com.wireguard.android.backend.obfuscator.ObfuscatorIntegration;
+import com.wireguard.android.backend.obfuscator.Socks5Engine;
+import com.wireguard.android.backend.obfuscator.Socks5Settings;
 import com.wireguard.android.util.SharedLibraryLoader;
 import com.wireguard.config.Config;
 import com.wireguard.config.InetEndpoint;
@@ -25,6 +30,7 @@ import com.wireguard.crypto.KeyFormatException;
 import com.wireguard.util.NonNullForAll;
 
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -49,6 +55,8 @@ public final class GoBackend implements Backend {
     @Nullable private Config currentConfig;
     @Nullable private Tunnel currentTunnel;
     private int currentTunnelHandle = -1;
+    @Nullable private Socks5Engine currentSocks5Engine;
+    @Nullable private ParcelFileDescriptor currentSocks5Tun;
 
     /**
      * Public constructor for GoBackend.
@@ -267,11 +275,19 @@ public final class GoBackend implements Backend {
             }
             service.setOwner(this);
 
-            if (currentTunnelHandle != -1) {
+            if (currentTunnelHandle != -1 || currentSocks5Engine != null) {
                 Log.w(TAG, "Tunnel already up");
                 return;
             }
 
+            final Socks5Settings socks5 = new ObfuscatorConfigStore(context).loadSocks5(tunnel.getName());
+            if (socks5 != null) {
+                bringUpSocks5(tunnel, config, socks5, service);
+                currentTunnel = tunnel;
+                currentConfig = config;
+                tunnel.onStateChange(state);
+                return;
+            }
 
             dnsRetry: for (int i = 0; i < DNS_RESOLUTION_RETRIES; ++i) {
                 // Pre-resolve IPs so they're cached when building the userspace string
@@ -356,16 +372,35 @@ public final class GoBackend implements Backend {
             service.protect(wgGetSocketV4(currentTunnelHandle));
             service.protect(wgGetSocketV6(currentTunnelHandle));
         } else {
-            if (currentTunnelHandle == -1) {
+            if (currentTunnelHandle == -1 && currentSocks5Engine == null) {
                 Log.w(TAG, "Tunnel already down");
                 return;
             }
-            ObfuscatorIntegration.bringDown();
-            int handleToClose = currentTunnelHandle;
+            if (currentSocks5Engine != null) {
+                try {
+                    NativeTun2Socks.INSTANCE.stop();
+                } catch (final Exception e) {
+                    Log.w(TAG, "Failed to stop tun2socks", e);
+                }
+                currentSocks5Engine.stop();
+                currentSocks5Engine = null;
+                NativeSocks5.INSTANCE.setProtector(null);
+                if (currentSocks5Tun != null) {
+                    try {
+                        currentSocks5Tun.close();
+                    } catch (final Exception e) {
+                        Log.w(TAG, "Failed to close SOCKS5 tun", e);
+                    }
+                    currentSocks5Tun = null;
+                }
+            } else {
+                ObfuscatorIntegration.bringDown();
+                int handleToClose = currentTunnelHandle;
+                currentTunnelHandle = -1;
+                wgTurnOff(handleToClose);
+            }
             currentTunnel = null;
-            currentTunnelHandle = -1;
             currentConfig = null;
-            wgTurnOff(handleToClose);
             try {
                 final VpnService svc = vpnService.get(0, TimeUnit.NANOSECONDS);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
@@ -377,6 +412,65 @@ public final class GoBackend implements Backend {
         }
 
         tunnel.onStateChange(state);
+    }
+
+    private void bringUpSocks5(final Tunnel tunnel, final Config config, final Socks5Settings socks5,
+                               final VpnService service) throws Exception {
+        final String serverIp;
+        try {
+            serverIp = InetAddress.getByName(socks5.getTargetHost()).getHostAddress();
+        } catch (final Exception e) {
+            throw new BackendException(Reason.DNS_RESOLUTION_FAILURE, socks5.getTargetHost());
+        }
+
+        final VpnService.Builder builder = service.getBuilder();
+        builder.setSession(tunnel.getName());
+
+        for (final String excludedApplication : config.getInterface().getExcludedApplications())
+            builder.addDisallowedApplication(excludedApplication);
+
+        for (final String includedApplication : config.getInterface().getIncludedApplications())
+            builder.addAllowedApplication(includedApplication);
+
+        for (final InetNetwork addr : config.getInterface().getAddresses())
+            builder.addAddress(addr.getAddress(), addr.getMask());
+
+        for (final InetAddress addr : config.getInterface().getDnsServers())
+            builder.addDnsServer(addr.getHostAddress());
+
+        builder.addRoute(InetAddress.getByName("0.0.0.0"), 0);
+        builder.addRoute(InetAddress.getByName("::"), 0);
+
+        final int mtu = config.getInterface().getMtu().orElse(1500);
+        builder.setMtu(mtu);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            builder.setMetered(false);
+        service.setUnderlyingNetworks(null);
+        builder.setBlocking(true);
+
+        NativeSocks5.INSTANCE.ensureLoaded(context);
+        NativeSocks5.INSTANCE.setProtector(service::protect);
+
+        final Socks5Engine engine = new Socks5Engine(serverIp, socks5.getTargetPort(),
+                socks5.getKey().getBytes(StandardCharsets.UTF_8), socks5.getMaskingId(),
+                socks5.getMediaSsrc(), socks5.getListenPort());
+        ParcelFileDescriptor tun = null;
+        try {
+            engine.start();
+            tun = builder.establish();
+            if (tun == null)
+                throw new BackendException(Reason.TUN_CREATION_ERROR);
+            NativeTun2Socks.INSTANCE.start(context, tun.getFd(), socks5.getListenPort(),
+                    socks5.getLogin(), socks5.getPassword(), mtu);
+            currentSocks5Tun = tun;
+            currentSocks5Engine = engine;
+        } catch (final Exception e) {
+            NativeSocks5.INSTANCE.setProtector(null);
+            engine.stop();
+            if (tun != null)
+                try { tun.close(); } catch (final Exception ignored) { }
+            throw e;
+        }
     }
 
     /**
