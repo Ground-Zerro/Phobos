@@ -121,7 +121,7 @@ static int client_udp_setup(struct socks5_worker *w, struct socks5_conn *c, cons
 static int server_udp_setup(struct socks5_worker *w, struct socks5_conn *c, const obfuscator_config_t *config, const uint8_t *rest, int rest_len);
 static int udp_relay_event(struct socks5_worker *w, struct socks5_conn *c, const obfuscator_config_t *config);
 static int udp_control_event(struct socks5_worker *w, struct socks5_conn *c, const obfuscator_config_t *config, uint32_t events);
-static int udp_deliver_frames(struct socks5_conn *c, const obfuscator_config_t *config,
+static int udp_deliver_frames(struct socks5_conn *c,
                               const uint8_t *raw_in, int in_len, int is_client);
 static int push_down(socks5_conn_t *c, const obfuscator_config_t *config, const uint8_t *raw, int rawn);
 
@@ -599,7 +599,7 @@ static int client_handshake_up(socks5_worker_t *w, socks5_conn_t *c, const obfus
             }
             if (client_udp_setup(w, c, config) < 0) return -1;
             if (c->hs_up_len > 0) {
-                int dl = udp_deliver_frames(c, config, c->hs_up, c->hs_up_len, 1);
+                int dl = udp_deliver_frames(c, c->hs_up, c->hs_up_len, 1);
                 c->hs_up_len = 0;
                 if (dl < 0) return -1;
             }
@@ -792,7 +792,7 @@ static int tunnel_send(socks5_conn_t *c, const obfuscator_config_t *config, int 
     return flush_to_down(c);
 }
 
-static int udp_deliver_frames(socks5_conn_t *c, const obfuscator_config_t *config,
+static int udp_deliver_frames(socks5_conn_t *c,
                               const uint8_t *raw_in, int in_len, int is_client) {
     static _Thread_local uint8_t comb[2048 + SOCKS5_BUF];
     if (in_len > SOCKS5_BUF) return -1;
@@ -859,7 +859,7 @@ static int udp_tunnel_recv(socks5_conn_t *c, const obfuscator_config_t *config,
         stream_cipher_apply(cipher, raw, (int)n);
         rawn = (int)n;
     }
-    if (rawn > 0) return udp_deliver_frames(c, config, raw, rawn, is_client);
+    if (rawn > 0) return udp_deliver_frames(c, raw, rawn, is_client);
     return 0;
 }
 
@@ -927,7 +927,7 @@ static int server_udp_setup(struct socks5_worker *w, struct socks5_conn *c, cons
     if (push_down(c, config, rep, 10) < 0) return -1;
 
     c->phase = S5_PHASE_UDP;
-    if (rest_len > 0) return udp_deliver_frames(c, config, rest, rest_len, 0);
+    if (rest_len > 0) return udp_deliver_frames(c, rest, rest_len, 0);
     return 0;
 }
 
@@ -1259,7 +1259,7 @@ static int parse_tcp_bindings(socks5_context_t *ctx, obfuscator_config_t *config
         struct sockaddr_in fwd;
         memset(&fwd, 0, sizeof(fwd));
         fwd.sin_family = AF_INET;
-        if (resolve_ipv4(host, &fwd.sin_addr) != 0) {
+        if (resolve_ipv4_wait(host, &fwd.sin_addr, config->stop) != 0) {
             log(LL_ERROR, "Can't resolve host '%s' for TCP binding", host);
             return -1;
         }

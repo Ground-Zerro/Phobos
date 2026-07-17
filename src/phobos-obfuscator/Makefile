@@ -86,17 +86,6 @@ ifeq ($(ARCH),x86_64)
   endif
 endif
 
-ifneq ($(filter i386 i686,$(ARCH)),)
-  EXTRA_CFLAGS += -march=i686 -mtune=generic
-  EXTRA_CFLAGS += -msse2
-  EXTRA_CFLAGS += -fomit-frame-pointer -fweb
-  EXTRA_CFLAGS += -funroll-loops --param max-unroll-times=8
-  ifndef DEBUG
-    EXTRA_CFLAGS += -ffunction-sections -fdata-sections
-    LDFLAGS += -Wl,--gc-sections
-  endif
-endif
-
 ifeq ($(ARCH),armv7)
   EXTRA_CFLAGS += -march=armv7-a -mtune=cortex-a9 -mfpu=neon
   EXTRA_CFLAGS += -fomit-frame-pointer -fweb

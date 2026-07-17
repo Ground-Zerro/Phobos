@@ -130,13 +130,13 @@ static int stun_unwrap(uint8_t *buf, size_t len) {
     if (msg_type != STUN_TYPE_DATA_IND) return -1;
 
     uint16_t msg_len = (buf[2] << 8) | buf[3];
-    if (msg_len + 20 > len) return -1;
+    if ((size_t)msg_len + 20 > len) return -1;
 
     uint16_t attr_type = (buf[20] << 8) | buf[21];
     if (attr_type != STUN_ATTR_DATA) return -1;
 
     uint16_t data_len = (buf[22] << 8) | buf[23];
-    if (data_len + 24 > len) return -1;
+    if ((size_t)data_len + 24 > len) return -1;
 
     return data_len;
 }

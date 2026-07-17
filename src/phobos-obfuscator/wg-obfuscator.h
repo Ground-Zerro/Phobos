@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdint.h>
 #include "uthash.h"
 #include "socks5_proto.h"
@@ -122,6 +123,8 @@ typedef struct {
     uint8_t media_payload_type;
     uint32_t media_ssrc;
     uint16_t media_ts_step;
+
+    const volatile sig_atomic_t *stop;
 
     uint8_t listen_port_set;
     uint8_t forward_host_port_set;

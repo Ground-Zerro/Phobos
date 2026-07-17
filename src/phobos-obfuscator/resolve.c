@@ -10,11 +10,16 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include "resolve.h"
+#include "wg-obfuscator.h"
 
 #define DNS_PORT 53
 #define DNS_MAX_NS 4
 #define DNS_TIMEOUT_SEC 3
 #define DNS_BUF_SIZE 1500
+
+#define RESOLVE_RETRY_START_DELAY_SEC 1
+#define RESOLVE_RETRY_MAX_DELAY_SEC 20
+#define RESOLVE_RETRY_TOTAL_SEC 120
 
 static int parse_hosts_file(const char *host, struct in_addr *out) {
     FILE *f = fopen("/etc/hosts", "r");
@@ -166,4 +171,30 @@ int resolve_ipv4(const char *host, struct in_addr *out) {
     if (inet_pton(AF_INET, host, out) == 1) return 0;
     if (parse_hosts_file(host, out) == 0) return 0;
     return dns_query(host, out);
+}
+
+static int sleep_interruptible(int seconds, const volatile sig_atomic_t *stop) {
+    for (int i = 0; i < seconds; i++) {
+        if (stop && *stop) return -1;
+        sleep(1);
+    }
+    return (stop && *stop) ? -1 : 0;
+}
+
+int resolve_ipv4_wait(const char *host, struct in_addr *out, const volatile sig_atomic_t *stop) {
+    int delay = RESOLVE_RETRY_START_DELAY_SEC;
+    int waited = 0;
+    for (;;) {
+        if (resolve_ipv4(host, out) == 0) return 0;
+        if (stop && *stop) return -1;
+        if (waited >= RESOLVE_RETRY_TOTAL_SEC) {
+            log(LL_ERROR, "Can't resolve '%s': DNS/network still unavailable after %d seconds of retries", host, waited);
+            return -1;
+        }
+        log(LL_WARN, "Can't resolve '%s' (network not ready?), retrying in %d s", host, delay);
+        if (sleep_interruptible(delay, stop) != 0) return -1;
+        waited += delay;
+        delay *= 2;
+        if (delay > RESOLVE_RETRY_MAX_DELAY_SEC) delay = RESOLVE_RETRY_MAX_DELAY_SEC;
+    }
 }

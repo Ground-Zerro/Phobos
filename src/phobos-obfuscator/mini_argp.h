@@ -13,7 +13,6 @@ typedef struct {
     const char  *long_name;   /* "--target"  or NULL */
     char         short_name;  /* 't' or 0            */
     int          has_arg;     /* 0 flag, 1 needs val */
-    mini_argp_cb cb;          /* your handler        */
 } mini_argp_opt;
 
 /* internal: find desc by name */
@@ -47,8 +46,7 @@ static int mini_argp_parse(int argc, char **argv,
                 val = argv[i];
             }
             if (!o->has_arg) val = NULL;
-            mini_argp_cb to_call = o->cb ? o->cb : cb;
-            if (to_call(o->long_name, o->short_name, val, ctx)) return -1;
+            if (cb(o->long_name, o->short_name, val, ctx)) return -1;
         }
 
         /* short(s):  -a, -fVAL, -xzvf */
@@ -66,8 +64,7 @@ static int mini_argp_parse(int argc, char **argv,
                     /* Stop further char-scanning: the rest of the arg is the value */
                     pos = strlen(arg)-1;
                 }
-                mini_argp_cb to_call = o->cb ? o->cb : cb;
-                if (to_call(o->long_name, o->short_name, val, ctx)) return -1;
+                if (cb(o->long_name, o->short_name, val, ctx)) return -1;
             }
         }
 

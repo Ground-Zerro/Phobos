@@ -59,7 +59,7 @@ static void parse_static_bindings(obfuscator_config_t *config) {
         *colon2 = 0;
 
         struct in_addr client_ip;
-        if (resolve_ipv4(binding, &client_ip) != 0) {
+        if (resolve_ipv4_wait(binding, &client_ip, config->stop) != 0) {
             log(LL_ERROR, "Can't resolve hostname '%s' for static binding", binding);
             exit(EXIT_FAILURE);
         }
@@ -97,6 +97,11 @@ int main(int argc, char *argv[]) {
     if (parse_config(argc, argv, &config) != 0) {
         exit(EXIT_FAILURE);
     }
+    config.stop = &stop_flag;
+
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+    signal(SIGPIPE, SIG_IGN);
 
     int target_required = !(config.mode == MODE_SOCKS5 && config.socks5_role == S5_ROLE_SERVER);
 
@@ -134,8 +139,8 @@ int main(int argc, char *argv[]) {
             log(LL_ERROR, "Invalid target port: %s", port_delimiter + 1);
             exit(EXIT_FAILURE);
         }
-        if (resolve_ipv4(target_host, &forward_addr.sin_addr) != 0) {
-            log(LL_ERROR, "Can't resolve hostname '%s'", target_host);
+        if (resolve_ipv4_wait(target_host, &forward_addr.sin_addr, config.stop) != 0) {
+            log(LL_ERROR, "Can't resolve target hostname '%s', exiting", target_host);
             exit(EXIT_FAILURE);
         }
         forward_addr.sin_port = htons(target_port);
@@ -149,7 +154,7 @@ int main(int argc, char *argv[]) {
 
     if (config.client_interface_set) {
         struct in_addr a;
-        if (resolve_ipv4(config.client_interface, &a) != 0) {
+        if (resolve_ipv4_wait(config.client_interface, &a, config.stop) != 0) {
             log(LL_ERROR, "Invalid source interface '%s'", config.client_interface);
             exit(EXIT_FAILURE);
         }
@@ -160,10 +165,6 @@ int main(int argc, char *argv[]) {
     if (config.forward_host_port_set) {
         log(LL_INFO, "Target: %s:%d", target_host, target_port);
     }
-
-    signal(SIGINT, on_signal);
-    signal(SIGTERM, on_signal);
-    signal(SIGPIPE, SIG_IGN);
 
     if (config.mode == MODE_SOCKS5) {
         static const char *mask_names[] = { "none", "STUN", "MEDIA", "TLS" };

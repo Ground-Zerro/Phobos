@@ -1,11 +1,6 @@
 name: Publish Docker Image
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -44,8 +39,7 @@ jobs:
         with:
           images: ghcr.io/ground-zerro/phobos
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=ref,event=tag
+            type=raw,value=latest
             type=sha,format=short,prefix=sha-
 
       - name: Build and push
