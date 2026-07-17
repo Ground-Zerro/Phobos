@@ -74,17 +74,24 @@ function resolveMigrationsFolder(): string {
     join(process.cwd(), 'src/server/database/migrations'),
   ];
   const found = candidates.find((p) => {
-    try { readdirSync(p); return true; } catch { return false; }
+    try {
+      readdirSync(p);
+      return true;
+    } catch {
+      return false;
+    }
   });
   if (!found) {
-    throw new Error(`migrations folder not found (tried: ${candidates.join(', ')})`);
+    throw new Error(
+      `migrations folder not found (tried: ${candidates.join(', ')})`
+    );
   }
   return found;
 }
 
 async function hasTable(name: string): Promise<boolean> {
   const row = await db.run(
-    sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${name}`,
+    sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${name}`
   );
   return Array.isArray(row.rows) && row.rows.length > 0;
 }
@@ -98,7 +105,7 @@ async function seedMigrationTracking() {
     )
   `);
   await db.run(
-    sql`INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES ('bootstrapped', ${Date.now()})`,
+    sql`INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES ('bootstrapped', ${Date.now()})`
   );
   DB_DEBUG('Migration tracking seeded for bootstrapped database');
 }
@@ -153,7 +160,11 @@ async function initialSetup(db: DBServiceType) {
     });
   }
 
-  if (WG_INITIAL_ENV.USERNAME && WG_INITIAL_ENV.PASSWORD && WG_INITIAL_ENV.HOST) {
+  if (
+    WG_INITIAL_ENV.USERNAME &&
+    WG_INITIAL_ENV.PASSWORD &&
+    WG_INITIAL_ENV.HOST
+  ) {
     DB_DEBUG('Creating initial user...');
     await db.users.create(WG_INITIAL_ENV.USERNAME, WG_INITIAL_ENV.PASSWORD);
 

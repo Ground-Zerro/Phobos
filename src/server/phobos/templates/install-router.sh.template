@@ -2,6 +2,7 @@
 set -e
 
 CLIENT_NAME="{{CLIENT_NAME}}"
+PROTOCOL="{{PROTOCOL}}"
 PHOBOS_DIR=""
 ROUTER_PLATFORM=""
 SLOT=""
@@ -72,6 +73,13 @@ setup_configs() {
   chmod 600 "$PHOBOS_DIR/${CLIENT_NAME}.conf"
   sed -i "s/^source-lport = .*/source-lport = ${LPORT}/" "$PHOBOS_DIR/${OBF_CONF_NAME}"
   sed -i "s/^Endpoint = 127\.0\.0\.1:.*/Endpoint = 127.0.0.1:${LPORT}/" "$PHOBOS_DIR/${CLIENT_NAME}.conf"
+}
+
+setup_configs_socks5() {
+  mkdir -p "$PHOBOS_DIR"
+  cp wg-socks5-obfuscator.conf "$PHOBOS_DIR/${OBF_CONF_NAME}"
+  chmod 600 "$PHOBOS_DIR/${OBF_CONF_NAME}"
+  sed -i "s/^source-lport = .*/source-lport = ${LPORT}/" "$PHOBOS_DIR/${OBF_CONF_NAME}"
 }
 
 allocate_slot() {
@@ -187,6 +195,28 @@ print_xray_wireguard_json() {
   "$LPORT" "$keepalive" "$CLIENT_NAME"
 }
 
+print_xray_socks5_json() {
+  printf '{
+  "protocol": "socks",
+  "settings": {
+    "servers": [
+      {
+        "address": "127.0.0.1",
+        "port": %s,
+        "users": [
+          {
+            "user": "%s",
+            "pass": "%s"
+          }
+        ]
+      }
+    ]
+  },
+  "tag": "Phobos-%s"
+}
+' "$LPORT" "$SOCKS5_LOGIN" "$SOCKS5_PASSWORD" "$CLIENT_NAME"
+}
+
 extract_wireguard_params() {
   local config_file="$PHOBOS_DIR/${CLIENT_NAME}.conf"
 
@@ -226,6 +256,15 @@ install_wireguard_openwrt() {
   pkg_install kmod-wireguard wireguard-tools luci-proto-wireguard >/dev/null 2>&1
 }
 
+install_redsocks_openwrt() {
+  if [ -x /usr/sbin/redsocks ] || command -v redsocks >/dev/null 2>&1; then
+    return 0
+  fi
+  pkg_update >/dev/null 2>&1 || true
+  pkg_install redsocks >/dev/null 2>&1 || true
+  [ -x /usr/sbin/redsocks ] || command -v redsocks >/dev/null 2>&1
+}
+
 configure_wireguard_rci() {
   extract_wireguard_params || return 1
   [ -f "./router-configure-wireguard.sh" ] || return 1
@@ -242,6 +281,54 @@ configure_wireguard_rci() {
       --keepalive 25 \
       --mtu 1420 \
       --fallback-config "$PHOBOS_DIR/${CLIENT_NAME}.conf" >"$_log" 2>&1; then
+    rm -f "$_log"
+    return 0
+  fi
+  cat "$_log" 2>/dev/null || true
+  rm -f "$_log"
+  return 1
+}
+
+load_socks5_credentials() {
+  [ -f "socks5-credentials.env" ] || return 1
+  . ./socks5-credentials.env
+  [ -n "$SOCKS5_LOGIN" ] && [ -n "$SOCKS5_PASSWORD" ]
+}
+
+configure_socks5_rci() {
+  load_socks5_credentials || return 1
+  [ -f "./router-configure-socks5-keenetic.sh" ] || return 1
+  chmod +x ./router-configure-socks5-keenetic.sh
+  local _log="${PHOBOS_DIR}/.rci.log"
+  if ./router-configure-socks5-keenetic.sh \
+      --client-name "$CLIENT_NAME" \
+      --upstream-host "127.0.0.1" \
+      --upstream-port "$LPORT" \
+      --login "$SOCKS5_LOGIN" \
+      --password "$SOCKS5_PASSWORD" \
+      --fallback-config "$PHOBOS_DIR/${OBF_CONF_NAME}" >"$_log" 2>&1; then
+    rm -f "$_log"
+    return 0
+  fi
+  cat "$_log" 2>/dev/null || true
+  rm -f "$_log"
+  return 1
+}
+
+configure_socks5_openwrt() {
+  load_socks5_credentials || return 1
+  [ -f "./router-configure-socks5-openwrt.sh" ] || return 1
+  chmod +x ./router-configure-socks5-openwrt.sh
+  local target server_ip
+  target=$(grep '^target' "$PHOBOS_DIR/${OBF_CONF_NAME}" 2>/dev/null | head -1 | cut -d'=' -f2 | tr -d ' ')
+  server_ip="${target%:*}"
+  local _log="${PHOBOS_DIR}/.uci.log"
+  if ./router-configure-socks5-openwrt.sh \
+      --client-name "$CLIENT_NAME" \
+      --obf-port "$LPORT" \
+      --login "$SOCKS5_LOGIN" \
+      --password "$SOCKS5_PASSWORD" \
+      --server-ip "$server_ip" >"$_log" 2>&1; then
     rm -f "$_log"
     return 0
   fi
@@ -298,6 +385,30 @@ show_3xui_final_info() {
   msg "─────────────────────────────────────────────────"
 }
 
+show_3xui_socks5_final_info() {
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора SOCKS5 (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/usr/local/bin/${OBF_BINARY_NAME}"
+  msg "/etc/systemd/system/${OBF_SERVICE_NAME}.service"
+  msg ""
+  msg "Управление:"
+  msg "  systemctl status ${OBF_SERVICE_NAME}"
+  msg "  systemctl restart ${OBF_SERVICE_NAME}"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+  msg ""
+  msg "Локальный SOCKS5-прокси: 127.0.0.1:${LPORT}  (логин ${SOCKS5_LOGIN} / пароль ${SOCKS5_PASSWORD})"
+  msg ""
+  msg "─────────────────────────────────────────────────"
+  msg "SOCKS outbound для 3x-ui (добавить вручную):"
+  msg "─────────────────────────────────────────────────"
+  print_xray_socks5_json
+  msg "─────────────────────────────────────────────────"
+}
+
 show_keenetic_final_info() {
   local rci_ok="$1"
   msg ""
@@ -321,6 +432,32 @@ show_keenetic_final_info() {
     msg "  2. WireGuard → Загрузить конфигурацию из файла"
     msg "  3. Файл: ${PHOBOS_DIR}/${CLIENT_NAME}.conf"
     msg "  4. Активируйте подключение"
+  fi
+}
+
+show_keenetic_socks5_final_info() {
+  local rci_ok="$1"
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/opt/bin/${OBF_BINARY_NAME}"
+  msg "/opt/etc/init.d/${OBF_INIT_NAME}"
+  msg ""
+  msg "Управление:"
+  msg "  /opt/etc/init.d/${OBF_INIT_NAME} status"
+  msg "  /opt/etc/init.d/${OBF_INIT_NAME} restart"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+  if [ "$rci_ok" != "1" ]; then
+    msg ""
+    msg "Ручная настройка SOCKS5 Proxy (Keenetic):"
+    msg "  1. Веб-панель → Интернет → Другие подключения → Добавить подключение"
+    msg "  2. Тип: Proxy, протокол SOCKS5"
+    msg "  3. Upstream: 127.0.0.1:${LPORT}"
+    msg "  4. Логин/пароль — см. страницу клиента в панели PhobosWG"
+    msg "  5. Активируйте подключение"
   fi
 }
 
@@ -348,6 +485,36 @@ show_openwrt_final_info() {
     msg "  2. Протокол: WireGuard VPN"
     msg "  3. Параметры из файла: ${PHOBOS_DIR}/${CLIENT_NAME}.conf"
     msg "  4. Настройте firewall zone"
+  fi
+}
+
+show_openwrt_socks5_final_info() {
+  local ok="$1"
+  local init_path="$2"
+  msg ""
+  msg "Файлы:"
+  msg "${PHOBOS_DIR}/"
+  msg "├─ ${OBF_CONF_NAME}  — конфигурация обфускатора SOCKS5 (порт ${LPORT})"
+  msg "└─ phobos-uninstall.sh        — скрипт удаления PhobosWG"
+  msg ""
+  msg "/usr/bin/${OBF_BINARY_NAME}"
+  msg "${init_path}"
+  msg "/etc/redsocks.conf                       — транспарентный SOCKS5-редирект"
+  msg "/etc/nftables.d/30-phobos-socks5.nft     — правило редиректа (fw4)"
+  msg ""
+  msg "Управление:"
+  msg "  ${init_path} status"
+  msg "  /etc/init.d/redsocks status"
+  msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
+  if [ "$ok" = "1" ]; then
+    msg ""
+    msg "TCP-трафик из LAN прозрачно идёт через SOCKS5 → сервер."
+  else
+    msg ""
+    msg "Ручная настройка SOCKS5 (OpenWRT):"
+    msg "  1. Установите redsocks (${PKG_MGR} install redsocks)"
+    msg "  2. /etc/redsocks.conf → upstream 127.0.0.1:${LPORT}, type socks5, login/пароль клиента"
+    msg "  3. nft redirect для LAN TCP → порт redsocks (см. router-configure-socks5-openwrt.sh)"
   fi
 }
 
@@ -397,6 +564,36 @@ _run_3xui() {
   show_3xui_final_info
 }
 
+_run_3xui_socks5() {
+  PHASE_TOTAL=3
+
+  load_socks5_credentials || true
+
+  phase_start 1 "Установка службы обфускатора SOCKS5"
+  install_obfuscator "$ARCH"
+  setup_configs_socks5
+  if create_systemd_obfuscator_service; then
+    phase_ok 1 "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
+  else
+    phase_fail 1 "служба создана, но не запустилась (таймаут 10 сек)"
+  fi
+
+  phase_start 2 "Проверка ${OBF_SERVICE_NAME}"
+  if verify_obfuscator_service; then
+    phase_ok 2 "служба установлена, включена и запущена"
+  else
+    phase_fail 2 "служба не полностью активирована — systemctl status ${OBF_SERVICE_NAME}"
+  fi
+
+  phase_start 3 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_3xui_socks5_final_info
+}
+
 _run_keenetic() {
   PHASE_TOTAL=3
   local rci_ok=0
@@ -426,6 +623,37 @@ _run_keenetic() {
   phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
 
   show_keenetic_final_info "$rci_ok"
+}
+
+_run_keenetic_socks5() {
+  PHASE_TOTAL=3
+  local rci_ok=0
+
+  phase_start 1 "Установка обфускатора"
+  install_obfuscator "$ARCH"
+  setup_configs_socks5
+  create_init_script
+  if start_obfuscator; then
+    phase_ok 1 "wg-obfuscator запущен → /opt/bin/${OBF_BINARY_NAME}"
+  else
+    phase_fail 1 "wg-obfuscator не запущен — /opt/etc/init.d/${OBF_INIT_NAME} status"
+  fi
+
+  phase_start 2 "Настройка SOCKS5 Proxy (RCI API)"
+  if configure_socks5_rci; then
+    rci_ok=1
+    phase_ok 2 "интерфейс Phobos-${CLIENT_NAME} создан"
+  else
+    phase_fail 2 "SOCKS5 Proxy не настроен — потребуется ручная конфигурация"
+  fi
+
+  phase_start 3 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_keenetic_socks5_final_info "$rci_ok"
 }
 
 _run_openwrt() {
@@ -471,6 +699,51 @@ _run_openwrt() {
   phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
 
   show_openwrt_final_info "$uci_ok" "$init_path"
+}
+
+_run_openwrt_socks5() {
+  PHASE_TOTAL=4
+  local proxy_ok=0
+  local init_path=""
+
+  phase_start 1 "Установка redsocks"
+  if install_redsocks_openwrt; then
+    phase_ok 1 "redsocks установлен"
+  else
+    phase_fail 1 "не удалось установить redsocks — потребуется ручная настройка"
+  fi
+
+  phase_start 2 "Установка обфускатора"
+  install_obfuscator "$ARCH"
+  setup_configs_socks5
+  if [ -d "/opt/etc" ]; then
+    create_init_script
+    init_path="/opt/etc/init.d/${OBF_INIT_NAME}"
+  else
+    create_procd_init_script
+    init_path="/etc/init.d/${OBF_SERVICE_NAME}"
+  fi
+  if start_obfuscator; then
+    phase_ok 2 "wg-obfuscator запущен → /usr/bin/${OBF_BINARY_NAME}"
+  else
+    phase_fail 2 "wg-obfuscator не запущен — ${init_path} status"
+  fi
+
+  phase_start 3 "Настройка SOCKS5 (redsocks + nft redirect)"
+  if configure_socks5_openwrt; then
+    proxy_ok=1
+    phase_ok 3 "транспарентный SOCKS5-редирект активен"
+  else
+    phase_fail 3 "SOCKS5 не настроен — потребуется ручная конфигурация"
+  fi
+
+  phase_start 4 "Сохранение файлов"
+  register_client
+  deploy_lib_client
+  deploy_uninstall_script
+  phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
+
+  show_openwrt_socks5_final_info "$proxy_ok" "$init_path"
 }
 
 _run_linux() {
@@ -522,6 +795,13 @@ main() {
     exit 1
   fi
 
+  if [ "$PROTOCOL" = "socks5" ] && [ "$ROUTER_PLATFORM" != "keenetic" ] && \
+     [ "$ROUTER_PLATFORM" != "openwrt" ] && [ "$IS_3XUI_MODE" != "true" ]; then
+    msg "Автоматическая установка SOCKS5 для платформы ${ROUTER_PLATFORM} пока не поддерживается."
+    msg "Используйте wg-socks5-obfuscator.conf и бинарник из bin/ вручную (см. README.txt)."
+    exit 0
+  fi
+
   check_root
   mkdir -p "$PHOBOS_DIR"
   allocate_slot
@@ -548,10 +828,16 @@ main() {
     exit 1
   fi
 
-  if [ "$ROUTER_PLATFORM" = "keenetic" ]; then
+  if [ "$ROUTER_PLATFORM" = "keenetic" ] && [ "$PROTOCOL" = "socks5" ]; then
+    _run_keenetic_socks5
+  elif [ "$ROUTER_PLATFORM" = "keenetic" ]; then
     _run_keenetic
+  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ "$PROTOCOL" = "socks5" ]; then
+    _run_openwrt_socks5
   elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
     _run_openwrt
+  elif [ "$IS_3XUI_MODE" = "true" ] && [ "$PROTOCOL" = "socks5" ]; then
+    _run_3xui_socks5
   elif [ "$IS_3XUI_MODE" = "true" ]; then
     _run_3xui
   else

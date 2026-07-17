@@ -8,6 +8,7 @@ const WARP_DEBUG = debug('Warp');
 
 const WARP_INTERFACE = 'warp0';
 const WARP_TABLE = 200;
+export const WARP_FWMARK = 9224;
 const WARP_CONFIG_PATH = `/etc/wireguard/${WARP_INTERFACE}.conf`;
 const HANDSHAKE_RETRIES = 10;
 const HANDSHAKE_DELAY_MS = 1000;
@@ -39,12 +40,18 @@ class WarpInterfaceService {
       `ip rule del from ${ipv4Cidr} lookup ${WARP_TABLE} 2>/dev/null || true`,
       `ip rule add from ${ipv4Cidr} lookup ${WARP_TABLE}`,
       `iptables -t nat -A POSTROUTING -s ${ipv4Cidr} -o %i -j MASQUERADE`,
+      `ip rule del fwmark ${WARP_FWMARK} lookup ${WARP_TABLE} 2>/dev/null || true`,
+      `ip rule add fwmark ${WARP_FWMARK} lookup ${WARP_TABLE}`,
+      `iptables -t nat -A POSTROUTING -m mark --mark ${WARP_FWMARK} -o %i -j MASQUERADE`,
       ...(enableIpv6
         ? [
             `ip -6 route replace ${ipv6Cidr} dev wg0 table ${WARP_TABLE}`,
             `ip -6 rule del from ${ipv6Cidr} lookup ${WARP_TABLE} 2>/dev/null || true`,
             `ip -6 rule add from ${ipv6Cidr} lookup ${WARP_TABLE}`,
             `ip6tables -t nat -A POSTROUTING -s ${ipv6Cidr} -o %i -j MASQUERADE`,
+            `ip -6 rule del fwmark ${WARP_FWMARK} lookup ${WARP_TABLE} 2>/dev/null || true`,
+            `ip -6 rule add fwmark ${WARP_FWMARK} lookup ${WARP_TABLE}`,
+            `ip6tables -t nat -A POSTROUTING -m mark --mark ${WARP_FWMARK} -o %i -j MASQUERADE`,
           ]
         : []),
     ]);
@@ -52,10 +59,14 @@ class WarpInterfaceService {
     const postDown = joinShell([
       `ip rule del from ${ipv4Cidr} lookup ${WARP_TABLE} 2>/dev/null || true`,
       `iptables -t nat -D POSTROUTING -s ${ipv4Cidr} -o %i -j MASQUERADE 2>/dev/null || true`,
+      `ip rule del fwmark ${WARP_FWMARK} lookup ${WARP_TABLE} 2>/dev/null || true`,
+      `iptables -t nat -D POSTROUTING -m mark --mark ${WARP_FWMARK} -o %i -j MASQUERADE 2>/dev/null || true`,
       ...(enableIpv6
         ? [
             `ip -6 rule del from ${ipv6Cidr} lookup ${WARP_TABLE} 2>/dev/null || true`,
             `ip6tables -t nat -D POSTROUTING -s ${ipv6Cidr} -o %i -j MASQUERADE 2>/dev/null || true`,
+            `ip -6 rule del fwmark ${WARP_FWMARK} lookup ${WARP_TABLE} 2>/dev/null || true`,
+            `ip6tables -t nat -D POSTROUTING -m mark --mark ${WARP_FWMARK} -o %i -j MASQUERADE 2>/dev/null || true`,
           ]
         : []),
     ]);

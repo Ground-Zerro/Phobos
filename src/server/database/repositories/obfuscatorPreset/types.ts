@@ -39,9 +39,26 @@ const key = z
   .max(255)
   .pipe(safeStringRefine);
 
-const masking = z.enum(['STUN', 'MEDIA', 'AUTO', 'NONE'], {
+const mode = z.enum(['WIREGUARD', 'SOCKS5'], {
+  message: t('zod.obfuscatorPreset.mode'),
+});
+
+const masking = z.enum(['STUN', 'MEDIA', 'AUTO', 'NONE', 'TLS'], {
   message: t('zod.obfuscatorPreset.masking'),
 });
+
+const mediaSsrc = z
+  .number({ message: t('zod.obfuscatorPreset.mediaSsrc') })
+  .int()
+  .min(0)
+  .max(0xffffffff)
+  .nullable();
+
+const clientLocalPort = z
+  .number({ message: t('zod.obfuscatorPreset.clientLocalPort') })
+  .int()
+  .min(1)
+  .max(65535);
 
 const obfuscateBytes = z
   .number({ message: t('zod.obfuscatorPreset.obfuscateBytes') })
@@ -67,6 +84,7 @@ const clientWgLocalPort = z
 
 export const ObfuscatorPresetCreateSchema = z.object({
   name,
+  mode: mode.optional(),
   extPort: extPort.optional(),
   sourceIf: sourceIf.optional(),
   target: target.optional(),
@@ -76,6 +94,8 @@ export const ObfuscatorPresetCreateSchema = z.object({
   dummy: dummy.optional(),
   verbose: verbose.optional(),
   clientWgLocalPort: clientWgLocalPort.optional(),
+  mediaSsrc: mediaSsrc.optional(),
+  clientLocalPort: clientLocalPort.optional(),
 });
 
 export type ObfuscatorPresetCreateType = z.infer<
@@ -85,6 +105,7 @@ export type ObfuscatorPresetCreateType = z.infer<
 export const ObfuscatorPresetUpdateSchema = z
   .object({
     name,
+    mode,
     extPort,
     sourceIf,
     target,
@@ -94,6 +115,8 @@ export const ObfuscatorPresetUpdateSchema = z
     dummy,
     verbose,
     clientWgLocalPort,
+    mediaSsrc,
+    clientLocalPort,
   })
   .refine(
     (data) =>
@@ -106,7 +129,15 @@ export const ObfuscatorPresetUpdateSchema = z
       message: t('zod.obfuscatorPreset.obfuscateBytesMedia'),
       path: ['obfuscateBytes'],
     }
-  );
+  )
+  .refine((data) => !(data.mode === 'SOCKS5' && data.masking === 'AUTO'), {
+    message: t('zod.obfuscatorPreset.maskingAutoSocks5'),
+    path: ['masking'],
+  })
+  .refine((data) => !(data.mode === 'WIREGUARD' && data.masking === 'TLS'), {
+    message: t('zod.obfuscatorPreset.maskingTlsWireguard'),
+    path: ['masking'],
+  });
 
 export type ObfuscatorPresetUpdateType = z.infer<
   typeof ObfuscatorPresetUpdateSchema

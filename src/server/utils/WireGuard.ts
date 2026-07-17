@@ -84,38 +84,84 @@ class WireGuard {
   }
 
   async getClientsForUser(userId: ID, filter?: string) {
-    const wgInterface = await Database.interfaces.get();
+    const dbClients = filter?.trim()
+      ? await Database.clients.getForUserFiltered(userId, filter)
+      : await Database.clients.getForUser(userId);
+    return this.#attachRuntimeStats(dbClients);
+  }
 
-    let dbClients;
-    if (filter?.trim()) {
-      dbClients = await Database.clients.getForUserFiltered(userId, filter);
-    } else {
-      dbClients = await Database.clients.getForUser(userId);
-    }
+  async #attachRuntimeStats<
+    T extends {
+      publicKey: string;
+      socks5Login: string | null;
+      preset: {
+        id: number;
+        name: string;
+        isDefault: boolean;
+        mode: 'WIREGUARD' | 'SOCKS5';
+      } | null;
+    },
+  >(dbClients: T[]) {
+    const wgInterface = await Database.interfaces.get();
+    const defaultPreset = await Database.obfuscatorPresets.getDefault();
+    const defaultPresetInfo = {
+      id: defaultPreset.id,
+      name: defaultPreset.name,
+      isDefault: defaultPreset.isDefault,
+      mode: defaultPreset.mode,
+    };
 
     const clients = dbClients.map((client) => ({
       ...client,
+      preset: client.preset ?? defaultPresetInfo,
       latestHandshakeAt: null as Date | null,
       endpoint: null as string | null,
       transferRx: null as number | null,
       transferTx: null as number | null,
     }));
 
-    // Loop WireGuard status
     const dump = await wg.dump(wgInterface.name);
-    dump.forEach(
-      ({ publicKey, latestHandshakeAt, endpoint, transferRx, transferTx }) => {
-        const client = clients.find((client) => client.publicKey === publicKey);
-        if (!client) {
-          return;
-        }
-
-        client.latestHandshakeAt = latestHandshakeAt;
-        client.endpoint = endpoint;
-        client.transferRx = transferRx;
-        client.transferTx = transferTx;
+    for (const {
+      publicKey,
+      latestHandshakeAt,
+      endpoint,
+      transferRx,
+      transferTx,
+    } of dump) {
+      const client = clients.find((client) => client.publicKey === publicKey);
+      if (!client) {
+        continue;
       }
-    );
+
+      client.latestHandshakeAt = latestHandshakeAt;
+      client.endpoint = endpoint;
+      client.transferRx = transferRx;
+      client.transferTx = transferTx;
+    }
+
+    if (clients.some((client) => client.preset.mode === 'SOCKS5')) {
+      const socks5Stats = await Obfuscator.readSocks5Stats();
+      for (const client of clients) {
+        if (client.preset.mode !== 'SOCKS5' || !client.socks5Login) {
+          continue;
+        }
+        const stats = socks5Stats.get(client.socks5Login);
+        if (!stats) {
+          client.latestHandshakeAt = null;
+          client.transferRx = null;
+          client.transferTx = null;
+          continue;
+        }
+        client.transferRx = stats.upBytes;
+        client.transferTx = stats.downBytes;
+        client.latestHandshakeAt =
+          stats.conns > 0
+            ? new Date()
+            : stats.idleMs >= 0
+              ? new Date(Date.now() - stats.idleMs)
+              : null;
+      }
+    }
 
     return clients;
   }
@@ -132,40 +178,10 @@ class WireGuard {
   }
 
   async getAllClients(filter?: string) {
-    const wgInterface = await Database.interfaces.get();
-
-    let dbClients;
-    if (filter?.trim()) {
-      dbClients = await Database.clients.getAllPublicFiltered(filter);
-    } else {
-      dbClients = await Database.clients.getAllPublic();
-    }
-
-    const clients = dbClients.map((client) => ({
-      ...client,
-      latestHandshakeAt: null as Date | null,
-      endpoint: null as string | null,
-      transferRx: null as number | null,
-      transferTx: null as number | null,
-    }));
-
-    // Loop WireGuard status
-    const dump = await wg.dump(wgInterface.name);
-    dump.forEach(
-      ({ publicKey, latestHandshakeAt, endpoint, transferRx, transferTx }) => {
-        const client = clients.find((client) => client.publicKey === publicKey);
-        if (!client) {
-          return;
-        }
-
-        client.latestHandshakeAt = latestHandshakeAt;
-        client.endpoint = endpoint;
-        client.transferRx = transferRx;
-        client.transferTx = transferTx;
-      }
-    );
-
-    return clients;
+    const dbClients = filter?.trim()
+      ? await Database.clients.getAllPublicFiltered(filter)
+      : await Database.clients.getAllPublic();
+    return this.#attachRuntimeStats(dbClients);
   }
 
   async getClientConfiguration({ clientId }: { clientId: ID }) {
@@ -189,14 +205,26 @@ class WireGuard {
   }
 
   async getClientFullConfig({ clientId }: { clientId: ID }) {
-    const [wgConfig, iface, client] = await Promise.all([
-      this.getClientConfiguration({ clientId }),
+    const [iface, client] = await Promise.all([
       Database.interfaces.get(),
       Database.clients.get(clientId),
     ]);
     const preset = await Database.obfuscatorPresets.getForClient(
       client?.presetId ?? null
     );
+
+    if (preset.mode === 'SOCKS5') {
+      const obfConf = Obfuscator.buildSocks5ClientObfConf(preset, iface);
+      const { login, password } =
+        await Database.clients.ensureSocks5Credentials(clientId);
+      const credentials = Obfuscator.buildSocks5CredentialsSection(
+        login,
+        password
+      );
+      return `${obfConf.replace(/\s+$/, '')}\n\n${credentials}`;
+    }
+
+    const wgConfig = await this.getClientConfiguration({ clientId });
     return `${wgConfig.replace(/\s+$/, '')}\n\n${Obfuscator.buildClientObfConf(preset, iface)}`;
   }
 

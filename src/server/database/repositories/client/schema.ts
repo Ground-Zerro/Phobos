@@ -1,12 +1,7 @@
 import { sql, relations } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-import {
-  installLink,
-  obfuscatorPreset,
-  user,
-  wgInterface,
-} from '../../schema';
+import { installLink, obfuscatorPreset, user, wgInterface } from '../../schema';
 
 export const client = sqliteTable('clients_table', {
   id: int().primaryKey({ autoIncrement: true }),
@@ -26,6 +21,8 @@ export const client = sqliteTable('clients_table', {
     onDelete: 'set null',
     onUpdate: 'cascade',
   }),
+  socks5Login: text('socks5_login'),
+  socks5Password: text('socks5_password'),
   name: text().notNull(),
   ipv4Address: text('ipv4_address').notNull().unique(),
   ipv6Address: text('ipv6_address').notNull().unique(),

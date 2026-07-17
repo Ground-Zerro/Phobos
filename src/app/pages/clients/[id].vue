@@ -63,10 +63,33 @@
                   {{ $t('client.presetUseDefault') }}
                 </option>
                 <option v-for="p in presetList" :key="p.id" :value="p.id">
-                  {{ p.name }}
+                  {{ p.name }} ({{
+                    p.mode === 'SOCKS5' ? 'SOCKS5' : 'WireGuard'
+                  }})
                 </option>
               </select>
             </div>
+            <template
+              v-if="
+                selectedPresetMode === 'SOCKS5' &&
+                data.socks5Login &&
+                data.socks5Password
+              "
+            >
+              <FormInfoField
+                id="socks5Login"
+                :data="data.socks5Login"
+                :label="$t('client.socks5Login')"
+              />
+              <FormInfoField
+                id="socks5Password"
+                :data="data.socks5Password"
+                :label="$t('client.socks5Password')"
+              />
+              <p class="text-xs text-gray-500 dark:text-neutral-400">
+                {{ $t('client.socks5CredentialsHint') }}
+              </p>
+            </template>
           </FormGroup>
           <FormGroup>
             <FormHeading :description="$t('client.allowedIpsDesc')">
@@ -162,6 +185,7 @@
             <ClientsConfigDialog
               trigger-class="col-span-2"
               :client-id="data.id"
+              :has-socks5="selectedPresetMode === 'SOCKS5'"
             >
               <FormSecondaryActionField
                 :label="$t('client.viewConfig')"
@@ -180,6 +204,7 @@
 
 <script lang="ts" setup>
 const globalStore = useGlobalStore();
+const { t } = useI18n();
 
 const route = useRoute();
 const id = route.params.id as string;
@@ -188,6 +213,7 @@ type PresetSummary = {
   id: number;
   name: string;
   isDefault: boolean;
+  mode: 'WIREGUARD' | 'SOCKS5';
 };
 
 const { data: _data, refresh } = await useFetch(`/api/client/${id}`, {
@@ -202,6 +228,13 @@ const { data: presets } = await useFetch<PresetSummary[]>(
 const presetList = computed(() =>
   (presets.value ?? []).filter((p) => !p.isDefault)
 );
+const selectedPresetMode = computed(() => {
+  if (data.value?.presetId == null) return 'WIREGUARD';
+  return (
+    (presets.value ?? []).find((p) => p.id === data.value?.presetId)?.mode ??
+    'WIREGUARD'
+  );
+});
 
 const _submit = useSubmit(
   `/api/client/${id}`,

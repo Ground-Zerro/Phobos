@@ -28,6 +28,7 @@ services:
       - ./certs:/app/certs:ro
     ports:
       - "51822-51921:51822-51921/udp"
+      - "51822-51921:51822-51921/tcp"
     restart: unless-stopped
     cap_add:
       - NET_ADMIN

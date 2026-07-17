@@ -9,11 +9,14 @@ export const obfuscatorPreset = sqliteTable(
     id: int().primaryKey({ autoIncrement: true }),
     name: text().notNull().unique(),
     isDefault: int('is_default', { mode: 'boolean' }).notNull().default(false),
+    mode: text({ enum: ['WIREGUARD', 'SOCKS5'] })
+      .notNull()
+      .default('WIREGUARD'),
     extPort: int('ext_port').notNull().unique(),
     sourceIf: text('source_if').notNull().default('0.0.0.0'),
     target: text(),
     key: text().notNull(),
-    masking: text({ enum: ['STUN', 'MEDIA', 'AUTO', 'NONE'] })
+    masking: text({ enum: ['STUN', 'MEDIA', 'AUTO', 'NONE', 'TLS'] })
       .notNull()
       .default('STUN'),
     obfuscateBytes: int('obfuscate_bytes').notNull().default(0),
@@ -22,6 +25,8 @@ export const obfuscatorPreset = sqliteTable(
       .notNull()
       .default('error'),
     clientWgLocalPort: int('client_wg_local_port').notNull().default(13255),
+    mediaSsrc: int('media_ssrc'),
+    clientLocalPort: int('client_local_port').notNull().default(1080),
     createdAt: text('created_at')
       .notNull()
       .default(sql`(CURRENT_TIMESTAMP)`),

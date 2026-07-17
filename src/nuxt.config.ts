@@ -25,7 +25,6 @@ export default defineNuxtConfig({
   },
   css: ['~/app.css'],
   i18n: {
-    lazy: true,
     langDir: 'locales/',
     experimental: {
       localeDetector: './localeDetector.ts',
@@ -39,15 +38,40 @@ export default defineNuxtConfig({
       { code: 'ko', language: 'ko-KR', name: '한국어', file: 'ko.json' },
       { code: 'ru', language: 'ru-RU', name: 'Русский', file: 'ru.json' },
       { code: 'uk', language: 'uk-UA', name: 'Українська', file: 'uk.json' },
-      { code: 'zh-CN', language: 'zh-CN', name: '简体中文', file: 'zh-CN.json' },
-      { code: 'zh-HK', language: 'zh-HK', name: '繁體中文（香港）', file: 'zh-HK.json' },
-      { code: 'zh-TW', language: 'zh-TW', name: '正體中文 (台灣)', file: 'zh-TW.json' },
+      {
+        code: 'zh-CN',
+        language: 'zh-CN',
+        name: '简体中文',
+        file: 'zh-CN.json',
+      },
+      {
+        code: 'zh-HK',
+        language: 'zh-HK',
+        name: '繁體中文（香港）',
+        file: 'zh-HK.json',
+      },
+      {
+        code: 'zh-TW',
+        language: 'zh-TW',
+        name: '正體中文 (台灣)',
+        file: 'zh-TW.json',
+      },
       { code: 'pl', language: 'pl-PL', name: 'Polski', file: 'pl.json' },
       { code: 'cs', language: 'cs-CZ', name: 'Čeština', file: 'cs.json' },
-      { code: 'pt-BR', language: 'pt-BR', name: 'Português (Brasil)', file: 'pt-BR.json' },
+      {
+        code: 'pt-BR',
+        language: 'pt-BR',
+        name: 'Português (Brasil)',
+        file: 'pt-BR.json',
+      },
       { code: 'tr', language: 'tr-TR', name: 'Türkçe', file: 'tr.json' },
       { code: 'bn', language: 'bn-BD', name: 'বাংলা', file: 'bn.json' },
-      { code: 'id', language: 'id-ID', name: 'Bahasa Indonesia', file: 'id.json' },
+      {
+        code: 'id',
+        language: 'id-ID',
+        name: 'Bahasa Indonesia',
+        file: 'id.json',
+      },
       { code: 'nl', language: 'nl-NL', name: 'Nederlands', file: 'nl.json' },
       { code: 'nb', language: 'nb-NO', name: 'Norsk bokmål', file: 'nb.json' },
       { code: 'bg', language: 'bg-BG', name: 'Български', file: 'bg.json' },
@@ -79,7 +103,10 @@ export default defineNuxtConfig({
             if (id.includes('intlify') || id.includes('vue-i18n')) {
               return 'vendor-i18n';
             }
-            if (id.includes('/node_modules/pinia/') || id.includes('node_modules/pinia/')) {
+            if (
+              id.includes('/node_modules/pinia/') ||
+              id.includes('node_modules/pinia/')
+            ) {
               return 'vendor-pinia';
             }
           },

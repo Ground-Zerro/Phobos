@@ -1,4 +1,4 @@
-# wg-easy + Phobos obfuscator
+# PhobosWG
 
 [![Build & Publish Image](https://github.com/Ground-Zerro/Phobos/actions/workflows/publish-image.yml/badge.svg?branch=main)](https://github.com/Ground-Zerro/Phobos/actions/workflows/publish-image.yml)
 [![GitHub Stars](https://img.shields.io/github/stars/Ground-Zerro/Phobos)](https://github.com/Ground-Zerro/Phobos/stargazers)
@@ -7,7 +7,7 @@
 WireGuard admin panel with a built-in STUN obfuscator. Traffic from the client to the server is masked as STUN and XOR-encoded — to bypass DPI in regions with blocks.
 
 <p align="center">
-  <img src="./assets/screenshot.png" width="802" alt="wg-easy Screenshot" />
+  <img src="./assets/screenshot.png" width="802" alt="PhobosWG Screenshot" />
 </p>
 
 ## Features
@@ -168,10 +168,6 @@ The downloaded WireGuard config carries the preset's parameters as an `[instance
 - Debian / Ubuntu Linux (apt + systemd)
 - 3x-ui panels (SQLite integration)
 
-## Remote deploy scripts
-
-Additional helpers in `scripts/deploy/` are available for SSH-based remote operations and updates.
-
 ## Development
 
 ```shell
@@ -181,5 +177,11 @@ pnpm dev
 ## License
 
 AGPL-3.0-only — see [LICENSE](LICENSE).
+
+PhobosWG is a fork of [wg-easy](https://github.com/wg-easy/wg-easy) © 2021 Emile Nijssen, licensed AGPL-3.0-only. The fork carries the same license: `-only` means it cannot be relicensed under GPLv3, nor upgraded to a later AGPL version.
+
+AGPL section 13 applies to every deployed instance: users who interact with a modified PhobosWG over a network must be offered the Corresponding Source of the version actually running. If you modify PhobosWG and run it as a service, publishing your modified source is an obligation, not a courtesy — this is what AGPL adds over GPLv3, where the obligation is triggered only by distributing binaries.
+
+[wg-obfuscator](https://github.com/ClusterM/wg-obfuscator) © ClusterM is licensed GPL-3.0 and runs as a separate process supervised by s6, not linked into the panel. Its sources are kept in `src/phobos-obfuscator/`; the binaries shipped to clients in the Phobos package are built from them.
 
 This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Jason A. Donenfeld, ZX2C4 or Edge Security. "WireGuard" and the "WireGuard" logo are registered trademarks of Jason A. Donenfeld.

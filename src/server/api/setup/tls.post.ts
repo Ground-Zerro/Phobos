@@ -66,8 +66,10 @@ export default defineSetupEventHandler('tls', async ({ event }) => {
 
   scheduleNodeRestart();
 
+  const urlHost = host.includes(':') ? `[${host}]` : host;
+
   return {
     success: true,
-    httpsUrl: `https://${host}:${port}/login`,
+    httpsUrl: `https://${urlHost}:${port}/login`,
   };
 });

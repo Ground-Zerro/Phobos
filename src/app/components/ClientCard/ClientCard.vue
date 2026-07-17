@@ -10,11 +10,21 @@
           <div class="flex items-center gap-2">
             <ClientCardName :client="client" />
             <span
-              v-if="presetBadge"
-              class="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300"
+              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              :class="
+                isSocks5
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+              "
+              :title="$t('client.protocol')"
+            >
+              {{ isSocks5 ? 'SOCKS5' : 'WireGuard' }}
+            </span>
+            <span
+              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-neutral-700/60 dark:text-neutral-300"
               :title="$t('client.preset')"
             >
-              {{ presetBadge }}
+              {{ client.preset.name }}
             </span>
           </div>
           <div
@@ -57,9 +67,5 @@ const props = defineProps<{
   client: LocalClient;
 }>();
 
-const presetBadge = computed(() => {
-  const preset = (props.client as LocalClient & { preset?: { name: string; isDefault: boolean } }).preset;
-  if (!preset || preset.isDefault) return null;
-  return preset.name;
-});
+const isSocks5 = computed(() => props.client.preset.mode === 'SOCKS5');
 </script>

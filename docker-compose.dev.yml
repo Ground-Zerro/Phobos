@@ -12,6 +12,7 @@ services:
       - /lib/modules:/lib/modules:ro
     ports:
       - "51822-51921:51822-51921/udp"
+      - "51822-51921:51822-51921/tcp"
       - "51831:51831/tcp"
     cap_add:
       - NET_ADMIN

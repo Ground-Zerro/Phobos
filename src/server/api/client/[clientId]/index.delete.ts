@@ -14,6 +14,7 @@ export default definePermissionEventHandler(
 
     await Database.clients.delete(clientId);
     await WireGuard.saveConfig();
+    await Obfuscator.applyAll();
     PhobosPackage.invalidate(clientId);
     return { success: true };
   }

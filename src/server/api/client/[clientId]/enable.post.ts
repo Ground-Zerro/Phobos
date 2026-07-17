@@ -14,6 +14,7 @@ export default definePermissionEventHandler(
 
     await Database.clients.toggle(clientId, true);
     await WireGuard.saveConfig();
+    await Obfuscator.applyAll();
     return { success: true };
   }
 );

@@ -14,13 +14,7 @@ const PACKAGE_DEBUG = debug('PhobosPackage');
 const PROD_BIN_DIR = '/app/phobos/bin';
 const PROD_TEMPLATES_DIR = '/app/phobos/templates';
 
-const ARCHITECTURES = [
-  'x86_64',
-  'aarch64',
-  'armv7',
-  'mips',
-  'mipsel',
-] as const;
+const ARCHITECTURES = ['x86_64', 'aarch64', 'armv7', 'mips', 'mipsel'] as const;
 
 const TEMPLATES = [
   'lib-client.sh',
@@ -28,6 +22,16 @@ const TEMPLATES = [
   'install-wireguard.sh',
   'router-configure-wireguard.sh',
   'router-configure-wireguard-openwrt.sh',
+  'detect-router-arch.sh',
+  'phobos-uninstall.sh',
+] as const;
+
+const SOCKS5_TEMPLATES = [
+  'lib-client.sh',
+  'install-obfuscator.sh',
+  'install-wireguard.sh',
+  'router-configure-socks5-keenetic.sh',
+  'router-configure-socks5-openwrt.sh',
   'detect-router-arch.sh',
   'phobos-uninstall.sh',
 ] as const;
@@ -40,9 +44,7 @@ function normalizeLf(content: string): string {
 
 function resolveBinDir(): string {
   if (existsSync(PROD_BIN_DIR)) return PROD_BIN_DIR;
-  return fileURLToPath(
-    new URL('../../phobos-obfuscator/bin', import.meta.url)
-  );
+  return fileURLToPath(new URL('../../phobos-obfuscator/bin', import.meta.url));
 }
 
 function resolveTemplatesDir(): string {
@@ -87,6 +89,87 @@ class PhobosPackageService {
     const slug = clientSlug(client.name, client.id);
     const pkgRoot = `phobos-${slug}`;
 
+    const binDir = resolveBinDir();
+    const pack = tar.pack();
+
+    if (preset.mode === 'SOCKS5') {
+      // A SOCKS5-mode client has no WireGuard role at all -- only the
+      // client-side obfuscator conf, its router-install machinery (Keenetic
+      // only for now), and the binaries needed to run it.
+      const socks5Conf = Obfuscator.buildSocks5ClientObfConf(preset, iface);
+      pack.entry(
+        { name: `${pkgRoot}/wg-socks5-obfuscator.conf`, mode: 0o600 },
+        socks5Conf
+      );
+
+      const { login: socks5Login, password: socks5Password } =
+        await Database.clients.ensureSocks5Credentials(clientId);
+      const credentials = [
+        `SOCKS5_LOGIN='${socks5Login}'`,
+        `SOCKS5_PASSWORD='${socks5Password}'`,
+        '',
+      ].join('\n');
+      pack.entry(
+        { name: `${pkgRoot}/socks5-credentials.env`, mode: 0o600 },
+        credentials
+      );
+
+      const templatesDir = resolveTemplatesDir();
+
+      const installRouter = (
+        await readFile(resolve(templatesDir, TEMPLATE_WITH_PLACEHOLDER), 'utf8')
+      )
+        .replaceAll('{{CLIENT_NAME}}', slug)
+        .replaceAll('{{PROTOCOL}}', 'socks5');
+      pack.entry(
+        { name: `${pkgRoot}/install-router.sh`, mode: 0o755 },
+        normalizeLf(installRouter)
+      );
+
+      for (const file of SOCKS5_TEMPLATES) {
+        const content = normalizeLf(
+          await readFile(join(templatesDir, file), 'utf8')
+        );
+        pack.entry({ name: `${pkgRoot}/${file}`, mode: 0o755 }, content);
+      }
+
+      for (const arch of ARCHITECTURES) {
+        const bin = join(binDir, `wg-obfuscator-${arch}`);
+        if (existsSync(bin)) {
+          const content = await readFile(bin);
+          pack.entry(
+            { name: `${pkgRoot}/bin/wg-obfuscator-${arch}`, mode: 0o755 },
+            content
+          );
+        }
+      }
+
+      const readme = [
+        'Phobos Client Package (SOCKS5)',
+        `Client: ${client.name}`,
+        `Slug: ${slug}`,
+        `Built: ${new Date().toISOString()}`,
+        '',
+        'This client is assigned a SOCKS5-mode obfuscator preset, not WireGuard.',
+        'On Keenetic routers, ./install-router.sh sets up the local obfuscator',
+        'and a native SOCKS5 Proxy interface automatically. On other platforms,',
+        'run the matching wg-obfuscator binary from bin/ with',
+        'wg-socks5-obfuscator.conf (via -c) to get a local SOCKS5 proxy, then',
+        "configure the login/password shown on this client's page in your",
+        'SOCKS5 application.',
+        '',
+      ].join('\n');
+      pack.entry({ name: `${pkgRoot}/README.txt` }, readme);
+
+      pack.finalize();
+      const gzipped = await streamToBuffer(pack.pipe(createGzip()));
+      this.#cache.set(clientId, gzipped);
+      PACKAGE_DEBUG(
+        `built socks5 package for client ${clientId} (${gzipped.length} B)`
+      );
+      return gzipped;
+    }
+
     const wgConf = wg.generateClientConfig(iface, userConfig, client, {
       enableIpv6: !WG_ENV.DISABLE_IPV6,
       clientWgLocalPort: preset.clientWgLocalPort,
@@ -95,9 +178,6 @@ class PhobosPackageService {
     const obfConf = Obfuscator.buildClientObfConf(preset, iface);
 
     const templatesDir = resolveTemplatesDir();
-    const binDir = resolveBinDir();
-
-    const pack = tar.pack();
 
     pack.entry({ name: `${pkgRoot}/${slug}.conf`, mode: 0o600 }, wgConf);
     pack.entry({ name: `${pkgRoot}/wg-obfuscator.conf`, mode: 0o600 }, obfConf);
@@ -105,7 +185,8 @@ class PhobosPackageService {
     const installRouter = (
       await readFile(resolve(templatesDir, TEMPLATE_WITH_PLACEHOLDER), 'utf8')
     )
-      .replaceAll('{{CLIENT_NAME}}', slug);
+      .replaceAll('{{CLIENT_NAME}}', slug)
+      .replaceAll('{{PROTOCOL}}', 'wireguard');
     pack.entry(
       { name: `${pkgRoot}/install-router.sh`, mode: 0o755 },
       normalizeLf(installRouter)
@@ -115,10 +196,7 @@ class PhobosPackageService {
       const content = normalizeLf(
         await readFile(join(templatesDir, file), 'utf8')
       );
-      pack.entry(
-        { name: `${pkgRoot}/${file}`, mode: 0o755 },
-        content
-      );
+      pack.entry({ name: `${pkgRoot}/${file}`, mode: 0o755 }, content);
     }
 
     for (const arch of ARCHITECTURES) {
@@ -174,7 +252,7 @@ class PhobosPackageService {
     const curlFlags = untrusted ? '-fksSL' : '-fsSL';
     const wgetFlags = untrusted ? '-q --no-check-certificate' : '-q';
 
-    return [
+    const downloadSteps = [
       '#!/bin/sh',
       'set -e',
       `url="${pkgUrl}"`,
@@ -192,6 +270,10 @@ class PhobosPackageService {
       'cd "$dir"',
       'tar xzf package.tar.gz',
       `cd "phobos-${slug}"`,
+    ];
+
+    return [
+      ...downloadSteps,
       'chmod +x install-router.sh',
       './install-router.sh',
       '',

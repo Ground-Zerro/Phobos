@@ -8,6 +8,12 @@
     </template>
     <template #description>
       <div v-if="config">
+        <p
+          v-if="hasSocks5"
+          class="mb-2 text-xs text-gray-500 dark:text-neutral-400"
+        >
+          {{ $t('client.socks5ConfigNote') }}
+        </p>
         <BaseCodeBlock :code="config" />
       </div>
       <div v-else>
@@ -28,7 +34,11 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ triggerClass?: string; clientId: number }>();
+const props = defineProps<{
+  triggerClass?: string;
+  clientId: number;
+  hasSocks5?: boolean;
+}>();
 
 const toast = useToast();
 const { t } = useI18n();

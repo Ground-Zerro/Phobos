@@ -33,7 +33,7 @@
           >
             <option :value="null">{{ $t('client.presetUseDefault') }}</option>
             <option v-for="p in selectablePresets" :key="p.id" :value="p.id">
-              {{ p.name }}
+              {{ p.name }} ({{ p.mode === 'SOCKS5' ? 'SOCKS5' : 'WireGuard' }})
             </option>
           </select>
         </div>
@@ -59,6 +59,7 @@ type PresetSummary = {
   id: number;
   name: string;
   isDefault: boolean;
+  mode: 'WIREGUARD' | 'SOCKS5';
 };
 
 const open = ref(false);

@@ -1,4 +1,4 @@
-const REQUIRED_FIELDS: Record<string, readonly string[]> = {
+const WIREGUARD_REQUIRED_FIELDS: Record<string, readonly string[]> = {
   Interface: ['PrivateKey', 'Address', 'MTU', 'DNS'],
   Peer: [
     'PublicKey',
@@ -19,13 +19,33 @@ const REQUIRED_FIELDS: Record<string, readonly string[]> = {
   ],
 };
 
+const SOCKS5_REQUIRED_FIELDS: Record<string, readonly string[]> = {
+  instance: [
+    'mode',
+    'role',
+    'source-if',
+    'source-lport',
+    'target',
+    'key',
+    'masking',
+    'verbose',
+  ],
+  socks5: ['login', 'password'],
+};
+
+const SOCKS5_MODE_RE = /^\s*mode\s*=\s*socks5\s*$/im;
+
 /**
  * Pad a .conf text with `key = none` lines for fields that are required by the
  * phobos:// link spec (docs/phobos-link-format.md §2.3) but absent in the
  * original config. Operates only on the section bodies we know about and does
- * not reorder existing lines.
+ * not reorder existing lines. The required-field set is chosen by protocol:
+ * a SOCKS5 config (marked by `mode = socks5`) carries no WireGuard sections.
  */
 export function padConfWithNone(confText: string): string {
+  const requiredFields = SOCKS5_MODE_RE.test(confText)
+    ? SOCKS5_REQUIRED_FIELDS
+    : WIREGUARD_REQUIRED_FIELDS;
   const sectionRe = /^\[([^\]]+)\]\s*$/;
   const lines = confText.split('\n');
   const out: string[] = [];
@@ -38,7 +58,7 @@ export function padConfWithNone(confText: string): string {
       currentBuffer = [];
       return;
     }
-    const required = REQUIRED_FIELDS[currentSection];
+    const required = requiredFields[currentSection];
     if (required) {
       const present = new Set(
         currentBuffer
@@ -80,9 +100,8 @@ export function buildPhobosLink(
     .replace(/=+$/, '');
 
   const trimmed = name?.trim();
-  const fragment = trimmed && trimmed.length > 0
-    ? encodeURIComponent(trimmed)
-    : 'none';
+  const fragment =
+    trimmed && trimmed.length > 0 ? encodeURIComponent(trimmed) : 'none';
 
   return `phobos://${b64url}#${fragment}`;
 }

@@ -19,7 +19,9 @@ export class ObfuscatorPresetService {
 
   list() {
     return this.#db.query.obfuscatorPreset
-      .findMany({ orderBy: (p, { desc, asc }) => [desc(p.isDefault), asc(p.id)] })
+      .findMany({
+        orderBy: (p, { desc, asc }) => [desc(p.isDefault), asc(p.id)],
+      })
       .execute();
   }
 
@@ -90,7 +92,9 @@ export class ObfuscatorPresetService {
     return result;
   }
 
-  async create(data: ObfuscatorPresetCreateType): Promise<ObfuscatorPresetType> {
+  async create(
+    data: ObfuscatorPresetCreateType
+  ): Promise<ObfuscatorPresetType> {
     const extPort = data.extPort ?? (await this.pickFreePort());
     if (extPort < OBFUSCATOR_PORT_MIN || extPort > OBFUSCATOR_PORT_MAX) {
       throw new Error(
@@ -102,6 +106,7 @@ export class ObfuscatorPresetService {
       .values({
         name: data.name,
         isDefault: false,
+        mode: data.mode ?? 'WIREGUARD',
         extPort,
         sourceIf: data.sourceIf ?? '0.0.0.0',
         target: data.target?.trim() ? data.target.trim() : null,
@@ -111,6 +116,8 @@ export class ObfuscatorPresetService {
         dummy: data.dummy ?? 40,
         verbose: data.verbose ?? 'error',
         clientWgLocalPort: data.clientWgLocalPort ?? 13255,
+        mediaSsrc: data.mediaSsrc ?? null,
+        clientLocalPort: data.clientLocalPort ?? 1080,
       })
       .returning()
       .execute();
@@ -162,7 +169,9 @@ export class ObfuscatorPresetService {
       await tx
         .update(obfuscatorPreset)
         .set({ isDefault: false })
-        .where(and(eq(obfuscatorPreset.isDefault, true), ne(obfuscatorPreset.id, id)))
+        .where(
+          and(eq(obfuscatorPreset.isDefault, true), ne(obfuscatorPreset.id, id))
+        )
         .execute();
 
       await tx
@@ -198,7 +207,7 @@ export class ObfuscatorPresetService {
     sourceIf: string;
     target: string | null;
     key: string;
-    masking: 'STUN' | 'MEDIA' | 'AUTO' | 'NONE';
+    masking: 'STUN' | 'MEDIA' | 'AUTO' | 'NONE' | 'TLS';
     obfuscateBytes: number;
     dummy: number;
     verbose: 'error' | 'warn' | 'info' | 'debug' | 'trace';
@@ -214,6 +223,7 @@ export class ObfuscatorPresetService {
       .values({
         name: 'default',
         isDefault: true,
+        mode: 'WIREGUARD',
         extPort: seed.extPort,
         sourceIf: seed.sourceIf,
         target: seed.target,

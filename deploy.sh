@@ -81,6 +81,23 @@ ensure_docker() {
   install_docker
 }
 
+fix_networkd_docker_bridge() {
+  systemctl is-active --quiet systemd-networkd || return 0
+  local net_drop="/etc/systemd/network/05-docker-unmanaged.network"
+  local new_content="[Match]
+Name=veth* docker0 br-*
+
+[Link]
+Unmanaged=yes"
+  if [ "$(cat "$net_drop" 2>/dev/null)" = "$new_content" ]; then
+    ok "systemd-networkd docker bridge fix already applied"
+    return
+  fi
+  printf '%s\n' "$new_content" > "$net_drop"
+  networkctl reload 2>/dev/null || systemctl restart systemd-networkd
+  ok "systemd-networkd configured to ignore docker bridges"
+}
+
 load_wireguard_module() {
   if lsmod | grep -q wireguard 2>/dev/null; then
     ok "WireGuard kernel module already loaded"
@@ -154,6 +171,7 @@ wait_healthy() {
 
 require_root
 ensure_docker
+fix_networkd_docker_bridge
 load_wireguard_module
 
 if [ -z "$WG_HOST" ]; then

@@ -95,6 +95,24 @@ remove_wg_interface_openwrt() {
   log "  ✓ Интерфейс OpenWRT ${iface} удалён"
 }
 
+remove_socks5_openwrt() {
+  [ -f /etc/redsocks.conf ] || [ -f /etc/nftables.d/30-phobos-socks5.nft ] || return 0
+
+  log "  Удаление SOCKS5 (redsocks + nft redirect)..."
+  if [ -x /etc/init.d/phobos-redsocks ]; then
+    /etc/init.d/phobos-redsocks stop >/dev/null 2>&1 || true
+    /etc/init.d/phobos-redsocks disable >/dev/null 2>&1 || true
+  fi
+  [ -x /etc/init.d/redsocks ] && /etc/init.d/redsocks stop >/dev/null 2>&1 || true
+  [ -f /var/run/redsocks.pid ] && kill "$(cat /var/run/redsocks.pid)" 2>/dev/null || true
+  pkill -f /usr/sbin/redsocks 2>/dev/null || true
+  rm -f /var/run/redsocks.pid /etc/redsocks.conf /etc/nftables.d/30-phobos-socks5.nft /etc/init.d/phobos-redsocks
+  nft delete chain inet fw4 phobos_socks5_dstnat 2>/dev/null || true
+  nft delete chain inet fw4 phobos_socks5_input 2>/dev/null || true
+  fw4 reload >/dev/null 2>&1 || /etc/init.d/firewall reload >/dev/null 2>&1 || true
+  log "  ✓ SOCKS5 (redsocks) удалён"
+}
+
 remove_wg_interface_linux() {
   local iface="$1"
 
@@ -131,7 +149,7 @@ remove_client() {
 
   case "$ROUTER_PLATFORM" in
     keenetic) remove_wg_interface_keenetic "$iface" ;;
-    openwrt)  remove_wg_interface_openwrt "$iface" ;;
+    openwrt)  remove_socks5_openwrt; remove_wg_interface_openwrt "$iface" ;;
     linux)    remove_wg_interface_linux "$iface" ;;
   esac
 
