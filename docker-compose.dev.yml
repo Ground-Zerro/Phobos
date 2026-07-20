@@ -11,8 +11,8 @@ services:
       - temp1:/app/node_modules/
       - /lib/modules:/lib/modules:ro
     ports:
-      - "51822-51921:51822-51921/udp"
-      - "51822-51921:51822-51921/tcp"
+      - "51822-51861:51822-51861/udp"
+      - "51862-51891:51862-51891/tcp"
       - "51831:51831/tcp"
     cap_add:
       - NET_ADMIN
