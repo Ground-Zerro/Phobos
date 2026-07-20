@@ -35,7 +35,8 @@ services:
     image: ghcr.io/ground-zerro/phobos:latest
     container_name: phobos
     ports:
-      - "51822-51921:51822-51921/udp"
+      - "51822-51861:51822-51861/udp"
+      - "51862-51891:51862-51891/tcp"
       - "51831:51831/tcp"
     volumes:
       - phobos_etc_wireguard:/etc/wireguard
@@ -94,7 +95,8 @@ curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/main/deploy.sh 
 Ports:
 
 - Web UI: `http://<WG_HOST>:51831/`
-- Obfuscator presets: `UDP <WG_HOST>:51822-51921` (one port per preset, allocated from this range)
+- WireGuard obfuscator presets: `UDP <WG_HOST>:51822-51861` (one port per preset, allocated from this range)
+- SOCKS5 presets: `TCP <WG_HOST>:51862-51891` (one port per preset, allocated from this range)
 
 ## How it works
 
@@ -122,7 +124,7 @@ Presets let you serve different clients (or groups of clients) through obfuscato
 
 **What's in a preset**:
 - `name` — free-form label shown in the admin UI;
-- `extPort` — public UDP port the listener binds to, must be in `51822–51921` (the range docker-compose publishes by default);
+- `extPort` — public port the listener binds to: UDP `51822–51861` for WireGuard presets, TCP `51862–51891` for SOCKS5 presets (the ranges docker-compose publishes by default);
 - `key` — XOR key shared with this preset's clients only;
 - `masking` — `STUN` / `AUTO` / `NONE`;
 - `idle` — idle session timeout (seconds);
