@@ -1,9 +1,10 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { obfuscatorPreset } from './schema';
 import {
-  OBFUSCATOR_PORT_MAX,
-  OBFUSCATOR_PORT_MIN,
+  isPortInModeRange,
+  obfuscatorPortRange,
   type ObfuscatorPresetCreateType,
+  type ObfuscatorPresetMode,
   type ObfuscatorPresetType,
   type ObfuscatorPresetUpdateType,
 } from './types';
@@ -65,14 +66,25 @@ export class ObfuscatorPresetService {
     );
   }
 
-  async pickFreePort(excludeId?: number): Promise<number> {
+  async pickFreePort(
+    mode: ObfuscatorPresetMode,
+    excludeId?: number
+  ): Promise<number> {
     const used = await this.usedPorts(excludeId);
-    for (let p = OBFUSCATOR_PORT_MIN; p <= OBFUSCATOR_PORT_MAX; p++) {
+    const { min, max } = obfuscatorPortRange(mode);
+    for (let p = min; p <= max; p++) {
       if (!used.has(p)) return p;
     }
-    throw new Error(
-      `No free obfuscator port in range ${OBFUSCATOR_PORT_MIN}-${OBFUSCATOR_PORT_MAX}`
-    );
+    throw new Error(`No free obfuscator port in range ${min}-${max}`);
+  }
+
+  #assertPortInRange(extPort: number, mode: ObfuscatorPresetMode): void {
+    const { min, max } = obfuscatorPortRange(mode);
+    if (extPort < min || extPort > max) {
+      throw new Error(
+        `Port ${extPort} is outside allowed ${mode} range ${min}-${max}`
+      );
+    }
   }
 
   async clientCounts(): Promise<Record<number, number>> {
@@ -95,18 +107,15 @@ export class ObfuscatorPresetService {
   async create(
     data: ObfuscatorPresetCreateType
   ): Promise<ObfuscatorPresetType> {
-    const extPort = data.extPort ?? (await this.pickFreePort());
-    if (extPort < OBFUSCATOR_PORT_MIN || extPort > OBFUSCATOR_PORT_MAX) {
-      throw new Error(
-        `Port ${extPort} is outside allowed range ${OBFUSCATOR_PORT_MIN}-${OBFUSCATOR_PORT_MAX}`
-      );
-    }
+    const mode = data.mode ?? 'WIREGUARD';
+    const extPort = data.extPort ?? (await this.pickFreePort(mode));
+    this.#assertPortInRange(extPort, mode);
     const inserted = await this.#db
       .insert(obfuscatorPreset)
       .values({
         name: data.name,
         isDefault: false,
-        mode: data.mode ?? 'WIREGUARD',
+        mode,
         extPort,
         sourceIf: data.sourceIf ?? '0.0.0.0',
         target: data.target?.trim() ? data.target.trim() : null,
@@ -131,17 +140,18 @@ export class ObfuscatorPresetService {
     id: number,
     data: Partial<ObfuscatorPresetUpdateType>
   ): Promise<ObfuscatorPresetType> {
-    if (data.extPort != null) {
-      if (
-        data.extPort < OBFUSCATOR_PORT_MIN ||
-        data.extPort > OBFUSCATOR_PORT_MAX
-      ) {
-        throw new Error(
-          `Port ${data.extPort} is outside allowed range ${OBFUSCATOR_PORT_MIN}-${OBFUSCATOR_PORT_MAX}`
-        );
+    const values: Partial<ObfuscatorPresetType> = { ...data };
+    if (data.extPort != null || data.mode != null) {
+      const row = await this.get(id);
+      const mode = data.mode ?? row.mode;
+      const extPort = data.extPort ?? row.extPort;
+      if (!isPortInModeRange(extPort, mode)) {
+        if (data.extPort != null && data.extPort !== row.extPort) {
+          this.#assertPortInRange(data.extPort, mode);
+        }
+        values.extPort = await this.pickFreePort(mode, id);
       }
     }
-    const values: Partial<ObfuscatorPresetType> = { ...data };
     if (data.target !== undefined) {
       values.target = data.target.trim() ? data.target.trim() : null;
     }
@@ -198,7 +208,8 @@ export class ObfuscatorPresetService {
   }
 
   async regeneratePort(id: number): Promise<ObfuscatorPresetType> {
-    const port = await this.pickFreePort(id);
+    const row = await this.get(id);
+    const port = await this.pickFreePort(row.mode, id);
     return this.update(id, { extPort: port });
   }
 

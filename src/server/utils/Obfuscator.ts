@@ -5,7 +5,7 @@ import debug from 'debug';
 
 import type { InterfaceType } from '#db/repositories/interface/types';
 import type { ObfuscatorPresetType } from '#db/repositories/obfuscatorPreset/types';
-import { OBFUSCATOR_PORT_MIN } from '#db/repositories/obfuscatorPreset/types';
+import { WIREGUARD_PORT_MIN } from '#db/repositories/obfuscatorPreset/types';
 import { WARP_FWMARK } from './WarpInterface';
 
 const OBFUSCATOR_DEBUG = debug('Obfuscator');
@@ -452,7 +452,7 @@ class ObfuscatorService {
     }
 
     await Database.obfuscatorPresets.ensureDefault({
-      extPort: OBFUSCATOR_PORT_MIN,
+      extPort: WIREGUARD_PORT_MIN,
       sourceIf: '0.0.0.0',
       target: null,
       key: generateObfuscatorKey(),

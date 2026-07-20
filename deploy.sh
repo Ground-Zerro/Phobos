@@ -369,7 +369,7 @@ fi
 
 printf '\n'
 printf '  Admin UI    : %s:%s\n' "$WG_HOST" "$UI_PORT"
-printf '  Obfuscator  : UDP/TCP %s:51822-51921 (preset range)\n' "$WG_HOST"
+printf '  Obfuscator  : UDP %s:51822-51861 (WireGuard), TCP %s:51862-51891 (SOCKS5)\n' "$WG_HOST" "$WG_HOST"
 printf '  Image       : %s\n' "$WG_EASY_IMAGE"
 printf '  Deploy dir  : %s\n' "$DEPLOY_DIR"
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'

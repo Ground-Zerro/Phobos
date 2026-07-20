@@ -5,8 +5,26 @@ import type { obfuscatorPreset } from './schema';
 
 export type ObfuscatorPresetType = InferSelectModel<typeof obfuscatorPreset>;
 
-export const OBFUSCATOR_PORT_MIN = 51822;
-export const OBFUSCATOR_PORT_MAX = 51921;
+export const WIREGUARD_PORT_MIN = 51822;
+export const WIREGUARD_PORT_MAX = 51861;
+export const SOCKS5_PORT_MIN = 51862;
+export const SOCKS5_PORT_MAX = 51891;
+
+export type ObfuscatorPresetMode = 'WIREGUARD' | 'SOCKS5';
+
+export function obfuscatorPortRange(mode: ObfuscatorPresetMode) {
+  return mode === 'SOCKS5'
+    ? { min: SOCKS5_PORT_MIN, max: SOCKS5_PORT_MAX }
+    : { min: WIREGUARD_PORT_MIN, max: WIREGUARD_PORT_MAX };
+}
+
+export function isPortInModeRange(
+  port: number,
+  mode: ObfuscatorPresetMode
+): boolean {
+  const { min, max } = obfuscatorPortRange(mode);
+  return port >= min && port <= max;
+}
 
 const name = z
   .string({ message: t('zod.obfuscatorPreset.name') })
@@ -17,8 +35,8 @@ const name = z
 const extPort = z
   .number({ message: t('zod.obfuscatorPreset.extPort') })
   .int()
-  .min(OBFUSCATOR_PORT_MIN, { message: t('zod.obfuscatorPreset.extPort') })
-  .max(OBFUSCATOR_PORT_MAX, { message: t('zod.obfuscatorPreset.extPort') });
+  .min(WIREGUARD_PORT_MIN, { message: t('zod.obfuscatorPreset.extPort') })
+  .max(SOCKS5_PORT_MAX, { message: t('zod.obfuscatorPreset.extPort') });
 
 const sourceIf = z
   .string({ message: t('zod.obfuscatorPreset.sourceIf') })
@@ -82,21 +100,31 @@ const clientWgLocalPort = z
   .min(1)
   .max(65535);
 
-export const ObfuscatorPresetCreateSchema = z.object({
-  name,
-  mode: mode.optional(),
-  extPort: extPort.optional(),
-  sourceIf: sourceIf.optional(),
-  target: target.optional(),
-  key: key.optional(),
-  masking: masking.optional(),
-  obfuscateBytes: obfuscateBytes.optional(),
-  dummy: dummy.optional(),
-  verbose: verbose.optional(),
-  clientWgLocalPort: clientWgLocalPort.optional(),
-  mediaSsrc: mediaSsrc.optional(),
-  clientLocalPort: clientLocalPort.optional(),
-});
+export const ObfuscatorPresetCreateSchema = z
+  .object({
+    name,
+    mode: mode.optional(),
+    extPort: extPort.optional(),
+    sourceIf: sourceIf.optional(),
+    target: target.optional(),
+    key: key.optional(),
+    masking: masking.optional(),
+    obfuscateBytes: obfuscateBytes.optional(),
+    dummy: dummy.optional(),
+    verbose: verbose.optional(),
+    clientWgLocalPort: clientWgLocalPort.optional(),
+    mediaSsrc: mediaSsrc.optional(),
+    clientLocalPort: clientLocalPort.optional(),
+  })
+  .refine(
+    (data) =>
+      data.extPort == null ||
+      isPortInModeRange(data.extPort, data.mode ?? 'WIREGUARD'),
+    {
+      message: t('zod.obfuscatorPreset.extPort'),
+      path: ['extPort'],
+    }
+  );
 
 export type ObfuscatorPresetCreateType = z.infer<
   typeof ObfuscatorPresetCreateSchema
