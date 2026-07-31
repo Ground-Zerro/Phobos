@@ -19,13 +19,20 @@ export function readTlsOrigin(): TlsOrigin {
   const lines = readOriginFile();
   if (!lines) return 'none';
   const head = lines[0]?.trim();
-  if (head === 'self-signed' || head === 'imported' || head === 'imported-path') {
+  if (
+    head === 'self-signed' ||
+    head === 'imported' ||
+    head === 'imported-path'
+  ) {
     return head;
   }
   return 'none';
 }
 
-export function readTlsWatchedPaths(): { certPath: string; keyPath: string } | null {
+export function readTlsWatchedPaths(): {
+  certPath: string;
+  keyPath: string;
+} | null {
   const lines = readOriginFile();
   if (!lines || lines[0]?.trim() !== 'imported-path') return null;
 

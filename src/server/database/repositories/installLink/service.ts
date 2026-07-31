@@ -1,5 +1,5 @@
-import { eq, sql } from 'drizzle-orm';
 import { randomBytes, createHash } from 'node:crypto';
+import { eq, sql } from 'drizzle-orm';
 import { installLink } from './schema';
 import type { DBType } from '#db/sqlite';
 

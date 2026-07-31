@@ -8,7 +8,8 @@
       "config": "Cấu hình",
       "interface": "Giao diện mạng",
       "hooks": "Hooks",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Cấu hình sẵn của bộ làm rối"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Tạo tài khoản",
     "successful": "Thiết lập thành công",
     "hostDesc": "Tên miền công khai mà thiết bị sẽ kết nối tới",
-    "portDesc": "Cổng UDP công khai mà thiết bị sẽ kết nối và WireGuard sẽ sử dụng"
+    "portDesc": "Cổng UDP công khai mà thiết bị sẽ kết nối và WireGuard sẽ sử dụng",
+    "tls": {
+      "title": "Chứng chỉ HTTPS / TLS",
+      "desc": "Thiết lập chứng chỉ TLS để bật truy cập HTTPS an toàn. Nếu không có HTTPS, việc đăng nhập bị chặn theo mặc định.",
+      "selfSigned": "Chứng chỉ tự ký",
+      "selfSignedDesc": "Được tạo ngay cho máy chủ của bạn. Trình duyệt sẽ hiển thị cảnh báo bảo mật — hãy bấm Nâng cao → Tiếp tục.",
+      "selfSignedHstsWarning": "Nếu trình duyệt chặn trang bằng lỗi HSTS và không có tùy chọn «Tiếp tục», nghĩa là nó đã lưu chính sách HSTS từ một chứng chỉ trước đó trên tên miền này. Hãy mở URL trong cửa sổ ẩn danh, hoặc xóa mục HSTS tại chrome://net-internals/#hsts (Delete domain).",
+      "import": "Nhập chứng chỉ có sẵn",
+      "importDesc": "Dán chứng chỉ PEM và khóa riêng của bạn.",
+      "importPath": "Nhập chứng chỉ từ đường dẫn tệp",
+      "importPathDesc": "Cung cấp đường dẫn tuyệt đối tới các tệp chứng chỉ và khóa có sẵn trên đĩa (ví dụ /etc/letsencrypt/live/example.com/*.pem). Các tệp phải đọc được từ bên trong container.",
+      "certPathLabel": "Đường dẫn tệp chứng chỉ (PEM fullchain)",
+      "keyPathLabel": "Đường dẫn tệp khóa riêng (PEM)",
+      "importPathHint": "Các tệp được liên kết tượng trưng chứ không sao chép. Khi tệp nguồn thay đổi trên đĩa (ví dụ sau certbot renew), máy chủ phát hiện trong khoảng 30 giây và tự khởi động lại để nạp chứng chỉ mới. Container có quyền chỉ đọc với các thư mục sau của máy chủ: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Bỏ qua (không dùng HTTPS)",
+      "skipDesc": "Tiếp tục dùng HTTP.",
+      "certLabel": "Chứng chỉ (PEM fullchain)",
+      "keyLabel": "Khóa riêng (PEM)",
+      "generate": "Tạo chứng chỉ",
+      "apply": "Áp dụng",
+      "restarting": "Đã áp dụng chứng chỉ. Máy chủ đang khởi động lại với HTTPS...",
+      "redirectPrompt": "Mở phiên bản an toàn:",
+      "openLink": "Mở HTTPS",
+      "skipWarning": "Không có chứng chỉ TLS thì giao diện web chỉ truy cập được qua HTTP.",
+      "errorCert": "Xác thực chứng chỉ thất bại",
+      "errorKey": "Xác thực khóa riêng thất bại"
+    }
   },
   "theme": {
     "dark": "Giao diện tối",
@@ -121,12 +148,31 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "copyLink": "Sao chép liên kết phobos://",
+    "linkShort": "Liên kết",
+    "linkCopied": "Đã sao chép liên kết phobos:// vào bộ nhớ tạm",
+    "linkFailed": "Không sao chép được liên kết phobos://",
+    "preset": "Cấu hình sẵn của bộ làm rối",
+    "protocol": "Giao thức",
+    "presetDesc": "Chọn cấu hình sẵn của bộ làm rối sẽ định tuyến máy khách này. Giao thức của cấu hình sẵn (WireGuard hoặc SOCKS5) quyết định những trường nào bên dưới được áp dụng — ví dụ thông tin đăng nhập SOCKS5 chỉ xuất hiện với cấu hình sẵn ở chế độ SOCKS5, vì WireGuard không dùng đến. Giữ giá trị mặc định để theo cấu hình sẵn mặc định của máy chủ (WireGuard).",
+    "presetUseDefault": "Dùng cấu hình sẵn mặc định",
+    "socks5Login": "Tên đăng nhập SOCKS5",
+    "socks5Password": "Mật khẩu SOCKS5",
+    "socks5CredentialsHint": "Hãy nhập tên đăng nhập và mật khẩu này trong phần cài đặt SOCKS5 của chính ứng dụng máy khách (trình duyệt, curl, v.v.) — bộ làm rối chỉ mã hóa lưu lượng, nó không lưu trữ hay kiểm tra thông tin đăng nhập này.",
+    "socks5ConfigNote": "Máy khách này dùng cấu hình sẵn ở chế độ SOCKS5, nên cấu hình bên dưới là khối máy khách của bộ làm rối SOCKS5, không phải WireGuard. Hãy đặt tên đăng nhập và mật khẩu SOCKS5 hiển thị trên trang của máy khách này trong chính ứng dụng SOCKS5 của bạn.",
+    "nameHint": "Chỉ chữ cái Latinh, chữ số, dấu gạch nối, dấu chấm và {'@'}; tối đa 32 ký tự; phải là duy nhất.",
+    "nameError": {
+      "tooLong": "Tên không được vượt quá {max} ký tự.",
+      "invalidChars": "Chỉ cho phép chữ cái Latinh, chữ số, dấu gạch nối, dấu chấm và {'@'} (không có khoảng trắng hay ký tự đặc biệt khác).",
+      "duplicate": "Đã tồn tại máy khách trùng tên."
+    }
   },
   "dialog": {
     "change": "Thay đổi",
     "cancel": "Hủy",
-    "create": "Tạo"
+    "create": "Tạo",
+    "delete": "Xóa"
   },
   "toast": {
     "success": "Thành công",
@@ -154,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Đường dẫn metrics định dạng JSON",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Đường dẫn metrics Prometheus"
+      "prometheusDesc": "Đường dẫn metrics Prometheus",
+      "metricsPasswordSet": "Đã đặt mật khẩu — để trống nếu muốn giữ nguyên",
+      "metricsPasswordUnset": "Chưa đặt mật khẩu"
     },
     "config": {
       "connection": "Kết nối",
@@ -181,7 +229,19 @@
       "firewallEnabledDesc": "Áp dụng iptables để giới hạn người dùng chỉ truy cập các IP đích xác định. Sau khi kích hoạt, cho phép cấu hình điểm đến riêng cho từng người dùng.",
       "egress": "Đầu ra",
       "egressWarp": "Định tuyến lưu lượng khách qua WARP",
-      "egressWarpDesc": "Khi được bật, khách kết nối internet qua Cloudflare WARP thay vì WAN của máy chủ, ẩn IP máy chủ. Yêu cầu cấu hình WARP đã đăng ký. Có thể cần giảm MTU của khách."
+      "egressWarpDesc": "Khi được bật, khách kết nối internet qua Cloudflare WARP thay vì WAN của máy chủ, ẩn IP máy chủ. Yêu cầu cấu hình WARP đã đăng ký. Có thể cần giảm MTU của khách.",
+      "subnet": "Mạng con WireGuard",
+      "ipv4Cidr": "Mạng con IPv4 của WireGuard (CIDR)",
+      "ipv4CidrDesc": "Dải địa chỉ cấp cho máy khách (ví dụ 10.8.0.0/24). Mở rộng mặt nạ (ví dụ /16) để có thêm máy khách hoặc dải khác. Thay đổi sẽ cấp lại địa chỉ IPv4 cho mọi máy khách.",
+      "ipv6Cidr": "Mạng con IPv6 của WireGuard (CIDR)",
+      "ipv6CidrDesc": "Dải địa chỉ IPv6 cấp cho máy khách. Thay đổi sẽ cấp lại địa chỉ IPv6 cho mọi máy khách.",
+      "publicAddress": "Địa chỉ công khai",
+      "publicIpV4": "IPv4 công khai của máy chủ",
+      "publicIpV4Desc": "Được dùng làm target trong cấu hình bộ làm rối phía máy khách.",
+      "publicIpV6": "IPv6 công khai của máy chủ",
+      "publicIpV6Desc": "Target IPv6 tùy chọn.",
+      "publicDomain": "Tên miền công khai của máy chủ",
+      "publicDomainDesc": "Khi được đặt, giá trị này dùng làm target của bộ làm rối trong cấu hình máy khách thay cho IPv4/IPv6."
     },
     "introText": "Chào mừng đến bảng quản trị.\n\nTại đây bạn có thể quản lý cài đặt chung, cấu hình, cài đặt giao diện mạng và hooks.\n\nBắt đầu bằng cách chọn một trong các mục trong thanh bên.",
     "warp": {
@@ -222,6 +282,65 @@
       "checkOffline": "WARP đang ngoại tuyến",
       "notActiveEgress": "WARP không hoạt động làm cổng ra",
       "notActiveEgressTip": "Bật \"Định tuyến lưu lượng máy khách qua WARP\" trong phần Giao diện mạng để sử dụng và kiểm tra đường hầm WARP."
+    },
+    "tls": {
+      "title": "Chứng chỉ TLS",
+      "desc": "Thay chứng chỉ HTTPS đang dùng hoặc chuyển về HTTP thuần.",
+      "current": "Chứng chỉ đang dùng",
+      "apply": "Áp dụng cấu hình TLS",
+      "applied": "Đã áp dụng cấu hình TLS. Máy chủ đang khởi động lại.",
+      "appliedRestart": "Đã áp dụng cấu hình TLS. Máy chủ đang khởi động lại; hãy mở lại {url} sau vài giây.",
+      "externalManaged": "TLS do một reverse proxy bên ngoài quản lý (TLS_TERMINATION=external). Chứng chỉ phải được cấp và gia hạn bên ngoài PhobosWG.",
+      "origin": {
+        "self-signed": "Tự ký",
+        "imported": "Đã nhập (dán PEM)",
+        "imported-path": "Nhập theo đường dẫn (liên kết tượng trưng, tự nạp lại)",
+        "none": "Không có (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Cấu hình sẵn của bộ làm rối",
+      "desc": "Mỗi cấu hình sẵn chạy một trình lắng nghe wg-obfuscator riêng với cổng, khóa và cách ngụy trang độc lập. Cấu hình sẵn mặc định áp dụng cho mọi máy khách chưa được gán rõ ràng. Cấu hình sẵn WireGuard dùng cổng UDP 51822-51861, cấu hình sẵn SOCKS5 dùng cổng TCP 51862-51891 — các dải do docker-compose công bố.",
+      "add": "Thêm cấu hình sẵn",
+      "addDesc": "Chỉ cần nhập tên. Cổng, khóa và các tham số khác sẽ nhận giá trị mặc định hợp lý và có thể sửa sau trong cấu hình sẵn.",
+      "default": "mặc định",
+      "setAsDefault": "Đặt làm mặc định",
+      "deleteConfirm": "Xóa cấu hình sẵn này? Các máy khách đang dùng sẽ chuyển về cấu hình sẵn mặc định.",
+      "regenerateKey": "Tạo lại khóa",
+      "regeneratePort": "Chọn cổng trống",
+      "nameLabel": "Tên",
+      "nameDesc": "Tên hiển thị của cấu hình sẵn. Chỉ dùng trong bảng điều khiển.",
+      "modeLabel": "Giao thức (mode)",
+      "modeDesc": "WireGuard: làm rối quá trình bắt tay UDP của WireGuard. SOCKS5: chạy một proxy SOCKS5 thực thụ (có thể kèm thông tin đăng nhập RFC1929 cho từng máy khách) được tạo đường hầm qua kết nối TCP đã làm rối.",
+      "sourceLportLabel": "source-lport (cổng UDP bên ngoài)",
+      "sourceLportLabelSocks5": "source-lport (cổng TCP bên ngoài)",
+      "sourceLportDesc": "Cổng UDP công khai mà bộ làm rối phía máy chủ lắng nghe. Phải nằm trong dải 51822-51861 — dải do docker-compose công bố, nếu không máy khách sẽ không kết nối được.",
+      "sourceLportDescSocks5": "Cổng TCP công khai mà máy chủ SOCKS5 lắng nghe. Phải nằm trong dải 51862-51891 — dải do docker-compose công bố, nếu không máy khách sẽ không kết nối được.",
+      "targetLabel": "target",
+      "targetDesc": "Nơi bộ làm rối phía máy chủ chuyển tiếp lưu lượng đã gỡ vỏ. Để trống để dùng điểm cuối WireGuard cục bộ (127.0.0.1:[cổng wg]). Định dạng: host:port.",
+      "targetPlaceholder": "127.0.0.1:[cổng wireguard] (mặc định)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP của giao diện mà bộ làm rối phía máy chủ gắn vào. Để trống để dùng AUTO: cấu hình sẵn SOCKS5 lắng nghe trên cả IPv4 và IPv6, cấu hình sẵn WireGuard trên 0.0.0.0.",
+      "keyLabel": "Khóa làm rối (key)",
+      "keyDesc": "Khóa làm rối dùng chung, giống nhau ở cả hai phía. Được tạo ngẫu nhiên (200-254 ký tự). Từ 1 đến 255 ký tự.",
+      "maskingLabel": "Chế độ ngụy trang (masking)",
+      "maskingDesc": "Chế độ né DPI. STUN: bọc lưu lượng dưới dạng STUN. MEDIA: ngụy trang thành luồng RTP/H.264, phải đặt rõ ràng ở cả hai phía. AUTO: máy chủ tự nhận diện, máy khách dùng STUN. NONE: tắt ngụy trang (vẫn giữ XOR).",
+      "maskingDescSocks5": "Chế độ né DPI. STUN: bọc lưu lượng dưới dạng STUN. MEDIA: ngụy trang thành luồng RTP/H.264, phải đặt rõ ràng ở cả hai phía. TLS: ngụy trang thành bản ghi HTTPS. NONE: tắt ngụy trang (vẫn giữ XOR). AUTO không dùng được cho cấu hình sẵn SOCKS5.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Số byte đầu tiên được XOR. 0 = toàn bộ gói tin. Giá trị >0 sẽ tắt phần đệm giả. Phải khớp ở cả hai phía. Với MEDIA: 0 tự áp dụng 16, tối thiểu 4.",
+      "dummyLabel": "Byte đệm giả tối đa (max-dummy)",
+      "dummyDesc": "Phần đệm ngẫu nhiên tối đa thêm vào mỗi gói tin (0-1024). Mặc định 40.",
+      "dummyDisabledNote": "Không dùng với MEDIA hoặc khi obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Chỉ áp dụng với chế độ ngụy trang MEDIA.",
+      "verboseLabel": "verbose (mức nhật ký)",
+      "verboseDesc": "Mức chi tiết của nhật ký. error/warn/info/debug/trace. Nên dùng error khi vận hành thực tế; debug/trace gây tải nặng cho CPU.",
+      "clientLocalPortLabel": "Cổng WireGuard cục bộ phía máy khách",
+      "clientLocalPortDesc": "Cổng UDP cục bộ mà WireGuard của máy khách gửi tới (Endpoint 127.0.0.1:[cổng]) và cũng là source-lport của bộ làm rối phía máy khách. Mặc định 13255.",
+      "clientLocalPortSocks5Label": "Cổng SOCKS5 cục bộ phía máy khách",
+      "clientLocalPortSocks5Desc": "Cổng TCP cục bộ mà bộ làm rối SOCKS5 phía máy khách lắng nghe. Hãy trỏ thiết lập proxy SOCKS5 của ứng dụng tới 127.0.0.1:[cổng]. Mặc định 1080.",
+      "mediaSsrcLabel": "SSRC của RTP (media-ssrc)",
+      "mediaSsrcDesc": "Giá trị SSRC cố định giúp nhận diện tin cậy các khung được ngụy trang MEDIA ở cả hai phía. Tự điền khi chọn MEDIA; 0 = chưa đặt.",
+      "clientCount": "{n} máy khách"
     }
   },
   "zod": {
@@ -243,7 +362,10 @@
       "address6": "Địa chỉ IPv6",
       "serverAllowedIps": "IP được phép phía máy chủ",
       "firewallIps": "IP được phép qua tường lửa",
-      "firewallIpsInvalid": "IP tường lửa không hợp lệ. Xem tài liệu để biết cú pháp được hỗ trợ."
+      "firewallIpsInvalid": "IP tường lửa không hợp lệ. Xem tài liệu để biết cú pháp được hỗ trợ.",
+      "presetId": "ID cấu hình sẵn của bộ làm rối",
+      "nameTooLong": "Tên máy khách không được vượt quá 32 ký tự.",
+      "nameInvalidChars": "Tên máy khách chỉ được chứa chữ cái Latinh, chữ số, dấu gạch nối, dấu chấm và {'@'} (không có khoảng trắng hay ký tự đặc biệt khác)."
     },
     "user": {
       "username": "Tên đăng nhập",
@@ -303,6 +425,26 @@
       "interval": "Khoảng thời gian cập nhật (ngày)",
       "key": "Khóa WireGuard",
       "license": "Khóa giấy phép WARP+ (tối thiểu 26 ký tự)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID cấu hình sẵn của bộ làm rối",
+      "name": "Tên cấu hình sẵn",
+      "mode": "Giao thức",
+      "extPort": "Cổng bên ngoài (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Khóa của bộ làm rối",
+      "masking": "Chế độ ngụy trang",
+      "maskingAutoSocks5": "Ngụy trang AUTO không dùng được cho cấu hình sẵn ở chế độ SOCKS5",
+      "maskingTlsWireguard": "Ngụy trang TLS chỉ dùng được cho cấu hình sẵn ở chế độ SOCKS5",
+      "sourceIf": "Giao diện lắng nghe (IP)",
+      "target": "target phải theo dạng host:port",
+      "obfuscateBytes": "Số byte được làm rối (0-1024)",
+      "obfuscateBytesMedia": "Với MEDIA, giá trị tối thiểu là 4 (hoặc 0 để dùng mặc định 16)",
+      "verbose": "Mức nhật ký",
+      "idle": "Thời gian chờ khi rảnh",
+      "dummy": "Byte đệm giả tối đa",
+      "clientWgLocalPort": "Cổng WireGuard cục bộ phía máy khách",
+      "mediaSsrc": "SSRC của RTP",
+      "clientLocalPort": "Cổng cục bộ phía máy khách (1-65535)"
     }
   },
   "hooks": {
@@ -315,6 +457,7 @@
     "notSupported": "Không hỗ trợ sao chép",
     "copied": "Đã sao chép!",
     "failed": "Sao chép thất bại",
-    "copy": "Sao chép"
+    "copy": "Sao chép",
+    "copyConfig": "Bấm để sao chép cấu hình vào bộ nhớ tạm"
   }
 }

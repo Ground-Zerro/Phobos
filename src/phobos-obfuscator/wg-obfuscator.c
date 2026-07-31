@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
+#include "compat_net.h"
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
@@ -41,6 +41,11 @@ void print_version(void) {
     fprintf(stderr, "Starting PhobosWG v" WG_OBFUSCATOR_VERSION " (" ARCH ")\n");
 #endif
 #endif
+}
+
+static int is_ipv6_literal(const char *host) {
+    struct in6_addr addr;
+    return inet_pton(AF_INET6, host, &addr) == 1;
 }
 
 static void parse_static_bindings(obfuscator_config_t *config) {
@@ -125,21 +130,26 @@ int main(int argc, char *argv[]) {
     memset(&forward_addr, 0, sizeof(forward_addr));
     forward_addr.sin_family = AF_INET;
 
+    int socks5_mode = config.mode == MODE_SOCKS5;
+
     if (config.forward_host_port_set) {
-        char *port_delimiter = strchr(config.forward_host_port, ':');
-        if (port_delimiter == NULL) {
-            log(LL_ERROR, "Invalid target host:port format: %s", config.forward_host_port);
+        char *host;
+        if (split_host_port(config.forward_host_port, &host, &target_port) != 0) {
+            log(LL_ERROR, "Invalid target host:port format: %s (IPv6 as [addr]:port)", config.forward_host_port);
             exit(EXIT_FAILURE);
         }
-        *port_delimiter = 0;
-        strncpy(target_host, config.forward_host_port, sizeof(target_host) - 1);
+        strncpy(target_host, host, sizeof(target_host) - 1);
         target_host[sizeof(target_host) - 1] = 0;
-        target_port = atoi(port_delimiter + 1);
-        if (target_port <= 0 || target_port > 65535) {
-            log(LL_ERROR, "Invalid target port: %s", port_delimiter + 1);
+        if (socks5_mode) {
+            if (resolve_host_wait(target_host, AF_UNSPEC, &config.resolved_forward, config.stop) != 0) {
+                log(LL_ERROR, "Can't resolve target hostname '%s', exiting", target_host);
+                exit(EXIT_FAILURE);
+            }
+            config.resolved_forward_set = 1;
+        } else if (is_ipv6_literal(target_host)) {
+            log(LL_ERROR, "IPv6 target '%s' requires socks5 mode", target_host);
             exit(EXIT_FAILURE);
-        }
-        if (resolve_ipv4_wait(target_host, &forward_addr.sin_addr, config.stop) != 0) {
+        } else if (resolve_ipv4_wait(target_host, &forward_addr.sin_addr, config.stop) != 0) {
             log(LL_ERROR, "Can't resolve target hostname '%s', exiting", target_host);
             exit(EXIT_FAILURE);
         }
@@ -153,16 +163,44 @@ int main(int argc, char *argv[]) {
     }
 
     if (config.client_interface_set) {
-        struct in_addr a;
-        if (resolve_ipv4_wait(config.client_interface, &a, config.stop) != 0) {
-            log(LL_ERROR, "Invalid source interface '%s'", config.client_interface);
+        if (socks5_mode) {
+            resolved_host_t bind_to;
+            if (resolve_host_wait(config.client_interface, AF_UNSPEC, &bind_to, config.stop) != 0) {
+                log(LL_ERROR, "Invalid source interface '%s'", config.client_interface);
+                exit(EXIT_FAILURE);
+            }
+            config.resolved_listen = bind_to.addr[0];
+            config.resolved_listen_set = 1;
+        } else if (is_ipv6_literal(config.client_interface)) {
+            log(LL_ERROR, "IPv6 source interface '%s' requires socks5 mode", config.client_interface);
             exit(EXIT_FAILURE);
+        } else {
+            struct in_addr a;
+            if (resolve_ipv4_wait(config.client_interface, &a, config.stop) != 0) {
+                log(LL_ERROR, "Invalid source interface '%s'", config.client_interface);
+                exit(EXIT_FAILURE);
+            }
+            listen_addr = a.s_addr;
         }
-        listen_addr = a.s_addr;
+    } else if (socks5_mode) {
+        sockaddr_any(&config.resolved_listen, AF_INET6, 0);
+        config.resolved_listen_set = 1;
     }
 
-    log(LL_INFO, "Listening on %s:%d", inet_ntoa(*(struct in_addr *)&listen_addr), config.listen_port);
-    if (config.forward_host_port_set) {
+    if (config.resolved_listen_set) {
+        char text[INET6_ADDRSTRLEN + 8];
+        struct sockaddr_storage shown = config.resolved_listen;
+        sockaddr_set_port(&shown, (uint16_t)config.listen_port);
+        log(LL_INFO, "Listening on %s", sockaddr_text(&shown, text, sizeof(text)));
+    } else {
+        log(LL_INFO, "Listening on %s:%d", inet_ntoa(*(struct in_addr *)&listen_addr), config.listen_port);
+    }
+    if (config.resolved_forward_set) {
+        char text[INET6_ADDRSTRLEN + 8];
+        struct sockaddr_storage shown = config.resolved_forward.addr[0];
+        sockaddr_set_port(&shown, (uint16_t)target_port);
+        log(LL_INFO, "Target: %s (%s)", target_host, sockaddr_text(&shown, text, sizeof(text)));
+    } else if (config.forward_host_port_set) {
         log(LL_INFO, "Target: %s:%d", target_host, target_port);
     }
 

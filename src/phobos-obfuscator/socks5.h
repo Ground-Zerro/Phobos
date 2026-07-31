@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <pthread.h>
-#include <netinet/in.h>
+#include "compat_net.h"
 #include "wg-obfuscator.h"
 
 #define SOCKS5_MAX_WORKERS 256
@@ -14,7 +14,7 @@ struct socks5_conn;
 typedef struct {
     uint8_t kind;
     int fd;
-    struct sockaddr_in fwd;
+    struct sockaddr_storage fwd;
     uint8_t has_fwd;
 } socks5_listen_t;
 
@@ -35,14 +35,16 @@ typedef struct socks5_context {
     int num_workers;
     socks5_worker_t workers[SOCKS5_MAX_WORKERS];
     int listen_sock;
-    in_addr_t listen_addr;
+    struct sockaddr_storage listen_addr;
     uint16_t listen_port;
     socks5_listen_t routes[SOCKS5_MAX_ROUTES];
     int route_count;
     obfuscator_config_t *config;
     char *xor_key;
     int key_length;
-    struct sockaddr_in forward_addr;
+    struct sockaddr_storage forward_addr;
+    struct sockaddr_storage forward_alt;
+    uint8_t forward_alt_set;
     volatile int running;
 } socks5_context_t;
 

@@ -4,14 +4,23 @@
       {{ $t('admin.tls.title') }}
     </FormHeading>
 
-    <div v-if="status === 'pending'" class="text-sm text-gray-500 dark:text-neutral-400">
+    <div
+      v-if="status === 'pending'"
+      class="text-sm text-gray-500 dark:text-neutral-400"
+    >
       {{ $t('general.loading') }}
     </div>
 
     <div v-else-if="state" class="flex flex-col gap-3">
-      <div class="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm dark:border-neutral-700 dark:bg-neutral-800">
-        <span class="font-medium text-gray-700 dark:text-neutral-200">{{ $t('admin.tls.current') }}:</span>
-        <span class="ml-2 text-gray-600 dark:text-neutral-300">{{ originLabel }}</span>
+      <div
+        class="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+      >
+        <span class="font-medium text-gray-700 dark:text-neutral-200"
+          >{{ $t('admin.tls.current') }}:</span
+        >
+        <span class="ml-2 text-gray-600 dark:text-neutral-300">{{
+          originLabel
+        }}</span>
       </div>
 
       <div
@@ -35,8 +44,12 @@
             "
             @click="mode = opt.value"
           >
-            <span class="font-medium text-gray-800 dark:text-neutral-200">{{ opt.label }}</span>
-            <span class="mt-0.5 text-sm text-gray-500 dark:text-neutral-400">{{ opt.desc }}</span>
+            <span class="font-medium text-gray-800 dark:text-neutral-200">{{
+              opt.label
+            }}</span>
+            <span class="mt-0.5 text-sm text-gray-500 dark:text-neutral-400">{{
+              opt.desc
+            }}</span>
           </button>
         </div>
 
@@ -129,10 +142,11 @@ type TlsState = { origin: Origin; hasCert: boolean; externalManaged: boolean };
 const { t } = useI18n();
 const toast = useToast();
 
-const { data: state, status, refresh } = await useFetch<TlsState>(
-  '/api/admin/tls',
-  { method: 'get' }
-);
+const {
+  data: state,
+  status,
+  refresh,
+} = await useFetch<TlsState>('/api/admin/tls', { method: 'get' });
 
 const mode = ref<Mode>('self-signed');
 const importCert = ref('');
@@ -147,18 +161,35 @@ const originLabel = computed(() => {
 });
 
 const modes = computed<{ value: Mode; label: string; desc: string }[]>(() => [
-  { value: 'self-signed', label: t('setup.tls.selfSigned'), desc: t('setup.tls.selfSignedDesc') },
-  { value: 'import',      label: t('setup.tls.import'),     desc: t('setup.tls.importDesc') },
-  { value: 'import-path', label: t('setup.tls.importPath'), desc: t('setup.tls.importPathDesc') },
-  { value: 'skip',        label: t('setup.tls.skip'),       desc: t('setup.tls.skipDesc') },
+  {
+    value: 'self-signed',
+    label: t('setup.tls.selfSigned'),
+    desc: t('setup.tls.selfSignedDesc'),
+  },
+  {
+    value: 'import',
+    label: t('setup.tls.import'),
+    desc: t('setup.tls.importDesc'),
+  },
+  {
+    value: 'import-path',
+    label: t('setup.tls.importPath'),
+    desc: t('setup.tls.importPathDesc'),
+  },
+  { value: 'skip', label: t('setup.tls.skip'), desc: t('setup.tls.skipDesc') },
 ]);
 
 const canSubmit = computed(() => {
   if (mode.value === 'import') {
-    return importCert.value.trim().length > 0 && importKey.value.trim().length > 0;
+    return (
+      importCert.value.trim().length > 0 && importKey.value.trim().length > 0
+    );
   }
   if (mode.value === 'import-path') {
-    return importCertPath.value.trim().length > 0 && importKeyPath.value.trim().length > 0;
+    return (
+      importCertPath.value.trim().length > 0 &&
+      importKeyPath.value.trim().length > 0
+    );
   }
   return true;
 });
@@ -205,7 +236,12 @@ async function apply() {
     await refresh();
   } catch (e: unknown) {
     const msg =
-      e && typeof e === 'object' && 'data' in e && e.data && typeof e.data === 'object' && 'message' in e.data
+      e &&
+      typeof e === 'object' &&
+      'data' in e &&
+      e.data &&
+      typeof e.data === 'object' &&
+      'message' in e.data
         ? String((e.data as { message: string }).message)
         : t('toast.unknown');
     toast.showToast({ type: 'error', message: msg });

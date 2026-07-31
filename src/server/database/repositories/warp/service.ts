@@ -1,6 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { warp } from './schema';
-import type { WarpManualType, WarpRegistrationType, WarpType, WarpUpdateType } from './types';
+import type {
+  WarpManualType,
+  WarpRegistrationType,
+  WarpType,
+  WarpUpdateType,
+} from './types';
 import type { DBType } from '#db/sqlite';
 
 function maskSecret(value: string): string {

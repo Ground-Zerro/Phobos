@@ -8,7 +8,8 @@
       "config": "Configuratie",
       "interface": "Interface",
       "hooks": "Hooks",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Obfuscator-presets"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Account aanmaken",
     "successful": "Installatie succesvol",
     "hostDesc": "Publieke hostnaam waar clients verbinding mee maken",
-    "portDesc": "Publieke UDP-poort waarop clients verbinding maken en waarop WireGuard luistert"
+    "portDesc": "Publieke UDP-poort waarop clients verbinding maken en waarop WireGuard luistert",
+    "tls": {
+      "title": "HTTPS-/TLS-certificaat",
+      "desc": "Stel een TLS-certificaat in om veilige HTTPS-toegang mogelijk te maken. Zonder HTTPS is inloggen standaard geblokkeerd.",
+      "selfSigned": "Zelfondertekend certificaat",
+      "selfSignedDesc": "Wordt direct voor uw host gegenereerd. De browser toont een beveiligingswaarschuwing — klik op Geavanceerd → Doorgaan.",
+      "selfSignedHstsWarning": "Blokkeert uw browser de pagina met een HSTS-fout zonder optie om door te gaan, dan heeft hij een HSTS-beleid van een eerder certificaat op dit domein in de cache. Open de URL in een incognitovenster of verwijder de HSTS-vermelding via chrome://net-internals/#hsts (Delete domain).",
+      "import": "Bestaand certificaat importeren",
+      "importDesc": "Plak uw eigen PEM-certificaat en privésleutel.",
+      "importPath": "Certificaat importeren via bestandspaden",
+      "importPathDesc": "Geef absolute paden op naar bestaande certificaat- en sleutelbestanden op schijf (bijv. /etc/letsencrypt/live/example.com/*.pem). De bestanden moeten vanuit de container leesbaar zijn.",
+      "certPathLabel": "Pad naar certificaatbestand (PEM fullchain)",
+      "keyPathLabel": "Pad naar privésleutelbestand (PEM)",
+      "importPathHint": "De bestanden worden gesymlinkt, niet gekopieerd. Wijzigen de bronbestanden op schijf (bijv. na certbot renew), dan merkt de server dat binnen ~30 s en herstart automatisch om het nieuwe certificaat te laden. De container heeft alleen-lezentoegang tot deze hostmappen: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Overslaan (geen HTTPS)",
+      "skipDesc": "Op HTTP blijven.",
+      "certLabel": "Certificaat (PEM fullchain)",
+      "keyLabel": "Privésleutel (PEM)",
+      "generate": "Certificaat genereren",
+      "apply": "Toepassen",
+      "restarting": "Certificaat toegepast. De server herstart met HTTPS...",
+      "redirectPrompt": "Open de beveiligde versie:",
+      "openLink": "HTTPS openen",
+      "skipWarning": "Zonder TLS-certificaat is de webinterface alleen via HTTP bereikbaar.",
+      "errorCert": "Validatie van het certificaat mislukt",
+      "errorKey": "Validatie van de privésleutel mislukt"
+    }
   },
   "theme": {
     "dark": "Donker thema",
@@ -121,12 +148,31 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "copyLink": "phobos://-link kopiëren",
+    "linkShort": "Link",
+    "linkCopied": "phobos://-link naar klembord gekopieerd",
+    "linkFailed": "Kopiëren van de phobos://-link mislukt",
+    "preset": "Obfuscator-preset",
+    "protocol": "Protocol",
+    "presetDesc": "Kies welke obfuscator-preset deze client routeert. Het protocol van de preset (WireGuard of SOCKS5) bepaalt welke velden hieronder gelden — de SOCKS5-inloggegevens verschijnen bijvoorbeeld alleen bij een preset in SOCKS5-modus, omdat WireGuard ze niet gebruikt. Laat op standaard staan om de standaardpreset van de server (WireGuard) te volgen.",
+    "presetUseDefault": "Standaardpreset gebruiken",
+    "socks5Login": "SOCKS5-gebruikersnaam",
+    "socks5Password": "SOCKS5-wachtwoord",
+    "socks5CredentialsHint": "Voer deze gebruikersnaam en dit wachtwoord in bij de SOCKS5-instellingen van de clienttoepassing zelf (browser, curl enz.) — de obfuscator versleutelt alleen het verkeer, hij bewaart of controleert deze gegevens niet.",
+    "socks5ConfigNote": "Deze client gebruikt een preset in SOCKS5-modus, dus de configuratie hieronder is een SOCKS5-obfuscatorclientblok en geen WireGuard. Stel de SOCKS5-gebruikersnaam en het wachtwoord van deze clientpagina in uw eigen SOCKS5-toepassing in.",
+    "nameHint": "Alleen Latijnse letters, cijfers, koppelteken, punt en {'@'}; maximaal 32 tekens; moet uniek zijn.",
+    "nameError": {
+      "tooLong": "De naam mag niet langer zijn dan {max} tekens.",
+      "invalidChars": "Alleen Latijnse letters, cijfers, koppelteken, punt en {'@'} zijn toegestaan (geen spaties of andere speciale tekens).",
+      "duplicate": "Er bestaat al een client met deze naam."
+    }
   },
   "dialog": {
     "change": "Wijzigen",
     "cancel": "Annuleren",
-    "create": "Aanmaken"
+    "create": "Aanmaken",
+    "delete": "Verwijderen"
   },
   "toast": {
     "success": "Succes",
@@ -154,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Route voor metrics in JSON-formaat",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Route voor Prometheus-metrics"
+      "prometheusDesc": "Route voor Prometheus-metrics",
+      "metricsPasswordSet": "Wachtwoord is ingesteld — laat leeg om het te behouden",
+      "metricsPasswordUnset": "Geen wachtwoord ingesteld"
     },
     "config": {
       "connection": "Verbinding",
@@ -181,7 +229,19 @@
       "firewallEnabledDesc": "Beperk het cliëntverkeer tot specifieke bestemmings-IP's met behulp van iptables. Indien ingeschakeld, kan elke cliënt worden geconfigureerd met toegestane bestemmingen.",
       "egress": "Uitgang",
       "egressWarp": "Clientverkeer via WARP routeren",
-      "egressWarpDesc": "Wanneer ingeschakeld, verlaten clients het netwerk via Cloudflare WARP in plaats van de WAN van de server, waardoor het server-IP wordt verborgen. Vereist een geregistreerde WARP-configuratie. Een lagere client-MTU kan nodig zijn."
+      "egressWarpDesc": "Wanneer ingeschakeld, verlaten clients het netwerk via Cloudflare WARP in plaats van de WAN van de server, waardoor het server-IP wordt verborgen. Vereist een geregistreerde WARP-configuratie. Een lagere client-MTU kan nodig zijn.",
+      "subnet": "WireGuard-subnet",
+      "ipv4Cidr": "WireGuard-IPv4-subnet (CIDR)",
+      "ipv4CidrDesc": "Adrespool voor clients (bijv. 10.8.0.0/24). Verruim het masker (bijv. /16) voor meer clients of andere bereiken. Wijzigen kent elk client een nieuw IPv4-adres toe.",
+      "ipv6Cidr": "WireGuard-IPv6-subnet (CIDR)",
+      "ipv6CidrDesc": "IPv6-adrespool voor clients. Wijzigen kent elk client een nieuw IPv6-adres toe.",
+      "publicAddress": "Openbaar adres",
+      "publicIpV4": "Openbaar IPv4 van de server",
+      "publicIpV4Desc": "Wordt als target gebruikt in de configuratie van de clientobfuscator.",
+      "publicIpV6": "Openbaar IPv6 van de server",
+      "publicIpV6Desc": "Optioneel IPv6-target.",
+      "publicDomain": "Openbaar domein van de server",
+      "publicDomainDesc": "Indien ingesteld, wordt dit in de clientconfiguratie als obfuscator-target gebruikt in plaats van IPv4/IPv6."
     },
     "introText": "Welkom bij het Admin-paneel.\n\nHier kunt u de algemene instellingen, de configuratie, de interface-instellingen en de hooks beheren.\n\nBegin met het kiezen van een van de secties in de zijbalk.",
     "warp": {
@@ -222,6 +282,65 @@
       "checkOffline": "WARP is offline",
       "notActiveEgress": "WARP is niet actief als uitgang",
       "notActiveEgressTip": "Schakel \"Clientverkeer via WARP routeren\" in onder Netwerkinterface om de WARP-tunnel te gebruiken en te testen."
+    },
+    "tls": {
+      "title": "TLS-certificaat",
+      "desc": "Vervang het actieve HTTPS-certificaat of schakel over naar gewone HTTP.",
+      "current": "Actief certificaat",
+      "apply": "TLS-configuratie toepassen",
+      "applied": "TLS-configuratie toegepast. De server herstart.",
+      "appliedRestart": "TLS-configuratie toegepast. De server herstart; open {url} over enkele seconden opnieuw.",
+      "externalManaged": "TLS wordt beheerd door een externe reverse proxy (TLS_TERMINATION=external). Het certificaat moet buiten PhobosWG worden uitgegeven en vernieuwd.",
+      "origin": {
+        "self-signed": "Zelfondertekend",
+        "imported": "Geïmporteerd (PEM geplakt)",
+        "imported-path": "Geïmporteerd via pad (symlink, automatisch herladen)",
+        "none": "Geen (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Obfuscator-presets",
+      "desc": "Elke preset draait een eigen wg-obfuscator-listener met een eigen poort, sleutel en maskering. De standaardpreset geldt voor elke client zonder expliciete toewijzing. WireGuard-presets gebruiken UDP-poorten 51822-51861, SOCKS5-presets TCP-poorten 51862-51891 — de bereiken die docker-compose publiceert.",
+      "add": "Preset toevoegen",
+      "addDesc": "Voer alleen een naam in. Poort, sleutel en overige parameters krijgen zinvolle standaardwaarden en kunnen daarna in de preset worden aangepast.",
+      "default": "standaard",
+      "setAsDefault": "Als standaard instellen",
+      "deleteConfirm": "Deze preset verwijderen? Clients die hem gebruiken vallen terug op de standaardpreset.",
+      "regenerateKey": "Sleutel opnieuw genereren",
+      "regeneratePort": "Vrije poort kiezen",
+      "nameLabel": "Naam",
+      "nameDesc": "Weergavenaam van de preset. Wordt alleen in het paneel gebruikt.",
+      "modeLabel": "Protocol (mode)",
+      "modeDesc": "WireGuard: verhult de WireGuard-UDP-handshake. SOCKS5: draait een echte SOCKS5-proxy (met optionele RFC1929-inloggegevens per client) getunneld over een verhulde TCP-verbinding.",
+      "sourceLportLabel": "source-lport (externe UDP-poort)",
+      "sourceLportLabelSocks5": "source-lport (externe TCP-poort)",
+      "sourceLportDesc": "Openbare UDP-poort waarop de serverobfuscator luistert. Moet binnen 51822-51861 vallen — het bereik dat docker-compose publiceert, anders kunnen clients hem niet bereiken.",
+      "sourceLportDescSocks5": "Openbare TCP-poort waarop de SOCKS5-server luistert. Moet binnen 51862-51891 vallen — het bereik dat docker-compose publiceert, anders kunnen clients hem niet bereiken.",
+      "targetLabel": "target",
+      "targetDesc": "Waarheen de serverobfuscator het uitgepakte verkeer doorstuurt. Laat leeg om het lokale WireGuard-eindpunt te gebruiken (127.0.0.1:[wg-poort]). Formaat: host:port.",
+      "targetPlaceholder": "127.0.0.1:[wireguard-poort] (standaard)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP van de interface waaraan de serverobfuscator zich bindt. Laat leeg voor AUTO: SOCKS5-presets luisteren op IPv4 en IPv6, WireGuard-presets op 0.0.0.0.",
+      "keyLabel": "Obfuscatiesleutel (key)",
+      "keyDesc": "Gedeelde obfuscatiesleutel, identiek aan beide kanten. Wordt willekeurig gegenereerd (200-254 tekens). 1-255 tekens.",
+      "maskingLabel": "Maskeringsmodus (masking)",
+      "maskingDesc": "Modus om DPI te omzeilen. STUN: verpakt het verkeer als STUN. MEDIA: maskeert het als RTP/H.264-media, aan beide kanten expliciet instellen. AUTO: de server detecteert automatisch, de client gebruikt STUN. NONE: maskering uit (XOR blijft).",
+      "maskingDescSocks5": "Modus om DPI te omzeilen. STUN: verpakt het verkeer als STUN. MEDIA: maskeert het als RTP/H.264-media, aan beide kanten expliciet instellen. TLS: maskeert het als HTTPS-records. NONE: maskering uit (XOR blijft). AUTO is niet beschikbaar voor SOCKS5-presets.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Hoeveel beginbytes met XOR worden bewerkt. 0 = het hele pakket. >0 schakelt dummy-opvulling uit. Moet aan beide kanten overeenkomen. Voor MEDIA: 0 past automatisch 16 toe, minimaal 4.",
+      "dummyLabel": "Max. dummybytes (max-dummy)",
+      "dummyDesc": "Maximale willekeurige opvulling per pakket (0-1024). Standaard 40.",
+      "dummyDisabledNote": "Niet gebruikt bij MEDIA of wanneer obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Geldt alleen bij de maskeringsmodus MEDIA.",
+      "verboseLabel": "verbose (logniveau)",
+      "verboseDesc": "Uitgebreidheid van de logging. error/warn/info/debug/trace. In productie wordt error aanbevolen; debug/trace belasten de CPU zwaar.",
+      "clientLocalPortLabel": "Lokale WireGuard-poort aan clientzijde",
+      "clientLocalPortDesc": "Lokale UDP-poort waarnaar de WireGuard van de client stuurt (Endpoint 127.0.0.1:[poort]) en tevens source-lport van de clientobfuscator. Standaard 13255.",
+      "clientLocalPortSocks5Label": "Lokale SOCKS5-poort aan clientzijde",
+      "clientLocalPortSocks5Desc": "Lokale TCP-poort waarop de SOCKS5-obfuscator aan clientzijde luistert. Richt de SOCKS5-proxyinstelling van uw toepassing op 127.0.0.1:[poort]. Standaard 1080.",
+      "mediaSsrcLabel": "RTP-SSRC (media-ssrc)",
+      "mediaSsrcDesc": "Vaste SSRC-waarde waarmee als MEDIA gemaskeerde frames aan beide kanten betrouwbaar worden herkend. Wordt automatisch ingevuld bij keuze voor MEDIA; 0 = niet ingesteld.",
+      "clientCount": "{n} client(s)"
     }
   },
   "zod": {
@@ -243,7 +362,10 @@
       "address6": "IPv6-adres",
       "serverAllowedIps": "Toegestane IP's van de server",
       "firewallIps": "Firewall-toegestane IPs",
-      "firewallIpsInvalid": "Ongeldige IP-invoer van firewall. Zie documentatie voor ondersteunde syntaxis."
+      "firewallIpsInvalid": "Ongeldige IP-invoer van firewall. Zie documentatie voor ondersteunde syntaxis.",
+      "presetId": "ID van de obfuscator-preset",
+      "nameTooLong": "De clientnaam mag niet langer zijn dan 32 tekens.",
+      "nameInvalidChars": "De clientnaam mag alleen Latijnse letters, cijfers, koppelteken, punt en {'@'} bevatten (geen spaties of andere speciale tekens)."
     },
     "user": {
       "username": "Gebruikersnaam",
@@ -303,6 +425,26 @@
       "interval": "Updateinterval (dagen)",
       "key": "WireGuard-sleutel",
       "license": "WARP+-licentiesleutel (min. 26 tekens)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID van de obfuscator-preset",
+      "name": "Presetnaam",
+      "mode": "Protocol",
+      "extPort": "Externe poort (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Obfuscatorsleutel",
+      "masking": "Maskeringsmodus",
+      "maskingAutoSocks5": "Maskering AUTO is niet beschikbaar voor presets in SOCKS5-modus",
+      "maskingTlsWireguard": "Maskering TLS is alleen beschikbaar voor presets in SOCKS5-modus",
+      "sourceIf": "Luisterinterface (IP)",
+      "target": "target moet het formaat host:port hebben",
+      "obfuscateBytes": "Obfuscate-bytes (0-1024)",
+      "obfuscateBytesMedia": "Voor MEDIA is het minimum 4 (of 0 voor de standaardwaarde 16)",
+      "verbose": "Logniveau",
+      "idle": "Time-out bij inactiviteit",
+      "dummy": "Max. dummybytes",
+      "clientWgLocalPort": "Lokale WireGuard-poort aan clientzijde",
+      "mediaSsrc": "RTP-SSRC",
+      "clientLocalPort": "Lokale poort aan clientzijde (1-65535)"
     }
   },
   "hooks": {
@@ -315,6 +457,7 @@
     "notSupported": "Kopiëren wordt niet ondersteund",
     "copied": "Gekopieerd!",
     "failed": "Kopiëren is mislukt",
-    "copy": "Kopiëren"
+    "copy": "Kopiëren",
+    "copyConfig": "Klik om de configuratie naar het klembord te kopiëren"
   }
 }

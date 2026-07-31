@@ -6,9 +6,8 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <arpa/inet.h>
+#include "compat_net.h"
 #include "socks5.h"
 #include "wg-obfuscator.h"
 #include "obfuscation.h"
@@ -66,7 +65,10 @@ typedef struct socks5_conn {
     int hs_up_len;
     int udp_fd;
     sock_tag_t udp_tag;
-    struct sockaddr_in app_udp_addr;
+    struct sockaddr_storage app_udp_addr;
+    struct sockaddr_storage alt_addr;
+    uint8_t alt_set;
+    uint8_t udp_family;
     uint8_t app_udp_known;
     uint8_t udp_acc[2048];
     int udp_acc_len;
@@ -367,6 +369,7 @@ static int finish_connect(socks5_conn_t *c, const obfuscator_config_t *config) {
     int err = 0;
     socklen_t len = sizeof(err);
     if (getsockopt(c->up_fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0 || err != 0) return -1;
+    c->alt_set = 0;
     c->up_connecting = 0;
     if (c->role == S5_ROLE_SERVER && c->phase != S5_PHASE_UDP) {
         // Real SOCKS5 CONNECT reply -- role=server is a genuine terminating
@@ -379,21 +382,87 @@ static int finish_connect(socks5_conn_t *c, const obfuscator_config_t *config) {
     return flush_to_up(c);
 }
 
-static int dial_up(socks5_worker_t *w, socks5_conn_t *c, const struct sockaddr_in *addr) {
-    int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+static int dial_up(socks5_worker_t *w, socks5_conn_t *c, const struct sockaddr_storage *addr) {
+    int fd = socket(addr->ss_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (fd < 0) return -1;
     tune_socket(fd, w->ctx->config);
     mark_exit_socket(fd, w->ctx->config);
     c->up_fd = fd;
     c->up_tag.conn = c;
     c->up_tag.kind = TAG_UP;
-    int cr = connect(fd, (const struct sockaddr *)addr, sizeof(*addr));
+    int cr = connect(fd, (const struct sockaddr *)addr, sockaddr_size(addr));
     if (cr < 0 && errno != EINPROGRESS) return -1;
     c->up_connecting = 1;
     struct epoll_event e;
     e.data.ptr = &c->up_tag;
     e.events = wants_up(c);
     if (epoll_ctl(w->epfd, EPOLL_CTL_ADD, fd, &e) != 0) return -1;
+    return 0;
+}
+
+static void drop_up(socks5_worker_t *w, socks5_conn_t *c) {
+    if (c->up_fd < 0) return;
+    epoll_ctl(w->epfd, EPOLL_CTL_DEL, c->up_fd, NULL);
+    close(c->up_fd);
+    c->up_fd = -1;
+    c->up_connecting = 0;
+}
+
+static int dial_resolved(socks5_worker_t *w, socks5_conn_t *c, const resolved_host_t *r, uint16_t port) {
+    for (int i = 0; i < r->count; i++) {
+        struct sockaddr_storage addr = r->addr[i];
+        sockaddr_set_port(&addr, port);
+        if (i + 1 < r->count) {
+            c->alt_addr = r->addr[i + 1];
+            sockaddr_set_port(&c->alt_addr, port);
+            c->alt_set = 1;
+        } else {
+            c->alt_set = 0;
+        }
+        if (dial_up(w, c, &addr) == 0) return 0;
+        drop_up(w, c);
+    }
+    c->alt_set = 0;
+    return -1;
+}
+
+static int target_resolve(const socks5_target_t *t, resolved_host_t *out, char *host, int host_cap) {
+    if (socks5_target_to_sockaddr(t, &out->addr[0]) == 0) {
+        out->count = 1;
+        const void *raw = t->atyp == S5_ATYP_IPV6
+            ? (const void *)&((struct sockaddr_in6 *)&out->addr[0])->sin6_addr
+            : (const void *)&((struct sockaddr_in *)&out->addr[0])->sin_addr;
+        if (!inet_ntop(out->addr[0].ss_family, raw, host, (socklen_t)host_cap)) host[0] = 0;
+        return 0;
+    }
+    if (t->atyp != S5_ATYP_DOMAIN || t->addrlen <= 0 || t->addrlen >= host_cap) return -1;
+    memcpy(host, t->addr, t->addrlen);
+    host[t->addrlen] = 0;
+    return resolve_host(host, AF_UNSPEC, out);
+}
+
+static int dial_alt(socks5_worker_t *w, socks5_conn_t *c);
+
+static int dial_forward(socks5_worker_t *w, socks5_conn_t *c) {
+    socks5_context_t *ctx = w->ctx;
+    if (ctx->forward_alt_set) {
+        c->alt_addr = ctx->forward_alt;
+        c->alt_set = 1;
+    }
+    if (dial_up(w, c, &ctx->forward_addr) == 0) return 0;
+    drop_up(w, c);
+    return dial_alt(w, c);
+}
+
+static int dial_alt(socks5_worker_t *w, socks5_conn_t *c) {
+    if (!c->alt_set) return -1;
+    struct sockaddr_storage addr = c->alt_addr;
+    c->alt_set = 0;
+    drop_up(w, c);
+    if (dial_up(w, c, &addr) != 0) {
+        drop_up(w, c);
+        return -1;
+    }
     return 0;
 }
 
@@ -506,7 +575,7 @@ static int client_handshake(socks5_worker_t *w, socks5_conn_t *c, const obfuscat
         int g = socks5_parse_greeting(c->hs, c->hs_len);
         if (g < 0) return -1;
         if (g == 0) return 0;
-        if (dial_up(w, c, &w->ctx->forward_addr) < 0) return -1;
+        if (dial_forward(w, c) < 0) return -1;
         if (push_up(c, config, c->hs, g) < 0) return -1;
         memmove(c->hs, c->hs + g, c->hs_len - g);
         c->hs_len -= g;
@@ -725,18 +794,14 @@ static int server_handshake(socks5_worker_t *w, socks5_conn_t *c, const obfuscat
     }
 
     char host[256];
-    if (socks5_target_host(&t, host, sizeof(host)) != 0) return -1;
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    if (resolve_ipv4(host, &addr.sin_addr) != 0) {
-        log(LL_DEBUG, "SOCKS5 server: can't resolve %s", host);
+    resolved_host_t resolved;
+    if (target_resolve(&t, &resolved, host, (int)sizeof(host)) != 0) {
+        log(LL_DEBUG, "SOCKS5 server: can't resolve target (type %u)", t.atyp);
         uint8_t rep[10];
         socks5_build_reply(rep, S5_REP_FAIL);
         push_down(c, config, rep, 10);
         return -1;
     }
-    addr.sin_port = htons(t.port);
 
     int leftover = total - r;
     if (leftover > 0) {
@@ -746,13 +811,14 @@ static int server_handshake(socks5_worker_t *w, socks5_conn_t *c, const obfuscat
         c->to_up_off = 0;
     }
     c->phase = S5_PHASE_RELAY;
-    if (dial_up(w, c, &addr) < 0) return -1;
+    if (dial_resolved(w, c, &resolved, t.port) < 0) return -1;
     log(LL_DEBUG, "SOCKS5 server: connect to %s:%d", host, t.port);
     return 0;
 }
 
 static int build_udp_tunnel_frame(const socks5_target_t *t, const uint8_t *data, int dlen, uint8_t *out, int cap) {
-    int hl = socks5_udp_build_header(out + 2, t);
+    int hl = socks5_udp_build_header(out + 2, cap - 2, t);
+    if (hl < 0) return -1;
     int body = hl + dlen;
     if (2 + body > cap) return -1;
     memcpy(out + 2 + hl, data, dlen);
@@ -813,23 +879,24 @@ static int udp_deliver_frames(socks5_conn_t *c,
         int dl = L - data_off;
         if (is_client) {
             uint8_t out[2048];
-            int hl = socks5_udp_build_header(out, &t);
-            if (hl + dl <= (int)sizeof(out) && c->app_udp_known) {
+            int hl = socks5_udp_build_header(out, (int)sizeof(out), &t);
+            if (hl > 0 && hl + dl <= (int)sizeof(out) && c->app_udp_known) {
                 memcpy(out + hl, data, dl);
                 sendto(c->udp_fd, out, hl + dl, MSG_DONTWAIT,
-                       (struct sockaddr *)&c->app_udp_addr, sizeof(c->app_udp_addr));
+                       (struct sockaddr *)&c->app_udp_addr, sockaddr_size(&c->app_udp_addr));
             }
         } else {
             char host[256];
-            struct sockaddr_in dst;
-            if (socks5_target_host(&t, host, sizeof(host)) == 0) {
-                memset(&dst, 0, sizeof(dst));
-                dst.sin_family = AF_INET;
-                if (resolve_ipv4(host, &dst.sin_addr) == 0) {
-                    dst.sin_port = htons(t.port);
-                    ssize_t sent = sendto(c->udp_fd, data, dl, MSG_DONTWAIT, (struct sockaddr *)&dst, sizeof(dst));
-                    if (sent > 0) s5_stats_traffic(c, 1, (int)sent);
-                }
+            resolved_host_t resolved;
+            if (target_resolve(&t, &resolved, host, (int)sizeof(host)) != 0) {
+                log(LL_DEBUG, "SOCKS5 UDP: unresolved target (type %u), datagram dropped", t.atyp);
+            } else {
+                struct sockaddr_storage dst = resolved.addr[0];
+                sockaddr_set_port(&dst, t.port);
+                if (c->udp_family == AF_INET6) sockaddr_map_to_ipv6(&dst, &dst);
+                ssize_t sent = sendto(c->udp_fd, data, dl, MSG_DONTWAIT,
+                                      (struct sockaddr *)&dst, sockaddr_size(&dst));
+                if (sent > 0) s5_stats_traffic(c, 1, (int)sent);
             }
         }
         pos += 2 + L;
@@ -863,16 +930,18 @@ static int udp_tunnel_recv(socks5_conn_t *c, const obfuscator_config_t *config,
     return 0;
 }
 
-static int udp_register(socks5_worker_t *w, socks5_conn_t *c, in_addr_t bind_addr) {
-    int fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+static int udp_register(socks5_worker_t *w, socks5_conn_t *c, const struct sockaddr_storage *bind_addr) {
+    int fd = socket(bind_addr->ss_family, SOCK_DGRAM | SOCK_NONBLOCK, 0);
     if (fd < 0) return -1;
     mark_exit_socket(fd, w->ctx->config);
-    struct sockaddr_in a;
-    memset(&a, 0, sizeof(a));
-    a.sin_family = AF_INET;
-    a.sin_addr.s_addr = bind_addr;
-    a.sin_port = 0;
-    if (bind(fd, (struct sockaddr *)&a, sizeof(a)) < 0) { close(fd); return -1; }
+    if (bind_addr->ss_family == AF_INET6) {
+        int off = 0;
+        setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof(off));
+    }
+    struct sockaddr_storage a = *bind_addr;
+    sockaddr_set_port(&a, 0);
+    if (bind(fd, (struct sockaddr *)&a, sockaddr_size(&a)) < 0) { close(fd); return -1; }
+    c->udp_family = (uint8_t)bind_addr->ss_family;
     c->udp_fd = fd;
     c->udp_tag.conn = c;
     c->udp_tag.kind = TAG_UDP;
@@ -888,42 +957,46 @@ static int udp_register(socks5_worker_t *w, socks5_conn_t *c, in_addr_t bind_add
 // socket for the real app and replies with ITS bind address/port -- never
 // role=server's, which the app could not reach directly.
 static int client_udp_setup(struct socks5_worker *w, struct socks5_conn *c, const obfuscator_config_t *config) {
-    struct sockaddr_in local;
+    struct sockaddr_storage local;
     socklen_t ll = sizeof(local);
     if (getsockname(c->down_fd, (struct sockaddr *)&local, &ll) != 0) return -1;
 
-    if (udp_register(w, c, local.sin_addr.s_addr) < 0) return -1;
+    if (udp_register(w, c, &local) < 0) return -1;
 
-    struct sockaddr_in ua;
+    struct sockaddr_storage ua;
     socklen_t ul = sizeof(ua);
     if (getsockname(c->udp_fd, (struct sockaddr *)&ua, &ul) != 0) return -1;
 
-    uint8_t rep[10];
-    socks5_build_reply(rep, S5_REP_OK);
-    rep[3] = S5_ATYP_IPV4;
-    memcpy(rep + 4, &local.sin_addr.s_addr, 4);
-    memcpy(rep + 8, &ua.sin_port, 2);
-    if (push_down(c, config, rep, 10) < 0) return -1;
+    struct sockaddr_storage bound = local;
+    sockaddr_set_port(&bound, sockaddr_get_port(&ua));
+
+    uint8_t rep[262];
+    int rl = socks5_build_reply_addr(rep, (int)sizeof(rep), S5_REP_OK, &bound);
+    if (rl < 0 || push_down(c, config, rep, rl) < 0) return -1;
 
     c->phase = S5_PHASE_UDP;
     return 0;
 }
 
 static int server_udp_setup(struct socks5_worker *w, struct socks5_conn *c, const obfuscator_config_t *config, const uint8_t *rest, int rest_len) {
-    if (udp_register(w, c, INADDR_ANY) < 0) return -1;
+    struct sockaddr_storage any;
+    sockaddr_any(&any, AF_INET6, 0);
+    if (udp_register(w, c, &any) < 0) {
+        sockaddr_any(&any, AF_INET, 0);
+        if (udp_register(w, c, &any) < 0) return -1;
+    }
 
-    struct sockaddr_in ua;
+    struct sockaddr_storage ua;
     socklen_t ul = sizeof(ua);
     if (getsockname(c->udp_fd, (struct sockaddr *)&ua, &ul) != 0) return -1;
 
     uint8_t rep[10];
     socks5_build_reply(rep, S5_REP_OK);
-    rep[3] = S5_ATYP_IPV4;
     // role=client substitutes its own local bind address before this reaches
     // the app, so the exact address here is irrelevant -- only the port
     // matters for symmetry with a real SOCKS5 server's reply shape.
-    memset(rep + 4, 0, 4);
-    memcpy(rep + 8, &ua.sin_port, 2);
+    uint16_t port = htons(sockaddr_get_port(&ua));
+    memcpy(rep + 8, &port, 2);
     if (push_down(c, config, rep, 10) < 0) return -1;
 
     c->phase = S5_PHASE_UDP;
@@ -935,7 +1008,7 @@ static int udp_relay_event(struct socks5_worker *w, struct socks5_conn *c, const
     (void)w;
     static _Thread_local uint8_t dg[65536];
     for (;;) {
-        struct sockaddr_in src;
+        struct sockaddr_storage src;
         socklen_t sl = sizeof(src);
         ssize_t n = recvfrom(c->udp_fd, dg, sizeof(dg), MSG_DONTWAIT, (struct sockaddr *)&src, &sl);
         if (n < 0) {
@@ -955,10 +1028,7 @@ static int udp_relay_event(struct socks5_worker *w, struct socks5_conn *c, const
             if (tunnel_send(c, config, 1, raw, fl) < 0) return -1;
         } else {
             socks5_target_t t;
-            t.atyp = S5_ATYP_IPV4;
-            memcpy(t.addr, &src.sin_addr.s_addr, 4);
-            t.addrlen = 4;
-            t.port = ntohs(src.sin_port);
+            if (socks5_target_from_sockaddr(&src, &t) != 0) continue;
             int fl = build_udp_tunnel_frame(&t, dg, (int)n, raw, sizeof(raw));
             if (fl < 0) continue;
             if (tunnel_send(c, config, 0, raw, fl) < 0) return -1;
@@ -987,7 +1057,7 @@ static int udp_control_event(struct socks5_worker *w, struct socks5_conn *c, con
 static void accept_new(socks5_worker_t *w, socks5_listen_t *route) {
     socks5_context_t *ctx = w->ctx;
     for (;;) {
-        struct sockaddr_in peer;
+        struct sockaddr_storage peer;
         socklen_t plen = sizeof(peer);
         int down_fd = accept4(route->fd, (struct sockaddr *)&peer, &plen, SOCK_NONBLOCK);
         if (down_fd < 0) {
@@ -1025,7 +1095,7 @@ static void accept_new(socks5_worker_t *w, socks5_listen_t *route) {
         tune_socket(down_fd, ctx->config);
 
         if (c->role == S5_ROLE_RELAY) {
-            int up_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+            int up_fd = socket(route->fwd.ss_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
             if (up_fd < 0) {
                 serror("Failed to create upstream socket");
                 close(down_fd);
@@ -1036,7 +1106,7 @@ static void accept_new(socks5_worker_t *w, socks5_listen_t *route) {
             c->up_fd = up_fd;
             c->up_connecting = 1;
             tune_socket(up_fd, ctx->config);
-            int cr = connect(up_fd, (struct sockaddr *)&route->fwd, sizeof(route->fwd));
+            int cr = connect(up_fd, (struct sockaddr *)&route->fwd, sockaddr_size(&route->fwd));
             if (cr < 0 && errno != EINPROGRESS) {
                 serror("Failed to connect upstream");
                 close(down_fd);
@@ -1067,7 +1137,10 @@ static void accept_new(socks5_worker_t *w, socks5_listen_t *route) {
         if (w->conns) w->conns->prev = c;
         w->conns = c;
         __atomic_fetch_add(&socks5_client_count, 1, __ATOMIC_RELAXED);
-        log(LL_DEBUG, "New connection from %s:%d", inet_ntoa(peer.sin_addr), ntohs(peer.sin_port));
+        if (verbose >= LL_DEBUG) {
+            char text[INET6_ADDRSTRLEN + 8];
+            log(LL_DEBUG, "New connection from %s", sockaddr_text(&peer, text, sizeof(text)));
+        }
     }
 }
 
@@ -1079,9 +1152,17 @@ static void handle_event(socks5_worker_t *w, sock_tag_t *tag, uint32_t events, l
     if (tag->kind == TAG_UDP) {
         rc = udp_relay_event(w, c, cfg);
     } else if (tag->kind == TAG_UP) {
-        if ((events & (EPOLLERR | EPOLLHUP)) && c->up_connecting) { conn_close(w, c); return; }
+        if ((events & (EPOLLERR | EPOLLHUP)) && c->up_connecting) {
+            if (dial_alt(w, c) < 0) { conn_close(w, c); return; }
+            c->last_activity = now;
+            return;
+        }
         if (c->up_connecting && (events & EPOLLOUT)) {
-            if (finish_connect(c, cfg) < 0) { conn_close(w, c); return; }
+            if (finish_connect(c, cfg) < 0) {
+                if (dial_alt(w, c) < 0) { conn_close(w, c); return; }
+                c->last_activity = now;
+                return;
+            }
         } else if (c->phase == S5_PHASE_UDP) {
             if (events & EPOLLOUT) rc |= flush_to_up(c);
             if ((events & EPOLLIN) && rc == 0) rc |= udp_tunnel_recv(c, cfg, c->up_fd, &c->s2c, 1);
@@ -1195,24 +1276,56 @@ static void *socks5_worker_main(void *arg) {
     return NULL;
 }
 
+static int listen_wildcard_v6(const struct sockaddr_storage *addr) {
+    if (addr->ss_family != AF_INET6) return 0;
+    const struct sockaddr_in6 *a = (const struct sockaddr_in6 *)addr;
+    return IN6_IS_ADDR_UNSPECIFIED(&a->sin6_addr);
+}
+
 static int open_listen_socket(socks5_context_t *ctx, uint16_t port) {
-    int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    struct sockaddr_storage addr = ctx->listen_addr;
+    sockaddr_set_port(&addr, port);
+
+    int sock = socket(addr.ss_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (sock < 0 && listen_wildcard_v6(&addr)) {
+        sockaddr_any(&addr, AF_INET, port);
+        ctx->listen_addr = addr;
+        sock = socket(addr.ss_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    }
     if (sock < 0) {
         serror("Can't create listen socket");
         return -1;
     }
     int one = 1;
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    if (addr.ss_family == AF_INET6) {
+        int off = 0;
+        setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof(off));
+    }
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = ctx->listen_addr;
-    addr.sin_port = htons(port);
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        serror("Failed to bind listen socket to %s:%d", inet_ntoa(addr.sin_addr), port);
+    if (bind(sock, (struct sockaddr *)&addr, sockaddr_size(&addr)) < 0) {
+        if (!listen_wildcard_v6(&addr)) {
+            char text[INET6_ADDRSTRLEN + 8];
+            serror("Failed to bind listen socket to %s", sockaddr_text(&addr, text, sizeof(text)));
+            close(sock);
+            return -1;
+        }
         close(sock);
-        return -1;
+        sockaddr_any(&addr, AF_INET, port);
+        ctx->listen_addr = addr;
+        sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        if (sock < 0) {
+            serror("Can't create listen socket");
+            return -1;
+        }
+        int one = 1;
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        if (bind(sock, (struct sockaddr *)&addr, sockaddr_size(&addr)) < 0) {
+            char text[INET6_ADDRSTRLEN + 8];
+            serror("Failed to bind listen socket to %s", sockaddr_text(&addr, text, sizeof(text)));
+            close(sock);
+            return -1;
+        }
     }
     if (listen(sock, SOCKS5_BACKLOG) < 0) {
         serror("Failed to listen");
@@ -1222,7 +1335,7 @@ static int open_listen_socket(socks5_context_t *ctx, uint16_t port) {
     return sock;
 }
 
-static int add_route(socks5_context_t *ctx, uint16_t port, const struct sockaddr_in *fwd, int has_fwd) {
+static int add_route(socks5_context_t *ctx, uint16_t port, const struct sockaddr_storage *fwd, int has_fwd) {
     if (ctx->route_count >= SOCKS5_MAX_ROUTES) {
         log(LL_ERROR, "Too many TCP bindings (max %d)", SOCKS5_MAX_ROUTES);
         return -1;
@@ -1242,28 +1355,25 @@ static int parse_tcp_bindings(socks5_context_t *ctx, obfuscator_config_t *config
     while (binding) {
         binding = trim(binding);
         char *colon1 = strchr(binding, ':');
-        char *colon2 = colon1 ? strrchr(binding, ':') : NULL;
-        if (!colon1 || colon2 == colon1) {
+        if (!colon1) {
             log(LL_ERROR, "Invalid TCP binding format: %s (expected lport:host:rport)", binding);
             return -1;
         }
         *colon1 = 0;
-        *colon2 = 0;
         int lport = atoi(binding);
-        char *host = colon1 + 1;
-        int rport = atoi(colon2 + 1);
-        if (lport <= 0 || lport > 65535 || rport <= 0 || rport > 65535) {
-            log(LL_ERROR, "Invalid port in TCP binding");
+        char *host;
+        int rport;
+        if (lport <= 0 || lport > 65535 || split_host_port(colon1 + 1, &host, &rport) != 0) {
+            log(LL_ERROR, "Invalid TCP binding: %s (expected lport:host:rport, IPv6 as lport:[addr]:rport)", binding);
             return -1;
         }
-        struct sockaddr_in fwd;
-        memset(&fwd, 0, sizeof(fwd));
-        fwd.sin_family = AF_INET;
-        if (resolve_ipv4_wait(host, &fwd.sin_addr, config->stop) != 0) {
+        resolved_host_t resolved;
+        if (resolve_host_wait(host, AF_UNSPEC, &resolved, config->stop) != 0) {
             log(LL_ERROR, "Can't resolve host '%s' for TCP binding", host);
             return -1;
         }
-        fwd.sin_port = htons(rport);
+        struct sockaddr_storage fwd = resolved.addr[0];
+        sockaddr_set_port(&fwd, (uint16_t)rport);
         if (add_route(ctx, (uint16_t)lport, &fwd, 1) < 0) return -1;
         log(LL_INFO, "TCP binding: listen %d -> %s:%d", lport, host, rport);
         binding = strtok(NULL, ",");
@@ -1277,13 +1387,30 @@ int socks5_start(socks5_context_t *ctx, obfuscator_config_t *config,
     ctx->config = config;
     ctx->xor_key = xor_key;
     ctx->key_length = key_length;
-    ctx->forward_addr = *forward_addr;
-    ctx->listen_addr = listen_addr;
     ctx->listen_port = listen_port;
     ctx->route_count = 0;
     ctx->running = 1;
+    ctx->forward_alt_set = 0;
 
-    if (add_route(ctx, listen_port, forward_addr, config->forward_host_port_set) < 0) return -1;
+    if (config->resolved_forward_set && config->resolved_forward.count > 0) {
+        ctx->forward_addr = config->resolved_forward.addr[0];
+        sockaddr_set_port(&ctx->forward_addr, ntohs(forward_addr->sin_port));
+        if (config->resolved_forward.count > 1) {
+            ctx->forward_alt = config->resolved_forward.addr[1];
+            sockaddr_set_port(&ctx->forward_alt, ntohs(forward_addr->sin_port));
+            ctx->forward_alt_set = 1;
+        }
+    } else {
+        sockaddr_from_ipv4(&ctx->forward_addr, forward_addr->sin_addr.s_addr, ntohs(forward_addr->sin_port));
+    }
+
+    if (config->resolved_listen_set) {
+        ctx->listen_addr = config->resolved_listen;
+    } else {
+        sockaddr_from_ipv4(&ctx->listen_addr, listen_addr, listen_port);
+    }
+
+    if (add_route(ctx, listen_port, &ctx->forward_addr, config->forward_host_port_set) < 0) return -1;
     if (config->socks5_role == S5_ROLE_RELAY && config->static_bindings_set) {
         if (parse_tcp_bindings(ctx, config) < 0) return -1;
     }

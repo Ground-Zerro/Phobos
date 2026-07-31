@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
+ */
+
+package l18n
+
+import (
+	"sync"
+
+	"golang.org/x/text/message"
+)
+
+var (
+	printer     *message.Printer
+	printerLock sync.Mutex
+)
+
+// prn returns the printer for user preferred UI language.
+func prn() *message.Printer {
+	if printer != nil {
+		return printer
+	}
+	printerLock.Lock()
+	if printer != nil {
+		printerLock.Unlock()
+		return printer
+	}
+	printer = message.NewPrinter(lang())
+	printerLock.Unlock()
+	return printer
+}
+
+// Sprintf is like fmt.Sprintf, but using language-specific formatting.
+func Sprintf(key message.Reference, a ...any) string {
+	return prn().Sprintf(key, a...)
+}
+
+// EnumerationSeparator returns enumeration separator. For English and western languages,
+// enumeration separator is a comma followed by a space (i.e. ", "). For Chinese, it returns
+// "\u3001".
+func EnumerationSeparator() string {
+	// BUG: We could just use `Sprintf(", " /* ...translator instructions... */)` and let the
+	// individual locale catalog handle its translation. Unfortunately, the gotext utility tries to
+	// be nice to translators and skips all strings without letters when updating catalogs.
+	sep := Sprintf("[EnumerationSeparator]" /* Text to insert between items when listing - most western languages will translate ‘[EnumerationSeparator]’ into ‘, ’ to produce lists like ‘apple, orange, strawberry’. Eastern languages might translate into ‘、’ to produce lists like ‘リンゴ、オレンジ、イチゴ’. */)
+	if sep == "[EnumerationSeparator]" {
+		return ", "
+	}
+	return sep
+}
+
+// UnitSeparator returns the separator to use when concatenating multiple units of the same metric
+// (e.g. "1 minute, 32 seconds", "6 feet, 1 inch"). For English and western languages, unit
+// separator is a comma followed by a space (i.e. ", "). For Slovenian and Japanese, it returns
+// just space.
+func UnitSeparator() string {
+	// BUG: We could just use `Sprintf(", " /* ...translator instructions... */)` and let the
+	// individual locale catalog handle its translation. Unfortunately, the gotext utility tries to
+	// be nice to translators and skips all strings without letters when updating catalogs.
+	sep := Sprintf("[UnitSeparator]" /* Text to insert when combining units of a measure - most languages will translate ‘[UnitSeparator]’ into ‘ ’ (space) to produce lists like ‘2 minuti 30 sekund’, or empty string ‘’ to produce ‘2分30秒’. */)
+	if sep == "[UnitSeparator]" {
+		return ", "
+	}
+	return sep
+}

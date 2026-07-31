@@ -277,7 +277,7 @@
       "targetDesc": "Where the server obfuscator forwards decapsulated traffic. Leave empty to use the local WireGuard endpoint (127.0.0.1:[wg-port]). Format: host:port.",
       "targetPlaceholder": "127.0.0.1:[wireguard port] (default)",
       "sourceIfLabel": "source-if",
-      "sourceIfDesc": "IP of the interface the server obfuscator binds to. Default 0.0.0.0 (all interfaces).",
+      "sourceIfDesc": "IP of the interface the server obfuscator binds to. Leave empty for AUTO: SOCKS5 presets listen on IPv4 and IPv6, WireGuard presets on 0.0.0.0.",
       "keyLabel": "Obfuscation key (key)",
       "keyDesc": "Shared obfuscation key, identical on both sides. Generated randomly (200-254 chars). 1-255 characters.",
       "maskingLabel": "Masking mode (masking)",

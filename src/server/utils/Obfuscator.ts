@@ -3,10 +3,14 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs/promises';
 import debug from 'debug';
 
+import { WARP_FWMARK } from './WarpInterface';
 import type { InterfaceType } from '#db/repositories/interface/types';
 import type { ObfuscatorPresetType } from '#db/repositories/obfuscatorPreset/types';
 import { WIREGUARD_PORT_MIN } from '#db/repositories/obfuscatorPreset/types';
-import { WARP_FWMARK } from './WarpInterface';
+import {
+  effectiveObfuscateBytes,
+  effectiveSourceIf,
+} from '#shared/utils/obfuscation';
 
 const OBFUSCATOR_DEBUG = debug('Obfuscator');
 
@@ -107,11 +111,11 @@ class ObfuscatorService {
     wgPort: number,
     socks5Users: string
   ): string[] {
+    const sourceIf = effectiveSourceIf(preset);
     if (preset.mode === 'SOCKS5') {
       const args = [
         '--mode=socks5',
         '--role=server',
-        `--source-if=${preset.sourceIf}`,
         `--source-lport=${preset.extPort}`,
         `--key=${preset.key}`,
         `--masking=${preset.masking}`,
@@ -119,6 +123,9 @@ class ObfuscatorService {
         `--fwmark=${WARP_FWMARK}`,
         `--socks5-stats=${this.#statsPath(preset.id)}`,
       ];
+      if (sourceIf) {
+        args.push(`--source-if=${sourceIf}`);
+      }
       if (preset.masking === 'MEDIA' && preset.mediaSsrc != null) {
         args.push(`--media-ssrc=${preset.mediaSsrc}`);
       }
@@ -128,12 +135,12 @@ class ObfuscatorService {
       return args;
     }
     return [
-      `--source-if=${preset.sourceIf}`,
+      `--source-if=${sourceIf}`,
       `--source-lport=${preset.extPort}`,
       `--target=${this.serverTarget(preset, wgPort)}`,
       `--key=${preset.key}`,
       `--masking=${preset.masking}`,
-      `--obfuscate-bytes=${preset.obfuscateBytes}`,
+      `--obfuscate-bytes=${effectiveObfuscateBytes(preset)}`,
       `--max-dummy=${preset.dummy}`,
       `--verbose=${preset.verbose}`,
     ];
@@ -147,7 +154,7 @@ class ObfuscatorService {
     if (preset.mode === 'SOCKS5') {
       return [
         'SOCKS5',
-        preset.sourceIf,
+        effectiveSourceIf(preset),
         preset.extPort,
         preset.key,
         preset.masking,
@@ -158,11 +165,11 @@ class ObfuscatorService {
     }
     return [
       preset.extPort,
-      preset.sourceIf,
+      effectiveSourceIf(preset),
       this.serverTarget(preset, wgPort),
       preset.key,
       preset.masking,
-      preset.obfuscateBytes,
+      effectiveObfuscateBytes(preset),
       preset.dummy,
       preset.verbose,
       wgPort,
@@ -371,7 +378,7 @@ class ObfuscatorService {
       `target = ${iface.serverPublicDomain || iface.serverPublicIpV4}:${preset.extPort}`,
       `key = ${preset.key}`,
       `masking = ${preset.masking}`,
-      `obfuscate-bytes = ${preset.obfuscateBytes}`,
+      `obfuscate-bytes = ${effectiveObfuscateBytes(preset)}`,
       `max-dummy = ${preset.dummy}`,
       `verbose = ${preset.verbose}`,
       '',
@@ -453,7 +460,7 @@ class ObfuscatorService {
 
     await Database.obfuscatorPresets.ensureDefault({
       extPort: WIREGUARD_PORT_MIN,
-      sourceIf: '0.0.0.0',
+      sourceIf: '',
       target: null,
       key: generateObfuscatorKey(),
       masking: 'MEDIA',

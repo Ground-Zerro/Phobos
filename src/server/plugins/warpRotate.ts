@@ -25,7 +25,9 @@ export default defineNitroPlugin((nitroApp) => {
       await WarpInterface.changeIp();
       console.log('[warpRotate] WARP IP rotated');
     } catch (e) {
-      console.warn(`[warpRotate] rotation check failed: ${(e as Error).message}`);
+      console.warn(
+        `[warpRotate] rotation check failed: ${(e as Error).message}`
+      );
     }
   }
 

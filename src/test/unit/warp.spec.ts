@@ -6,9 +6,9 @@ const { parseWarpError, parseRegistration } = warpClientTestExports;
 describe('warp', () => {
   describe('parseWarpError', () => {
     test('extracts message from error envelope', () => {
-      expect(
-        parseWarpError('{"errors":[{"message":"Invalid license"}]}')
-      ).toBe('Invalid license');
+      expect(parseWarpError('{"errors":[{"message":"Invalid license"}]}')).toBe(
+        'Invalid license'
+      );
     });
 
     test('returns empty string for non-envelope body', () => {

@@ -2,6 +2,7 @@
 #define _SOCKS5_PROTO_H_
 
 #include <stdint.h>
+#include "compat_net.h"
 
 #define S5_CMD_CONNECT     0x01
 #define S5_CMD_UDP         0x03
@@ -32,15 +33,20 @@ int socks5_build_method(uint8_t *out, uint8_t method);
 int socks5_parse_request(const uint8_t *buf, int len, socks5_target_t *t);
 int socks5_parse_reply(const uint8_t *buf, int len, uint8_t *rep, socks5_target_t *t);
 int socks5_build_reply(uint8_t *out, uint8_t rep);
+int socks5_build_reply_addr(uint8_t *out, int cap, uint8_t rep, const struct sockaddr_storage *ss);
 
 int socks5_parse_userpass(const uint8_t *buf, int len,
                           char *login, int *login_len,
                           char *password, int *password_len);
 int socks5_build_userpass_reply(uint8_t *out, uint8_t status);
 
-int socks5_target_host(const socks5_target_t *t, char *host, int host_cap);
+int socks5_target_to_sockaddr(const socks5_target_t *t, struct sockaddr_storage *out);
+int socks5_target_from_sockaddr(const struct sockaddr_storage *ss, socks5_target_t *t);
+
+int socks5_parse_target(const uint8_t *buf, int len, int off, socks5_target_t *t);
+int socks5_build_target(uint8_t *out, int cap, const socks5_target_t *t);
 
 int socks5_udp_parse(const uint8_t *buf, int len, socks5_target_t *t, int *data_off);
-int socks5_udp_build_header(uint8_t *out, const socks5_target_t *t);
+int socks5_udp_build_header(uint8_t *out, int cap, const socks5_target_t *t);
 
 #endif

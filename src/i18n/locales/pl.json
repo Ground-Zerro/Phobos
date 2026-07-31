@@ -8,7 +8,8 @@
       "config": "Konfiguracja",
       "interface": "Interfejs",
       "hooks": "Hooki",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Presety obfuskatora"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Utwórz konto",
     "successful": "Konfiguracja zakończona sukcesem",
     "hostDesc": "Publiczna nazwa hosta, z którą będą łączyć się klienci",
-    "portDesc": "Publiczny port UDP, na którym WireGuard będzie nasłuchiwać i z którym połączą się klienci"
+    "portDesc": "Publiczny port UDP, na którym WireGuard będzie nasłuchiwać i z którym połączą się klienci",
+    "tls": {
+      "title": "Certyfikat HTTPS / TLS",
+      "desc": "Skonfiguruj certyfikat TLS, aby włączyć bezpieczny dostęp przez HTTPS. Bez HTTPS logowanie jest domyślnie zablokowane.",
+      "selfSigned": "Certyfikat samopodpisany",
+      "selfSignedDesc": "Generowany natychmiast dla Twojego hosta. Przeglądarka wyświetli ostrzeżenie o zabezpieczeniach — kliknij Zaawansowane → Kontynuuj.",
+      "selfSignedHstsWarning": "Jeśli przeglądarka blokuje stronę błędem HSTS i nie oferuje opcji „Kontynuuj”, oznacza to, że zapisała w pamięci zasadę HSTS z wcześniejszego certyfikatu tej domeny. Otwórz adres w oknie prywatnym albo usuń wpis HSTS w chrome://net-internals/#hsts (Delete domain).",
+      "import": "Zaimportuj istniejący certyfikat",
+      "importDesc": "Wklej własny certyfikat PEM i klucz prywatny.",
+      "importPath": "Zaimportuj certyfikat ze ścieżek plików",
+      "importPathDesc": "Podaj bezwzględne ścieżki do istniejących na dysku plików certyfikatu i klucza (np. /etc/letsencrypt/live/example.com/*.pem). Pliki muszą być czytelne z wnętrza kontenera.",
+      "certPathLabel": "Ścieżka pliku certyfikatu (PEM fullchain)",
+      "keyPathLabel": "Ścieżka pliku klucza prywatnego (PEM)",
+      "importPathHint": "Pliki są dowiązywane symbolicznie, a nie kopiowane. Gdy pliki źródłowe zmienią się na dysku (np. po certbot renew), serwer wykryje to w ciągu ~30 s i uruchomi się ponownie, aby wczytać nowy certyfikat. Kontener ma dostęp tylko do odczytu do następujących katalogów hosta: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Pomiń (bez HTTPS)",
+      "skipDesc": "Pozostań przy HTTP.",
+      "certLabel": "Certyfikat (PEM fullchain)",
+      "keyLabel": "Klucz prywatny (PEM)",
+      "generate": "Wygeneruj certyfikat",
+      "apply": "Zastosuj",
+      "restarting": "Certyfikat zastosowany. Serwer uruchamia się ponownie z HTTPS...",
+      "redirectPrompt": "Otwórz wersję bezpieczną:",
+      "openLink": "Otwórz HTTPS",
+      "skipWarning": "Bez certyfikatu TLS interfejs webowy jest dostępny wyłącznie przez HTTP.",
+      "errorCert": "Weryfikacja certyfikatu nie powiodła się",
+      "errorKey": "Weryfikacja klucza prywatnego nie powiodła się"
+    }
   },
   "theme": {
     "dark": "Ciemny motyw",
@@ -121,12 +148,31 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "copyLink": "Kopiuj link phobos://",
+    "linkShort": "Link",
+    "linkCopied": "Link phobos:// skopiowany do schowka",
+    "linkFailed": "Nie udało się skopiować linku phobos://",
+    "preset": "Preset obfuskatora",
+    "protocol": "Protokół",
+    "presetDesc": "Wybierz preset obfuskatora, przez który przechodzi ten klient. Protokół presetu (WireGuard lub SOCKS5) decyduje, które pola poniżej mają zastosowanie — np. dane logowania SOCKS5 pojawiają się tylko dla presetu w trybie SOCKS5, ponieważ WireGuard ich nie używa. Pozostaw wartość domyślną, aby korzystać z domyślnego presetu serwera (WireGuard).",
+    "presetUseDefault": "Użyj domyślnego presetu",
+    "socks5Login": "Login SOCKS5",
+    "socks5Password": "Hasło SOCKS5",
+    "socks5CredentialsHint": "Wprowadź ten login i hasło w ustawieniach SOCKS5 samej aplikacji klienckiej (przeglądarka, curl itp.) — obfuskator jedynie szyfruje ruch, nie przechowuje ani nie weryfikuje tych danych.",
+    "socks5ConfigNote": "Ten klient korzysta z presetu w trybie SOCKS5, więc konfiguracja poniżej to blok klienta obfuskatora SOCKS5, a nie WireGuard. Login i hasło SOCKS5 pokazane na stronie tego klienta wpisz w swojej aplikacji SOCKS5.",
+    "nameHint": "Tylko litery łacińskie, cyfry, myślnik, kropka i {'@'}; maksymalnie 32 znaki; nazwa musi być unikalna.",
+    "nameError": {
+      "tooLong": "Nazwa nie może przekraczać {max} znaków.",
+      "invalidChars": "Dozwolone są wyłącznie litery łacińskie, cyfry, myślnik, kropka i {'@'} (bez spacji i innych znaków specjalnych).",
+      "duplicate": "Klient o tej nazwie już istnieje."
+    }
   },
   "dialog": {
     "change": "Zmień",
     "cancel": "Anuluj",
-    "create": "Utwórz"
+    "create": "Utwórz",
+    "delete": "Usuń"
   },
   "toast": {
     "success": "Sukces",
@@ -154,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Ścieżka dla metryk w formacie JSON",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Ścieżka dla metryk Prometheus"
+      "prometheusDesc": "Ścieżka dla metryk Prometheus",
+      "metricsPasswordSet": "Hasło jest ustawione — pozostaw puste, aby je zachować",
+      "metricsPasswordUnset": "Hasło nie jest ustawione"
     },
     "config": {
       "connection": "Połączenie",
@@ -181,7 +229,19 @@
       "firewallEnabledDesc": "Ogranicz ruch klienta do określonych docelowych adresów IP za pomocą iptables. Gdy włączone, każdy klient może mieć skonfigurowane dozwolone cele.",
       "egress": "Wyjście",
       "egressWarp": "Kieruj ruch klientów przez WARP",
-      "egressWarpDesc": "Po włączeniu klienci wychodzą przez Cloudflare WARP zamiast przez WAN serwera, ukrywając IP serwera. Wymaga zarejestrowanej konfiguracji WARP. Może być konieczne obniżenie MTU klientów."
+      "egressWarpDesc": "Po włączeniu klienci wychodzą przez Cloudflare WARP zamiast przez WAN serwera, ukrywając IP serwera. Wymaga zarejestrowanej konfiguracji WARP. Może być konieczne obniżenie MTU klientów.",
+      "subnet": "Podsieć WireGuard",
+      "ipv4Cidr": "Podsieć IPv4 WireGuard (CIDR)",
+      "ipv4CidrDesc": "Pula adresów dla klientów (np. 10.8.0.0/24). Poszerz maskę (np. /16), aby dopuścić więcej klientów lub inne zakresy. Zmiana powoduje ponowne przypisanie adresu IPv4 każdemu klientowi.",
+      "ipv6Cidr": "Podsieć IPv6 WireGuard (CIDR)",
+      "ipv6CidrDesc": "Pula adresów IPv6 dla klientów. Zmiana powoduje ponowne przypisanie adresu IPv6 każdemu klientowi.",
+      "publicAddress": "Adres publiczny",
+      "publicIpV4": "Publiczny adres IPv4 serwera",
+      "publicIpV4Desc": "Używany jako target w konfiguracji obfuskatora klienta.",
+      "publicIpV6": "Publiczny adres IPv6 serwera",
+      "publicIpV6Desc": "Opcjonalny target IPv6.",
+      "publicDomain": "Publiczna domena serwera",
+      "publicDomainDesc": "Jeśli ustawiona, używana w konfiguracji klienta jako target obfuskatora zamiast IPv4/IPv6."
     },
     "introText": "Witaj w panelu administratora.\n\nTutaj możesz zarządzać ustawieniami ogólnymi, konfiguracją, ustawieniami interfejsu i hookami.\n\nZacznij od wybrania jednej z sekcji na pasku bocznym.",
     "warp": {
@@ -222,6 +282,65 @@
       "checkOffline": "WARP jest offline",
       "notActiveEgress": "WARP nie jest aktywny jako wyjście",
       "notActiveEgressTip": "Włącz „Kieruj ruch klientów przez WARP\" w sekcji Interfejs sieciowy, aby używać i testować tunel WARP."
+    },
+    "tls": {
+      "title": "Certyfikat TLS",
+      "desc": "Zastąp aktywny certyfikat HTTPS albo przełącz się na zwykłe HTTP.",
+      "current": "Aktywny certyfikat",
+      "apply": "Zastosuj konfigurację TLS",
+      "applied": "Konfiguracja TLS zastosowana. Serwer uruchamia się ponownie.",
+      "appliedRestart": "Konfiguracja TLS zastosowana. Serwer uruchamia się ponownie; otwórz {url} ponownie za kilka sekund.",
+      "externalManaged": "TLS jest obsługiwany przez zewnętrzny reverse proxy (TLS_TERMINATION=external). Certyfikat musi być wystawiany i odnawiany poza PhobosWG.",
+      "origin": {
+        "self-signed": "Samopodpisany",
+        "imported": "Zaimportowany (wklejony PEM)",
+        "imported-path": "Zaimportowany ze ścieżki (dowiązanie, automatyczne przeładowanie)",
+        "none": "Brak (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Presety obfuskatora",
+      "desc": "Każdy preset uruchamia własny nasłuch wg-obfuscator z niezależnym portem, kluczem i maskowaniem. Preset domyślny obowiązuje każdego klienta bez jawnego przypisania. Presety WireGuard używają portów UDP 51822-51861, presety SOCKS5 portów TCP 51862-51891 — zakresów publikowanych przez docker-compose.",
+      "add": "Dodaj preset",
+      "addDesc": "Podaj wyłącznie nazwę. Port, klucz i pozostałe parametry otrzymają sensowne wartości domyślne, które można później edytować w presecie.",
+      "default": "domyślny",
+      "setAsDefault": "Ustaw jako domyślny",
+      "deleteConfirm": "Usunąć ten preset? Klienci, którzy z niego korzystają, przejdą na preset domyślny.",
+      "regenerateKey": "Wygeneruj klucz ponownie",
+      "regeneratePort": "Wybierz wolny port",
+      "nameLabel": "Nazwa",
+      "nameDesc": "Nazwa wyświetlana presetu. Używana tylko w panelu.",
+      "modeLabel": "Protokół (mode)",
+      "modeDesc": "WireGuard: obfuskuje handshake UDP WireGuard. SOCKS5: uruchamia prawdziwe proxy SOCKS5 (z opcjonalnym loginem i hasłem RFC1929 na klienta) tunelowane po obfuskowanym połączeniu TCP.",
+      "sourceLportLabel": "source-lport (zewnętrzny port UDP)",
+      "sourceLportLabelSocks5": "source-lport (zewnętrzny port TCP)",
+      "sourceLportDesc": "Publiczny port UDP, na którym nasłuchuje obfuskator serwera. Musi mieścić się w zakresie 51822-51861 — publikowanym przez docker-compose, w przeciwnym razie klienci go nie osiągną.",
+      "sourceLportDescSocks5": "Publiczny port TCP, na którym nasłuchuje serwer SOCKS5. Musi mieścić się w zakresie 51862-51891 — publikowanym przez docker-compose, w przeciwnym razie klienci go nie osiągną.",
+      "targetLabel": "target",
+      "targetDesc": "Dokąd obfuskator serwera przekazuje odkapsułkowany ruch. Pozostaw puste, aby użyć lokalnego punktu końcowego WireGuard (127.0.0.1:[port wg]). Format: host:port.",
+      "targetPlaceholder": "127.0.0.1:[port wireguard] (domyślnie)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP interfejsu, do którego przypina się obfuskator serwera. Pozostaw puste, aby uzyskać AUTO: presety SOCKS5 nasłuchują na IPv4 i IPv6, presety WireGuard na 0.0.0.0.",
+      "keyLabel": "Klucz obfuskacji (key)",
+      "keyDesc": "Wspólny klucz obfuskacji, identyczny po obu stronach. Generowany losowo (200-254 znaki). Od 1 do 255 znaków.",
+      "maskingLabel": "Tryb maskowania (masking)",
+      "maskingDesc": "Tryb omijania DPI. STUN: opakowuje ruch jako STUN. MEDIA: maskuje jako media RTP/H.264, ustaw jawnie po obu stronach. AUTO: serwer wykrywa automatycznie, klient używa STUN. NONE: maskowanie wyłączone (XOR pozostaje).",
+      "maskingDescSocks5": "Tryb omijania DPI. STUN: opakowuje ruch jako STUN. MEDIA: maskuje jako media RTP/H.264, ustaw jawnie po obu stronach. TLS: maskuje jako rekordy HTTPS. NONE: maskowanie wyłączone (XOR pozostaje). AUTO nie jest dostępne dla presetów SOCKS5.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Ile początkowych bajtów poddać operacji XOR. 0 = cały pakiet. Wartość >0 wyłącza wypełnienie dummy. Musi być zgodna po obu stronach. Dla MEDIA: 0 stosuje automatycznie 16, minimum to 4.",
+      "dummyLabel": "Maks. bajtów dummy (max-dummy)",
+      "dummyDesc": "Maksymalne losowe wypełnienie dodawane do pakietu (0-1024). Domyślnie 40.",
+      "dummyDisabledNote": "Nieużywane przy MEDIA ani gdy obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Dotyczy wyłącznie trybu maskowania MEDIA.",
+      "verboseLabel": "verbose (poziom logowania)",
+      "verboseDesc": "Szczegółowość logów. error/warn/info/debug/trace. W środowisku produkcyjnym zalecane jest error; debug/trace mocno obciążają procesor.",
+      "clientLocalPortLabel": "Lokalny port WireGuard po stronie klienta",
+      "clientLocalPortDesc": "Lokalny port UDP, na który wysyła WireGuard klienta (Endpoint 127.0.0.1:[port]) i jednocześnie source-lport obfuskatora klienta. Domyślnie 13255.",
+      "clientLocalPortSocks5Label": "Lokalny port SOCKS5 po stronie klienta",
+      "clientLocalPortSocks5Desc": "Lokalny port TCP, na którym nasłuchuje obfuskator SOCKS5 po stronie klienta. Ustaw proxy SOCKS5 w swojej aplikacji na 127.0.0.1:[port]. Domyślnie 1080.",
+      "mediaSsrcLabel": "SSRC RTP (media-ssrc)",
+      "mediaSsrcDesc": "Stała wartość SSRC pozwalająca niezawodnie rozpoznawać ramki maskowane jako MEDIA po obu stronach. Wypełniana automatycznie po wybraniu MEDIA; 0 = nieustawiona.",
+      "clientCount": "Klientów: {n}"
     }
   },
   "zod": {
@@ -243,7 +362,10 @@
       "address6": "Adres IPv6",
       "serverAllowedIps": "Dozwolone IP serwerowe",
       "firewallIps": "Dozwolone IP zapory",
-      "firewallIpsInvalid": "Nieprawidłowy wpis IP zapory. Zobacz dokumentację dla obsługiwanej składni."
+      "firewallIpsInvalid": "Nieprawidłowy wpis IP zapory. Zobacz dokumentację dla obsługiwanej składni.",
+      "presetId": "ID presetu obfuskatora",
+      "nameTooLong": "Nazwa klienta nie może przekraczać 32 znaków.",
+      "nameInvalidChars": "Nazwa klienta może zawierać wyłącznie litery łacińskie, cyfry, myślnik, kropkę i {'@'} (bez spacji i innych znaków specjalnych)."
     },
     "user": {
       "username": "Nazwa użytkownika",
@@ -303,6 +425,26 @@
       "interval": "Interwał aktualizacji (dni)",
       "key": "Klucz WireGuard",
       "license": "Klucz licencyjny WARP+ (min. 26 znaków)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID presetu obfuskatora",
+      "name": "Nazwa presetu",
+      "mode": "Protokół",
+      "extPort": "Port zewnętrzny (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Klucz obfuskatora",
+      "masking": "Tryb maskowania",
+      "maskingAutoSocks5": "Maskowanie AUTO nie jest dostępne dla presetów w trybie SOCKS5",
+      "maskingTlsWireguard": "Maskowanie TLS jest dostępne wyłącznie dla presetów w trybie SOCKS5",
+      "sourceIf": "Interfejs nasłuchu (IP)",
+      "target": "target musi mieć postać host:port",
+      "obfuscateBytes": "Obfuskowane bajty (0-1024)",
+      "obfuscateBytesMedia": "Dla MEDIA minimum to 4 (albo 0 dla wartości domyślnej 16)",
+      "verbose": "Poziom logowania",
+      "idle": "Limit bezczynności",
+      "dummy": "Maks. bajtów dummy",
+      "clientWgLocalPort": "Lokalny port WireGuard po stronie klienta",
+      "mediaSsrc": "SSRC RTP",
+      "clientLocalPort": "Lokalny port po stronie klienta (1-65535)"
     }
   },
   "hooks": {
@@ -315,6 +457,7 @@
     "notSupported": "Kopiowanie nie jest obsługiwane",
     "copied": "Skopiowano!",
     "failed": "Kopiowanie nieudane",
-    "copy": "Kopiuj"
+    "copy": "Kopiuj",
+    "copyConfig": "Kliknij, aby skopiować konfigurację do schowka"
   }
 }

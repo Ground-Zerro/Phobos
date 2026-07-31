@@ -8,7 +8,8 @@
       "config": "Yapılandırma",
       "interface": "Arayüz",
       "hooks": "Hooks",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Karıştırıcı ön ayarları"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Hesap Oluştur",
     "successful": "Kurulum Başarılı",
     "hostDesc": "İstemcilerin bağlanacağı public hostname/IP",
-    "portDesc": "WireGuard'ın dinleyeceği public UDP portu"
+    "portDesc": "WireGuard'ın dinleyeceği public UDP portu",
+    "tls": {
+      "title": "HTTPS / TLS sertifikası",
+      "desc": "Güvenli HTTPS erişimini etkinleştirmek için bir TLS sertifikası yapılandırın. HTTPS olmadan oturum açma varsayılan olarak engellenir.",
+      "selfSigned": "Kendinden imzalı sertifika",
+      "selfSignedDesc": "Sunucunuz için anında oluşturulur. Tarayıcı bir güvenlik uyarısı gösterecektir — Gelişmiş → Devam et yolunu izleyin.",
+      "selfSignedHstsWarning": "Tarayıcınız sayfayı bir HSTS hatasıyla ve «Devam et» seçeneği sunmadan engelliyorsa, bu alan adındaki önceki bir sertifikadan kalan HSTS ilkesini önbelleğe almış demektir. Adresi gizli pencerede açın veya chrome://net-internals/#hsts (Delete domain) üzerinden HSTS kaydını silin.",
+      "import": "Mevcut sertifikayı içe aktar",
+      "importDesc": "Kendi PEM sertifikanızı ve özel anahtarınızı yapıştırın.",
+      "importPath": "Sertifikayı dosya yollarından içe aktar",
+      "importPathDesc": "Diskteki mevcut sertifika ve anahtar dosyalarının mutlak yollarını girin (örn. /etc/letsencrypt/live/example.com/*.pem). Dosyalar kapsayıcının içinden okunabilir olmalıdır.",
+      "certPathLabel": "Sertifika dosyası yolu (PEM fullchain)",
+      "keyPathLabel": "Özel anahtar dosyası yolu (PEM)",
+      "importPathHint": "Dosyalar kopyalanmaz, sembolik bağlantıyla bağlanır. Kaynak dosyalar diskte değiştiğinde (örn. certbot renew sonrası) sunucu bunu ~30 sn içinde algılar ve yeni sertifikayı almak için otomatik olarak yeniden başlar. Kapsayıcı şu ana makine dizinlerine salt okunur erişime sahiptir: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Atla (HTTPS yok)",
+      "skipDesc": "HTTP ile devam et.",
+      "certLabel": "Sertifika (PEM fullchain)",
+      "keyLabel": "Özel anahtar (PEM)",
+      "generate": "Sertifika oluştur",
+      "apply": "Uygula",
+      "restarting": "Sertifika uygulandı. Sunucu HTTPS ile yeniden başlıyor...",
+      "redirectPrompt": "Güvenli sürümü açın:",
+      "openLink": "HTTPS'yi aç",
+      "skipWarning": "TLS sertifikası olmadan web arayüzüne yalnızca HTTP üzerinden erişilebilir.",
+      "errorCert": "Sertifika doğrulaması başarısız oldu",
+      "errorKey": "Özel anahtar doğrulaması başarısız oldu"
+    }
   },
   "theme": {
     "dark": "Koyu Tema",
@@ -121,12 +148,31 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "copyLink": "phobos:// bağlantısını kopyala",
+    "linkShort": "Bağlantı",
+    "linkCopied": "phobos:// bağlantısı panoya kopyalandı",
+    "linkFailed": "phobos:// bağlantısı kopyalanamadı",
+    "preset": "Karıştırıcı ön ayarı",
+    "protocol": "Protokol",
+    "presetDesc": "Bu istemcinin hangi karıştırıcı ön ayarı üzerinden yönlendirileceğini seçin. Ön ayarın protokolü (WireGuard veya SOCKS5) aşağıdaki hangi alanların geçerli olduğunu belirler — örneğin SOCKS5 kimlik bilgileri yalnızca SOCKS5 modundaki bir ön ayarda görünür, çünkü WireGuard bunları kullanmaz. Sunucunun varsayılan ön ayarını (WireGuard) izlemek için varsayılan değerde bırakın.",
+    "presetUseDefault": "Varsayılan ön ayarı kullan",
+    "socks5Login": "SOCKS5 kullanıcı adı",
+    "socks5Password": "SOCKS5 parolası",
+    "socks5CredentialsHint": "Bu kullanıcı adı ve parolayı istemci uygulamasının kendi SOCKS5 ayarlarına girin (tarayıcı, curl vb.) — karıştırıcı yalnızca trafiği şifreler, bu kimlik bilgilerini saklamaz ve denetlemez.",
+    "socks5ConfigNote": "Bu istemci SOCKS5 modunda bir ön ayar kullanıyor; dolayısıyla aşağıdaki yapılandırma WireGuard değil, bir SOCKS5 karıştırıcı istemci bloğudur. Bu istemcinin sayfasında görünen SOCKS5 kullanıcı adı ve parolasını kendi SOCKS5 uygulamanızda ayarlayın.",
+    "nameHint": "Yalnızca Latin harfleri, rakamlar, tire, nokta ve {'@'}; en çok 32 karakter; benzersiz olmalıdır.",
+    "nameError": {
+      "tooLong": "Ad {max} karakteri aşmamalıdır.",
+      "invalidChars": "Yalnızca Latin harfleri, rakamlar, tire, nokta ve {'@'} kullanılabilir (boşluk veya diğer özel karakterler olmaz).",
+      "duplicate": "Bu ada sahip bir istemci zaten var."
+    }
   },
   "dialog": {
     "change": "Değiştir",
     "cancel": "İptal",
-    "create": "Oluştur"
+    "create": "Oluştur",
+    "delete": "Sil"
   },
   "toast": {
     "success": "Başarılı",
@@ -154,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "JSON metrik rotası",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Prometheus metrik rotası"
+      "prometheusDesc": "Prometheus metrik rotası",
+      "metricsPasswordSet": "Parola ayarlanmış — korumak için boş bırakın",
+      "metricsPasswordUnset": "Parola ayarlanmamış"
     },
     "config": {
       "connection": "Bağlantı",
@@ -181,7 +229,19 @@
       "firewallEnabledDesc": "iptables kullanarak istemci trafiğini kısıtlayın.",
       "egress": "Çıkış",
       "egressWarp": "İstemci trafiğini WARP üzerinden yönlendir",
-      "egressWarpDesc": "Etkinleştirildiğinde, istemciler sunucu IP'sini gizleyerek sunucunun WAN'ı yerine Cloudflare WARP üzerinden çıkar. Kayıtlı bir WARP yapılandırması gerektirir. Daha düşük istemci MTU'su gerekebilir."
+      "egressWarpDesc": "Etkinleştirildiğinde, istemciler sunucu IP'sini gizleyerek sunucunun WAN'ı yerine Cloudflare WARP üzerinden çıkar. Kayıtlı bir WARP yapılandırması gerektirir. Daha düşük istemci MTU'su gerekebilir.",
+      "subnet": "WireGuard alt ağı",
+      "ipv4Cidr": "WireGuard IPv4 alt ağı (CIDR)",
+      "ipv4CidrDesc": "İstemciler için adres havuzu (örn. 10.8.0.0/24). Daha çok istemciye veya farklı aralıklara izin vermek için maskeyi genişletin (örn. /16). Değiştirmek her istemcinin IPv4 adresini yeniden atar.",
+      "ipv6Cidr": "WireGuard IPv6 alt ağı (CIDR)",
+      "ipv6CidrDesc": "İstemciler için IPv6 adres havuzu. Değiştirmek her istemcinin IPv6 adresini yeniden atar.",
+      "publicAddress": "Genel adres",
+      "publicIpV4": "Sunucunun genel IPv4 adresi",
+      "publicIpV4Desc": "İstemci karıştırıcı yapılandırmasında target olarak kullanılır.",
+      "publicIpV6": "Sunucunun genel IPv6 adresi",
+      "publicIpV6Desc": "İsteğe bağlı IPv6 target.",
+      "publicDomain": "Sunucunun genel alan adı",
+      "publicDomainDesc": "Ayarlandığında istemci yapılandırmasında IPv4/IPv6 yerine karıştırıcı target değeri olarak kullanılır."
     },
     "introText": "Yönetici paneline hoş geldiniz.\n\nBuradan sistem ayarlarını, WireGuard yapılandırmasını ve Hooks ayarlarını yönetebilirsiniz.",
     "warp": {
@@ -222,6 +282,65 @@
       "checkOffline": "WARP çevrimdışı",
       "notActiveEgress": "WARP çıkış olarak etkin değil",
       "notActiveEgressTip": "WARP tünelini kullanmak ve test etmek için Ağ arayüzü bölümünde \"İstemci trafiğini WARP üzerinden yönlendir\" seçeneğini etkinleştirin."
+    },
+    "tls": {
+      "title": "TLS sertifikası",
+      "desc": "Etkin HTTPS sertifikasını değiştirin veya düz HTTP'ye geçin.",
+      "current": "Etkin sertifika",
+      "apply": "TLS yapılandırmasını uygula",
+      "applied": "TLS yapılandırması uygulandı. Sunucu yeniden başlıyor.",
+      "appliedRestart": "TLS yapılandırması uygulandı. Sunucu yeniden başlıyor; birkaç saniye içinde {url} adresini yeniden açın.",
+      "externalManaged": "TLS, harici bir ters vekil sunucu tarafından yönetiliyor (TLS_TERMINATION=external). Sertifikanın PhobosWG dışında verilmesi ve yenilenmesi gerekir.",
+      "origin": {
+        "self-signed": "Kendinden imzalı",
+        "imported": "İçe aktarıldı (yapıştırılan PEM)",
+        "imported-path": "Yoldan içe aktarıldı (sembolik bağlantı, otomatik yeniden yükleme)",
+        "none": "Yok (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Karıştırıcı ön ayarları",
+      "desc": "Her ön ayar, bağımsız bağlantı noktası, anahtar ve maskeleme ile kendi wg-obfuscator dinleyicisini çalıştırır. Varsayılan ön ayar, açık atama yapılmamış tüm istemciler için kullanılır. WireGuard ön ayarları UDP 51822-51861, SOCKS5 ön ayarları TCP 51862-51891 bağlantı noktalarını kullanır — bunlar docker-compose tarafından yayımlanan aralıklardır.",
+      "add": "Ön ayar ekle",
+      "addDesc": "Yalnızca bir ad girin. Bağlantı noktası, anahtar ve diğer parametreler makul varsayılan değerler alır ve sonrasında ön ayarda düzenlenebilir.",
+      "default": "varsayılan",
+      "setAsDefault": "Varsayılan yap",
+      "deleteConfirm": "Bu ön ayar silinsin mi? Onu kullanan istemciler varsayılan ön ayara döner.",
+      "regenerateKey": "Anahtarı yeniden oluştur",
+      "regeneratePort": "Boş bağlantı noktası seç",
+      "nameLabel": "Ad",
+      "nameDesc": "Ön ayarın görünen adı. Yalnızca panelde kullanılır.",
+      "modeLabel": "Protokol (mode)",
+      "modeDesc": "WireGuard: WireGuard UDP el sıkışmasını karıştırır. SOCKS5: karıştırılmış bir TCP bağlantısı üzerinden tünellenen gerçek bir SOCKS5 vekil sunucusu çalıştırır (istemci başına isteğe bağlı RFC1929 kimlik bilgileriyle).",
+      "sourceLportLabel": "source-lport (harici UDP bağlantı noktası)",
+      "sourceLportLabelSocks5": "source-lport (harici TCP bağlantı noktası)",
+      "sourceLportDesc": "Sunucu karıştırıcısının dinlediği genel UDP bağlantı noktası. 51822-51861 aralığında olmalıdır — docker-compose tarafından yayımlanan aralık; aksi hâlde istemciler erişemez.",
+      "sourceLportDescSocks5": "SOCKS5 sunucusunun dinlediği genel TCP bağlantı noktası. 51862-51891 aralığında olmalıdır — docker-compose tarafından yayımlanan aralık; aksi hâlde istemciler erişemez.",
+      "targetLabel": "target",
+      "targetDesc": "Sunucu karıştırıcısının çözülmüş trafiği ilettiği yer. Yerel WireGuard uç noktasını kullanmak için boş bırakın (127.0.0.1:[wg bağlantı noktası]). Biçim: host:port.",
+      "targetPlaceholder": "127.0.0.1:[wireguard bağlantı noktası] (varsayılan)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "Sunucu karıştırıcısının bağlandığı arabirimin IP adresi. AUTO için boş bırakın: SOCKS5 ön ayarları IPv4 ve IPv6 üzerinde, WireGuard ön ayarları 0.0.0.0 üzerinde dinler.",
+      "keyLabel": "Karıştırma anahtarı (key)",
+      "keyDesc": "Her iki tarafta aynı olan ortak karıştırma anahtarı. Rastgele oluşturulur (200-254 karakter). 1-255 karakter.",
+      "maskingLabel": "Maskeleme modu (masking)",
+      "maskingDesc": "DPI atlatma modu. STUN: trafiği STUN olarak sarar. MEDIA: RTP/H.264 medyası gibi maskeler, her iki tarafta açıkça ayarlanmalıdır. AUTO: sunucu otomatik algılar, istemci STUN kullanır. NONE: maskeleme kapalı (XOR kalır).",
+      "maskingDescSocks5": "DPI atlatma modu. STUN: trafiği STUN olarak sarar. MEDIA: RTP/H.264 medyası gibi maskeler, her iki tarafta açıkça ayarlanmalıdır. TLS: HTTPS kayıtları gibi maskeler. NONE: maskeleme kapalı (XOR kalır). AUTO, SOCKS5 ön ayarları için kullanılamaz.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Baştan kaç baytın XOR'lanacağı. 0 = tüm paket. >0 sahte dolgu eklemeyi kapatır. Her iki tarafta aynı olmalıdır. MEDIA için: 0 otomatik olarak 16 uygular, en az 4.",
+      "dummyLabel": "En fazla sahte bayt (max-dummy)",
+      "dummyDesc": "Paket başına eklenen en fazla rastgele dolgu (0-1024). Varsayılan 40.",
+      "dummyDisabledNote": "MEDIA ile veya obfuscate-bytes > 0 olduğunda kullanılmaz.",
+      "mediaSsrcDisabledNote": "Yalnızca MEDIA maskeleme modunda geçerlidir.",
+      "verboseLabel": "verbose (günlük düzeyi)",
+      "verboseDesc": "Günlük ayrıntı düzeyi. error/warn/info/debug/trace. Üretimde error önerilir; debug/trace işlemciyi ciddi biçimde yükler.",
+      "clientLocalPortLabel": "İstemci tarafı yerel WireGuard bağlantı noktası",
+      "clientLocalPortDesc": "İstemci WireGuard'ının gönderdiği yerel UDP bağlantı noktası (Endpoint 127.0.0.1:[bağlantı noktası]) ve istemci karıştırıcısının source-lport değeri. Varsayılan 13255.",
+      "clientLocalPortSocks5Label": "İstemci tarafı yerel SOCKS5 bağlantı noktası",
+      "clientLocalPortSocks5Desc": "İstemci tarafındaki SOCKS5 karıştırıcısının dinlediği yerel TCP bağlantı noktası. Uygulamanızın SOCKS5 vekil ayarını 127.0.0.1:[bağlantı noktası] olarak verin. Varsayılan 1080.",
+      "mediaSsrcLabel": "RTP SSRC (media-ssrc)",
+      "mediaSsrcDesc": "MEDIA ile maskelenmiş çerçevelerin her iki tarafta güvenilir biçimde tanınmasını sağlayan sabit SSRC değeri. MEDIA seçildiğinde otomatik doldurulur; 0 = ayarlanmamış.",
+      "clientCount": "{n} istemci"
     }
   },
   "zod": {
@@ -243,7 +362,10 @@
       "address6": "IPv6 Adresi",
       "serverAllowedIps": "Server Allowed IPs",
       "firewallIps": "Firewall Allowed IPs",
-      "firewallIpsInvalid": "Geçersiz Firewall IP formatı. Desteklenen söz dizimi için dokümantasyona bakın. See docs for supported syntax."
+      "firewallIpsInvalid": "Geçersiz Firewall IP formatı. Desteklenen söz dizimi için dokümantasyona bakın. See docs for supported syntax.",
+      "presetId": "Karıştırıcı ön ayar kimliği",
+      "nameTooLong": "İstemci adı 32 karakteri aşmamalıdır.",
+      "nameInvalidChars": "İstemci adı yalnızca Latin harfleri, rakamlar, tire, nokta ve {'@'} içerebilir (boşluk veya diğer özel karakterler olmaz)."
     },
     "user": {
       "username": "Kullanıcı Adı",
@@ -303,6 +425,26 @@
       "interval": "Güncelleme aralığı (gün)",
       "key": "WireGuard anahtarı",
       "license": "WARP+ lisans anahtarı (en az 26 karakter)"
+    },
+    "obfuscatorPreset": {
+      "id": "Karıştırıcı ön ayar kimliği",
+      "name": "Ön ayar adı",
+      "mode": "Protokol",
+      "extPort": "Harici bağlantı noktası (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Karıştırıcı anahtarı",
+      "masking": "Maskeleme modu",
+      "maskingAutoSocks5": "AUTO maskeleme, SOCKS5 modundaki ön ayarlar için kullanılamaz",
+      "maskingTlsWireguard": "TLS maskeleme yalnızca SOCKS5 modundaki ön ayarlar için kullanılabilir",
+      "sourceIf": "Dinleme arabirimi (IP)",
+      "target": "target, host:port biçiminde olmalıdır",
+      "obfuscateBytes": "Karıştırılan bayt sayısı (0-1024)",
+      "obfuscateBytesMedia": "MEDIA için en az 4'tür (veya varsayılan 16 için 0)",
+      "verbose": "Günlük düzeyi",
+      "idle": "Boşta kalma zaman aşımı",
+      "dummy": "En fazla sahte bayt",
+      "clientWgLocalPort": "İstemci tarafı yerel WireGuard bağlantı noktası",
+      "mediaSsrc": "RTP SSRC",
+      "clientLocalPort": "İstemci tarafı yerel bağlantı noktası (1-65535)"
     }
   },
   "hooks": {
@@ -315,6 +457,7 @@
     "notSupported": "Kopyalama desteklenmiyor",
     "copied": "Kopyalandı!",
     "failed": "Kopyalama başarısız",
-    "copy": "Kopyala"
+    "copy": "Kopyala",
+    "copyConfig": "Yapılandırmayı panoya kopyalamak için tıklayın"
   }
 }

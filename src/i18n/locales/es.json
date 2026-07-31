@@ -8,7 +8,8 @@
       "config": "Configuración",
       "interface": "Interfaz",
       "hooks": "Hooks",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Perfiles del ofuscador"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Crear cuenta",
     "successful": "Configuración completada",
     "hostDesc": "Nombre de host público al que se conectarán los clientes",
-    "portDesc": "Puerto UDP público al que se conectarán los clientes y que escuchará WireGuard"
+    "portDesc": "Puerto UDP público al que se conectarán los clientes y que escuchará WireGuard",
+    "tls": {
+      "title": "Certificado HTTPS / TLS",
+      "desc": "Configure un certificado TLS para habilitar el acceso seguro por HTTPS. Sin HTTPS, el inicio de sesión está bloqueado de forma predeterminada.",
+      "selfSigned": "Certificado autofirmado",
+      "selfSignedDesc": "Se genera al instante para su host. El navegador mostrará una advertencia de seguridad: pulse Avanzado → Continuar.",
+      "selfSignedHstsWarning": "Si su navegador bloquea la página con un error HSTS y sin la opción «Continuar», es que ha almacenado en caché una política HSTS de un certificado anterior en este dominio. Abra la URL en una ventana privada o borre la entrada HSTS en chrome://net-internals/#hsts (Delete domain).",
+      "import": "Importar un certificado existente",
+      "importDesc": "Pegue su propio certificado PEM y la clave privada.",
+      "importPath": "Importar el certificado desde rutas de archivo",
+      "importPathDesc": "Indique rutas absolutas a los archivos de certificado y clave existentes en el disco (por ejemplo, /etc/letsencrypt/live/example.com/*.pem). Los archivos deben poder leerse desde dentro del contenedor.",
+      "certPathLabel": "Ruta del archivo de certificado (PEM fullchain)",
+      "keyPathLabel": "Ruta del archivo de clave privada (PEM)",
+      "importPathHint": "Los archivos se enlazan simbólicamente, no se copian. Cuando los archivos de origen cambian en el disco (por ejemplo, tras certbot renew), el servidor lo detecta en unos 30 s y se reinicia automáticamente para tomar el nuevo certificado. El contenedor tiene acceso de solo lectura a estos directorios del host: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Omitir (sin HTTPS)",
+      "skipDesc": "Continuar con HTTP.",
+      "certLabel": "Certificado (PEM fullchain)",
+      "keyLabel": "Clave privada (PEM)",
+      "generate": "Generar certificado",
+      "apply": "Aplicar",
+      "restarting": "Certificado aplicado. El servidor se está reiniciando con HTTPS...",
+      "redirectPrompt": "Abrir la versión segura:",
+      "openLink": "Abrir HTTPS",
+      "skipWarning": "Sin un certificado TLS, la interfaz web solo es accesible por HTTP.",
+      "errorCert": "Error al validar el certificado",
+      "errorKey": "Error al validar la clave privada"
+    }
   },
   "theme": {
     "dark": "Tema oscuro",
@@ -120,12 +147,32 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "delete": "Eliminar",
+    "copyLink": "Copiar enlace phobos://",
+    "linkShort": "Enlace",
+    "linkCopied": "Enlace phobos:// copiado al portapapeles",
+    "linkFailed": "No se pudo copiar el enlace phobos://",
+    "preset": "Perfil del ofuscador",
+    "protocol": "Protocolo",
+    "presetDesc": "Elija qué perfil del ofuscador encamina a este cliente. El protocolo del perfil (WireGuard o SOCKS5) determina qué campos de abajo se aplican: por ejemplo, las credenciales SOCKS5 solo aparecen con un perfil en modo SOCKS5, ya que WireGuard no las usa. Déjelo en el valor predeterminado para seguir el perfil predeterminado del servidor (WireGuard).",
+    "presetUseDefault": "Usar el perfil predeterminado",
+    "socks5Login": "Usuario SOCKS5",
+    "socks5Password": "Contraseña SOCKS5",
+    "socks5CredentialsHint": "Introduzca este usuario y contraseña en los ajustes SOCKS5 de la propia aplicación cliente (navegador, curl, etc.): el ofuscador solo cifra el tráfico, no almacena ni comprueba estas credenciales.",
+    "socks5ConfigNote": "Este cliente usa un perfil en modo SOCKS5, así que la configuración de abajo es un bloque de cliente del ofuscador SOCKS5, no WireGuard. Configure el usuario y la contraseña SOCKS5 que aparecen en la página de este cliente en su propia aplicación SOCKS5.",
+    "nameHint": "Solo letras latinas, dígitos, guion, punto y {'@'}; hasta 32 caracteres; debe ser único.",
+    "nameError": {
+      "tooLong": "El nombre no debe superar los {max} caracteres.",
+      "invalidChars": "Solo se permiten letras latinas, dígitos, guion, punto y {'@'} (sin espacios ni otros caracteres especiales).",
+      "duplicate": "Ya existe un cliente con ese nombre."
+    }
   },
   "dialog": {
     "change": "Cambiar",
     "cancel": "Cancelar",
-    "create": "Crear"
+    "create": "Crear",
+    "delete": "Eliminar"
   },
   "toast": {
     "success": "Éxito",
@@ -153,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Ruta para métricas en formato JSON",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Ruta para métricas de Prometheus"
+      "prometheusDesc": "Ruta para métricas de Prometheus",
+      "metricsPasswordSet": "Hay una contraseña establecida: déjelo en blanco para mantenerla",
+      "metricsPasswordUnset": "No hay contraseña establecida"
     },
     "config": {
       "connection": "Conexión",
@@ -180,7 +229,19 @@
       "firewallEnabledDesc": "Restringe el tráfico del cliente a IPs de destino específicas usando iptables. Cuando está activado, cada cliente puede configurarse con destinos permitidos.",
       "egress": "Salida",
       "egressWarp": "Enrutar tráfico de clientes a través de WARP",
-      "egressWarpDesc": "Cuando está activado, los clientes salen a través de Cloudflare WARP en lugar del WAN del servidor, ocultando la IP del servidor. Requiere una configuración WARP registrada. Es posible que se necesite un MTU de cliente más bajo."
+      "egressWarpDesc": "Cuando está activado, los clientes salen a través de Cloudflare WARP en lugar del WAN del servidor, ocultando la IP del servidor. Requiere una configuración WARP registrada. Es posible que se necesite un MTU de cliente más bajo.",
+      "subnet": "Subred de WireGuard",
+      "ipv4Cidr": "Subred IPv4 de WireGuard (CIDR)",
+      "ipv4CidrDesc": "Grupo de direcciones para los clientes (por ejemplo, 10.8.0.0/24). Amplíe la máscara (por ejemplo, /16) para admitir más clientes o rangos distintos. Cambiarla reasigna la dirección IPv4 de todos los clientes.",
+      "ipv6Cidr": "Subred IPv6 de WireGuard (CIDR)",
+      "ipv6CidrDesc": "Grupo de direcciones IPv6 para los clientes. Cambiarla reasigna la dirección IPv6 de todos los clientes.",
+      "publicAddress": "Dirección pública",
+      "publicIpV4": "IPv4 pública del servidor",
+      "publicIpV4Desc": "Se usa como target en la configuración del ofuscador cliente.",
+      "publicIpV6": "IPv6 pública del servidor",
+      "publicIpV6Desc": "Target IPv6 opcional.",
+      "publicDomain": "Dominio público del servidor",
+      "publicDomainDesc": "Si se indica, se usa como target del ofuscador en la configuración del cliente en lugar de IPv4/IPv6."
     },
     "introText": "Bienvenido al panel de administración.\n\nAquí puedes gestionar los ajustes generales, la configuración, la interfaz y los hooks.\n\nEmpieza eligiendo una de las secciones en la barra lateral.",
     "warp": {
@@ -221,6 +282,65 @@
       "checkOffline": "WARP está sin conexión",
       "notActiveEgress": "WARP no está activo como salida",
       "notActiveEgressTip": "Activa \"Enrutar el tráfico de clientes a través de WARP\" en la sección Interfaz de red para usar y probar el túnel WARP."
+    },
+    "tls": {
+      "title": "Certificado TLS",
+      "desc": "Sustituya el certificado HTTPS activo o vuelva a HTTP simple.",
+      "current": "Certificado activo",
+      "apply": "Aplicar configuración TLS",
+      "applied": "Configuración TLS aplicada. El servidor se está reiniciando.",
+      "appliedRestart": "Configuración TLS aplicada. El servidor se está reiniciando; vuelva a abrir {url} en unos segundos.",
+      "externalManaged": "TLS lo gestiona un proxy inverso externo (TLS_TERMINATION=external). El certificado debe emitirse y renovarse fuera de PhobosWG.",
+      "origin": {
+        "self-signed": "Autofirmado",
+        "imported": "Importado (PEM pegado)",
+        "imported-path": "Importado desde ruta (enlace simbólico, recarga automática)",
+        "none": "Ninguno (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Perfiles del ofuscador",
+      "desc": "Cada perfil ejecuta su propio listener de wg-obfuscator con puerto, clave y enmascaramiento independientes. El perfil predeterminado lo usan todos los clientes sin asignación explícita. Los perfiles WireGuard usan puertos UDP 51822-51861 y los perfiles SOCKS5 puertos TCP 51862-51891: los rangos publicados por docker-compose.",
+      "add": "Añadir perfil",
+      "addDesc": "Introduzca solo un nombre. El puerto, la clave y el resto de parámetros reciben valores predeterminados razonables y pueden editarse después en el perfil.",
+      "default": "predeterminado",
+      "setAsDefault": "Establecer como predeterminado",
+      "deleteConfirm": "¿Eliminar este perfil? Los clientes que lo usen pasarán al perfil predeterminado.",
+      "regenerateKey": "Regenerar clave",
+      "regeneratePort": "Elegir puerto libre",
+      "nameLabel": "Nombre",
+      "nameDesc": "Nombre visible del perfil. Se usa solo en el panel.",
+      "modeLabel": "Protocolo (mode)",
+      "modeDesc": "WireGuard: ofusca el handshake UDP de WireGuard. SOCKS5: ejecuta un proxy SOCKS5 real (con credenciales RFC1929 opcionales por cliente) tunelizado sobre un enlace TCP ofuscado.",
+      "sourceLportLabel": "source-lport (puerto UDP externo)",
+      "sourceLportLabelSocks5": "source-lport (puerto TCP externo)",
+      "sourceLportDesc": "Puerto UDP público en el que escucha el ofuscador del servidor. Debe estar entre 51822 y 51861, el rango publicado por docker-compose; de lo contrario los clientes no podrán alcanzarlo.",
+      "sourceLportDescSocks5": "Puerto TCP público en el que escucha el servidor SOCKS5. Debe estar entre 51862 y 51891, el rango publicado por docker-compose; de lo contrario los clientes no podrán alcanzarlo.",
+      "targetLabel": "target",
+      "targetDesc": "Adónde reenvía el ofuscador del servidor el tráfico desencapsulado. Déjelo vacío para usar el extremo WireGuard local (127.0.0.1:[puerto wg]). Formato: host:port.",
+      "targetPlaceholder": "127.0.0.1:[puerto wireguard] (predeterminado)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP de la interfaz a la que se vincula el ofuscador del servidor. Déjelo vacío para AUTO: los perfiles SOCKS5 escuchan en IPv4 e IPv6 y los perfiles WireGuard en 0.0.0.0.",
+      "keyLabel": "Clave de ofuscación (key)",
+      "keyDesc": "Clave de ofuscación compartida, idéntica en ambos lados. Se genera aleatoriamente (200-254 caracteres). De 1 a 255 caracteres.",
+      "maskingLabel": "Modo de enmascaramiento (masking)",
+      "maskingDesc": "Modo de evasión de DPI. STUN: envuelve el tráfico como STUN. MEDIA: lo enmascara como medios RTP/H.264; debe fijarse explícitamente en ambos lados. AUTO: el servidor detecta automáticamente y el cliente usa STUN. NONE: enmascaramiento desactivado (el XOR se mantiene).",
+      "maskingDescSocks5": "Modo de evasión de DPI. STUN: envuelve el tráfico como STUN. MEDIA: lo enmascara como medios RTP/H.264; debe fijarse explícitamente en ambos lados. TLS: lo enmascara como registros HTTPS. NONE: enmascaramiento desactivado (el XOR se mantiene). AUTO no está disponible para perfiles SOCKS5.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Cuántos bytes iniciales se pasan por XOR. 0 = todo el paquete. >0 desactiva el relleno ficticio. Debe coincidir en ambos lados. Para MEDIA: 0 aplica automáticamente 16, con un mínimo de 4.",
+      "dummyLabel": "Bytes ficticios máx. (max-dummy)",
+      "dummyDesc": "Relleno aleatorio máximo añadido por paquete (0-1024). Valor predeterminado: 40.",
+      "dummyDisabledNote": "No se usa con MEDIA ni cuando obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Solo se aplica con el modo de enmascaramiento MEDIA.",
+      "verboseLabel": "verbose (nivel de registro)",
+      "verboseDesc": "Detalle del registro. error/warn/info/debug/trace. En producción se recomienda error; debug/trace cargan mucho la CPU.",
+      "clientLocalPortLabel": "Puerto local de WireGuard en el cliente",
+      "clientLocalPortDesc": "Puerto UDP local al que envía el WireGuard del cliente (Endpoint 127.0.0.1:[puerto]) y source-lport del ofuscador cliente. Valor predeterminado: 13255.",
+      "clientLocalPortSocks5Label": "Puerto local SOCKS5 en el cliente",
+      "clientLocalPortSocks5Desc": "Puerto TCP local en el que escucha el ofuscador SOCKS5 del lado cliente. Apunte el ajuste de proxy SOCKS5 de su aplicación a 127.0.0.1:[puerto]. Valor predeterminado: 1080.",
+      "mediaSsrcLabel": "SSRC de RTP (media-ssrc)",
+      "mediaSsrcDesc": "Valor SSRC fijo que permite reconocer de forma fiable las tramas enmascaradas como MEDIA en ambos lados. Se rellena automáticamente al elegir MEDIA; 0 = sin definir.",
+      "clientCount": "{n} cliente(s)"
     }
   },
   "zod": {
@@ -242,7 +362,10 @@
       "address6": "Dirección IPv6",
       "serverAllowedIps": "IPs permitidas del servidor",
       "firewallIps": "IPs permitidas del cortafuegos",
-      "firewallIpsInvalid": "Entrada de IP de cortafuegos no válida. Consulta la documentación para la sintaxis compatible."
+      "firewallIpsInvalid": "Entrada de IP de cortafuegos no válida. Consulta la documentación para la sintaxis compatible.",
+      "presetId": "ID del perfil del ofuscador",
+      "nameTooLong": "El nombre del cliente no debe superar los 32 caracteres.",
+      "nameInvalidChars": "El nombre del cliente solo puede contener letras latinas, dígitos, guion, punto y {'@'} (sin espacios ni otros caracteres especiales)."
     },
     "user": {
       "username": "Usuario",
@@ -302,6 +425,26 @@
       "interval": "Intervalo de actualización (días)",
       "key": "Clave WireGuard",
       "license": "Clave de licencia WARP+ (mín. 26 caracteres)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID del perfil del ofuscador",
+      "name": "Nombre del perfil",
+      "mode": "Protocolo",
+      "extPort": "Puerto externo (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Clave del ofuscador",
+      "masking": "Modo de enmascaramiento",
+      "maskingAutoSocks5": "El enmascaramiento AUTO no está disponible para perfiles en modo SOCKS5",
+      "maskingTlsWireguard": "El enmascaramiento TLS solo está disponible para perfiles en modo SOCKS5",
+      "sourceIf": "Interfaz de escucha (IP)",
+      "target": "target debe tener el formato host:port",
+      "obfuscateBytes": "Bytes ofuscados (0-1024)",
+      "obfuscateBytesMedia": "Para MEDIA el mínimo es 4 (o 0 para el valor predeterminado 16)",
+      "verbose": "Nivel de registro",
+      "idle": "Tiempo de inactividad",
+      "dummy": "Bytes ficticios máx.",
+      "clientWgLocalPort": "Puerto local de WireGuard en el cliente",
+      "mediaSsrc": "SSRC de RTP",
+      "clientLocalPort": "Puerto local del cliente (1-65535)"
     }
   },
   "hooks": {
@@ -314,6 +457,7 @@
     "notSupported": "La copia no es compatible",
     "copied": "¡Copiado!",
     "failed": "Error al copiar",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "copyConfig": "Haga clic para copiar la configuración al portapapeles"
   }
 }

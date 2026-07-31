@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	SPDX-License-Identifier: GPL-2.0
+
+	Copyright (C) 2019-2026 Phobos LLC. All Rights Reserved.
+-->
+
+<?if $(var.PHOBOS_PLATFORM) = "amd64" Or $(var.PHOBOS_PLATFORM) = "arm64"?>
+	<?define PlatformProgramFilesFolder = "ProgramFiles64Folder"?>
+<?else?>
+	<?define PlatformProgramFilesFolder = "ProgramFilesFolder"?>
+<?endif?>
+<?if $(var.PHOBOS_PLATFORM) = "amd64"?>
+	<?define UpgradeCode = "1d7821fa-4e58-49dc-a47d-6b95fa869aa2"?>
+<?elseif $(var.PHOBOS_PLATFORM) = "x86"?>
+	<?define UpgradeCode = "c0e4ce67-15b6-410b-8c3b-201cc2c1c10f"?>
+<?elseif $(var.PHOBOS_PLATFORM) = "arm"?>
+	<?define UpgradeCode = "6f135ec1-1c00-4c0c-98fe-02264a8fd6fe"?>
+<?elseif $(var.PHOBOS_PLATFORM) = "arm64"?>
+	<?define UpgradeCode = "b6c2ab81-4ee2-45e8-876e-234ee2f287cd"?>
+<?else?>
+	<?error Unknown platform ?>
+<?endif?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product
+		Id="*"
+		Name="Phobos"
+		Language="1033"
+		Version="$(var.PHOBOS_VERSION)"
+		Manufacturer="Phobos"
+		UpgradeCode="$(var.UpgradeCode)">
+		<Package
+			InstallerVersion="500"
+			Compressed="yes"
+			InstallScope="perMachine"
+			Description="Phobos: Fast, Modern, Secure VPN Tunnel"
+			ReadOnly="yes" />
+
+		<MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+		<Icon Id="phobos.ico" SourceFile="..\ui\icon\phobos.ico" />
+		<Binary Id="customactions.dll" SourceFile="$(var.PHOBOS_PLATFORM)\customactions.dll" />
+
+		<Property Id="ARPPRODUCTICON" Value="phobos.ico" />
+		<Property Id="ARPNOMODIFY" Value="yes" />
+		<Property Id="DISABLEADVTSHORTCUTS" Value="yes" />
+		<Property Id="DISABLEROLLBACK" Value="yes" />
+		<Property Id="MSIDISABLERMRESTART" Value="1" />
+		<Property Id="MSIRMSHUTDOWN" Value="1" />
+
+		<!--
+			Upgrading
+		-->
+		<MajorUpgrade
+			AllowDowngrades="no"
+			AllowSameVersionUpgrades="yes"
+			DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+			Schedule="afterInstallExecute"
+			IgnoreRemoveFailure="yes" />
+
+		<!--
+			Folders
+		-->
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="$(var.PlatformProgramFilesFolder)">
+				<Directory Id="PhobosFolder" Name="Phobos" />
+			</Directory>
+			<Directory Id="ProgramMenuFolder" />
+		</Directory>
+
+		<!--
+			Components
+		-->
+		<ComponentGroup Id="PhobosComponents">
+			<Component Directory="PhobosFolder" Id="PhobosExecutable" Guid="c3508d23-3362-47ce-9220-321bdb1a1acc">
+				<File Id="phobos.exe" Source="..\$(var.PHOBOS_PLATFORM)\phobos.exe" KeyPath="yes">
+					<Shortcut Id="PhobosStartMenuShortcut" Directory="ProgramMenuFolder" Name="Phobos" Description="Phobos: Fast, Modern, Secure VPN Tunnel" WorkingDirectory="PhobosFolder" Advertise="yes" />
+				</File>
+				<ServiceControl Id="DummyService.3AA0C492_29F4_4342_B608_DB95B2DECB13" Name="DummyService.3AA0C492_29F4_4342_B608_DB95B2DECB13" /><!-- A dummy to make WiX create ServiceControl table for us. -->
+			</Component>
+			<Component Directory="PhobosFolder" Id="WgExecutable" Guid="540cf446-fcc3-4452-b9fb-eb4c02780251">
+				<File Source="..\$(var.PHOBOS_PLATFORM)\wg.exe" KeyPath="yes" />
+				<Environment Id="PATH" Name="PATH" System="yes" Action="set" Part="last" Permanent="no" Value="[PhobosFolder]" />
+			</Component>
+			<Component Directory="PhobosFolder" Id="LicenseFile" Guid="8e3c4a1d-5b27-4f0e-9a63-7c1d5e0f2b48">
+				<File Id="COPYING.txt" Name="COPYING.txt" Source="..\COPYING" KeyPath="yes" />
+			</Component>
+			<Component Directory="PhobosFolder" Id="PhobosUrlProtocol" Guid="4b1f9a02-6d3e-4c58-9b7a-8f2c1e6d0a94">
+				<RegistryKey Root="HKLM" Key="Software\Classes\phobos" ForceDeleteOnUninstall="yes">
+					<RegistryValue Type="string" Value="URL:Phobos Tunnel" KeyPath="yes" />
+					<RegistryValue Type="string" Name="URL Protocol" Value="" />
+					<RegistryKey Key="DefaultIcon">
+						<RegistryValue Type="string" Value="&quot;[#phobos.exe]&quot;,0" />
+					</RegistryKey>
+					<RegistryKey Key="shell\open\command">
+						<RegistryValue Type="string" Value="&quot;[#phobos.exe]&quot; /importlink &quot;%1&quot;" />
+					</RegistryKey>
+				</RegistryKey>
+			</Component>
+		</ComponentGroup>
+
+		<!--
+			Features
+		-->
+		<Feature Id="PhobosFeature" Title="Phobos" Level="1">
+			<ComponentGroupRef Id="PhobosComponents" />
+		</Feature>
+
+		<!--
+			Abort early if running under old Windows
+		-->
+		<CustomAction Id="CheckWinVer" BinaryKey="customactions.dll" DllEntry="CheckWinVer" />
+		<InstallExecuteSequence>
+			<Custom Action="CheckWinVer" After="FindRelatedProducts">NOT REMOVE</Custom>
+		</InstallExecuteSequence>
+
+		<!--
+			Abort early if running under Wow64
+		-->
+		<CustomAction Id="CheckWow64" BinaryKey="customactions.dll" DllEntry="CheckWow64" />
+		<InstallExecuteSequence>
+			<Custom Action="CheckWow64" After="FindRelatedProducts">NOT REMOVE</Custom>
+		</InstallExecuteSequence>
+
+		<!--
+			Evaluate Phobos services and populate ServiceControl table
+		-->
+		<CustomAction Id="EvaluatePhobosServices" BinaryKey="customactions.dll" DllEntry="EvaluatePhobosServices" />
+		<InstallExecuteSequence>
+			<Custom Action="EvaluatePhobosServices" After="FindRelatedProducts" />
+		</InstallExecuteSequence>
+
+		<!--
+			Launch phobos.exe on product reconfiguration (starting same MSI again)
+		-->
+		<CustomAction Id="LaunchApplicationAndAbort" BinaryKey="customactions.dll" DllEntry="LaunchApplicationAndAbort" />
+		<InstallExecuteSequence>
+			<Custom Action="LaunchApplicationAndAbort" After="CostFinalize">ProductState=5 AND NOT REMOVE AND NOT DO_NOT_LAUNCH</Custom>
+		</InstallExecuteSequence>
+
+		<!--
+			Evaluate Phobos components
+		-->
+		<CustomAction Id="EvaluatePhobosComponents" BinaryKey="customactions.dll" DllEntry="EvaluatePhobosComponents" />
+		<InstallExecuteSequence>
+			<Custom Action="EvaluatePhobosComponents" After="ProcessComponents" />
+		</InstallExecuteSequence>
+
+		<!--
+			Kill lingering processes
+		-->
+		<CustomAction Id="KillPhobosProcesses" BinaryKey="customactions.dll" DllEntry="KillPhobosProcesses" Execute="deferred" Impersonate="no" />
+		<InstallExecuteSequence>
+			<Custom Action="KillPhobosProcesses" After="StopServices" />
+		</InstallExecuteSequence>
+
+		<!--
+			Clear out our config folder on uninstall
+		-->
+		<CustomAction Id="RemoveConfigFolder" BinaryKey="customactions.dll" DllEntry="RemoveConfigFolder" Execute="deferred" Impersonate="no" />
+		<InstallExecuteSequence>
+			<Custom Action="RemoveConfigFolder" After="DeleteServices" />
+		</InstallExecuteSequence>
+
+		<!--
+			Clear out our adapters on uninstall
+		-->
+		<CustomAction Id="RemoveAdapters" BinaryKey="customactions.dll" DllEntry="RemoveAdapters" Execute="deferred" Impersonate="no" />
+		<InstallExecuteSequence>
+			<Custom Action="RemoveAdapters" Before="RemoveFiles" />
+		</InstallExecuteSequence>
+
+		<!--
+			Launch phobos.exe after setup complete
+		-->
+		<CustomAction Id="LaunchApplication" HideTarget="yes" Impersonate="no" Execute="deferred" FileKey="phobos.exe" ExeCommand="" Return="asyncNoWait" />
+		<InstallExecuteSequence>
+			<Custom Action="LaunchApplication" Before="InstallFinalize">(&amp;PhobosFeature = 3) AND NOT DO_NOT_LAUNCH</Custom>
+		</InstallExecuteSequence>
+	</Product>
+</Wix>

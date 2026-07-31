@@ -35,7 +35,10 @@ const countdown = computed(() => {
 
 const { pause, resume } = useIntervalFn(
   () => {
-    const remaining = Math.max(0, Math.floor((expiresAt.value - Date.now()) / 1000));
+    const remaining = Math.max(
+      0,
+      Math.floor((expiresAt.value - Date.now()) / 1000)
+    );
     secondsLeft.value = remaining;
     if (remaining === 0) pause();
   },
@@ -49,7 +52,9 @@ async function copyInstallLink() {
       const { token, expiresAt: expiresAtStr } = await $fetch<{
         token: string;
         expiresAt: string;
-      }>(`/api/client/${props.client.id}/generateInstallLink`, { method: 'post' });
+      }>(`/api/client/${props.client.id}/generateInstallLink`, {
+        method: 'post',
+      });
 
       expiresAt.value = new Date(expiresAtStr).getTime();
       secondsLeft.value = Math.max(

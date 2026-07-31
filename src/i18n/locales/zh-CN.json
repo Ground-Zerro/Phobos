@@ -8,7 +8,8 @@
       "config": "网络配置",
       "interface": "接口配置",
       "hooks": "钩子脚本",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "混淆器预设"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "创建账户",
     "successful": "安装配置成功",
     "hostDesc": "客户端将连接到的公共主机名或IP地址",
-    "portDesc": "客户端将连接到的公共UDP端口，也是WireGuard服务监听的端口"
+    "portDesc": "客户端将连接到的公共UDP端口，也是WireGuard服务监听的端口",
+    "tls": {
+      "title": "HTTPS / TLS 证书",
+      "desc": "配置 TLS 证书以启用安全的 HTTPS 访问。未启用 HTTPS 时，默认禁止登录。",
+      "selfSigned": "自签名证书",
+      "selfSignedDesc": "为你的主机即时生成。浏览器会显示安全警告——请点击「高级」→「继续访问」。",
+      "selfSignedHstsWarning": "如果浏览器以 HSTS 错误拦截页面且没有「继续访问」选项，说明它缓存了该域名上此前证书的 HSTS 策略。请在无痕窗口中打开该地址，或在 chrome://net-internals/#hsts 中删除该域名的 HSTS 记录（Delete domain）。",
+      "import": "导入现有证书",
+      "importDesc": "粘贴你自己的 PEM 证书和私钥。",
+      "importPath": "从文件路径导入证书",
+      "importPathDesc": "填写磁盘上已有证书与密钥文件的绝对路径（例如 /etc/letsencrypt/live/example.com/*.pem）。这些文件必须能从容器内部读取。",
+      "certPathLabel": "证书文件路径（PEM fullchain）",
+      "keyPathLabel": "私钥文件路径（PEM）",
+      "importPathHint": "文件采用符号链接而非复制。当源文件在磁盘上发生变化（例如执行 certbot renew 之后），服务器约 30 秒内即可察觉并自动重启以加载新证书。容器对以下宿主机目录具有只读访问权限：/etc/letsencrypt（certbot）、/root/cert（3x-ui）、/root/.acme.sh（acme.sh）。",
+      "skip": "跳过（不使用 HTTPS）",
+      "skipDesc": "继续使用 HTTP。",
+      "certLabel": "证书（PEM fullchain）",
+      "keyLabel": "私钥（PEM）",
+      "generate": "生成证书",
+      "apply": "应用",
+      "restarting": "证书已应用。服务器正在以 HTTPS 重启……",
+      "redirectPrompt": "打开安全版本：",
+      "openLink": "打开 HTTPS",
+      "skipWarning": "没有 TLS 证书时，Web 界面只能通过 HTTP 访问。",
+      "errorCert": "证书校验失败",
+      "errorKey": "私钥校验失败"
+    }
   },
   "theme": {
     "dark": "深色模式",
@@ -121,12 +148,31 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "copyLink": "复制 phobos:// 链接",
+    "linkShort": "链接",
+    "linkCopied": "phobos:// 链接已复制到剪贴板",
+    "linkFailed": "复制 phobos:// 链接失败",
+    "preset": "混淆器预设",
+    "protocol": "协议",
+    "presetDesc": "选择该客户端所走的混淆器预设。预设的协议（WireGuard 或 SOCKS5）决定下方哪些字段生效——例如 SOCKS5 用户名和密码仅在 SOCKS5 模式的预设中出现，因为 WireGuard 并不使用它们。保持默认即可沿用服务器的默认预设（WireGuard）。",
+    "presetUseDefault": "使用默认预设",
+    "socks5Login": "SOCKS5 用户名",
+    "socks5Password": "SOCKS5 密码",
+    "socks5CredentialsHint": "请在客户端应用自身的 SOCKS5 设置中填写该用户名和密码（浏览器、curl 等）——混淆器只负责加密流量，并不保存或校验这些凭据。",
+    "socks5ConfigNote": "该客户端使用 SOCKS5 模式的预设，因此下方配置是 SOCKS5 混淆器的客户端配置块，而非 WireGuard。请把此客户端页面上显示的 SOCKS5 用户名和密码填入你自己的 SOCKS5 应用中。",
+    "nameHint": "仅限拉丁字母、数字、连字符、点号和 {'@'}；最多 32 个字符；且必须唯一。",
+    "nameError": {
+      "tooLong": "名称不得超过 {max} 个字符。",
+      "invalidChars": "仅允许拉丁字母、数字、连字符、点号和 {'@'}（不能包含空格或其他特殊字符）。",
+      "duplicate": "同名客户端已存在。"
+    }
   },
   "dialog": {
     "change": "修改",
     "cancel": "取消",
-    "create": "创建"
+    "create": "创建",
+    "delete": "删除"
   },
   "toast": {
     "success": "操作成功",
@@ -154,7 +200,9 @@
       "json": "JSON格式",
       "jsonDesc": "获取JSON格式的监控数据路由",
       "prometheus": "Prometheus格式",
-      "prometheusDesc": "获取Prometheus格式监控数据的路由"
+      "prometheusDesc": "获取Prometheus格式监控数据的路由",
+      "metricsPasswordSet": "已设置密码——留空即保持不变",
+      "metricsPasswordUnset": "未设置密码"
     },
     "config": {
       "connection": "连接设置",
@@ -181,7 +229,19 @@
       "firewallEnabledDesc": "通过 iptables 限制客户端只能访问指定的目标 IP。启用后，可以为每个客户端单独配置允许访问的目标地址列表。",
       "egress": "出口",
       "egressWarp": "通过 WARP 路由客户端流量",
-      "egressWarpDesc": "启用后，客户端通过 Cloudflare WARP 而非服务器 WAN 访问互联网，隐藏服务器 IP。需要已注册的 WARP 配置。可能需要降低客户端 MTU。"
+      "egressWarpDesc": "启用后，客户端通过 Cloudflare WARP 而非服务器 WAN 访问互联网，隐藏服务器 IP。需要已注册的 WARP 配置。可能需要降低客户端 MTU。",
+      "subnet": "WireGuard 子网",
+      "ipv4Cidr": "WireGuard IPv4 子网（CIDR）",
+      "ipv4CidrDesc": "分配给客户端的地址池（例如 10.8.0.0/24）。放宽掩码（例如 /16）可容纳更多客户端或不同网段。修改后会为每个客户端重新分配 IPv4 地址。",
+      "ipv6Cidr": "WireGuard IPv6 子网（CIDR）",
+      "ipv6CidrDesc": "分配给客户端的 IPv6 地址池。修改后会为每个客户端重新分配 IPv6 地址。",
+      "publicAddress": "公网地址",
+      "publicIpV4": "服务器公网 IPv4",
+      "publicIpV4Desc": "在客户端混淆器配置中作为 target 使用。",
+      "publicIpV6": "服务器公网 IPv6",
+      "publicIpV6Desc": "可选的 IPv6 target。",
+      "publicDomain": "服务器公网域名",
+      "publicDomainDesc": "设置后，将在客户端配置中代替 IPv4/IPv6 作为混淆器的 target。"
     },
     "introText": "欢迎使用管理控制台。\n\n您可以在这里管理通用设置、网络配置、接口配置和钩子脚本。\n\n请从侧边栏选择一个功能模块开始。",
     "warp": {
@@ -222,6 +282,65 @@
       "checkOffline": "WARP 离线",
       "notActiveEgress": "WARP 未作为出口启用",
       "notActiveEgressTip": "在“网络接口”部分启用“通过 WARP 路由客户端流量”，即可使用并测试 WARP 隧道。"
+    },
+    "tls": {
+      "title": "TLS 证书",
+      "desc": "替换当前生效的 HTTPS 证书，或切换回纯 HTTP。",
+      "current": "当前证书",
+      "apply": "应用 TLS 配置",
+      "applied": "TLS 配置已应用。服务器正在重启。",
+      "appliedRestart": "TLS 配置已应用。服务器正在重启；请在几秒后重新打开 {url}。",
+      "externalManaged": "TLS 由外部反向代理管理（TLS_TERMINATION=external）。证书需要在 PhobosWG 之外签发和轮换。",
+      "origin": {
+        "self-signed": "自签名",
+        "imported": "已导入（粘贴的 PEM）",
+        "imported-path": "按路径导入（符号链接，自动重新加载）",
+        "none": "无（HTTP）"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "混淆器预设",
+      "desc": "每个预设都会运行独立的 wg-obfuscator 监听器，拥有各自的端口、密钥和伪装方式。未显式指定预设的客户端一律使用默认预设。WireGuard 预设使用 UDP 端口 51822-51861，SOCKS5 预设使用 TCP 端口 51862-51891——即 docker-compose 发布的端口范围。",
+      "add": "添加预设",
+      "addDesc": "只需填写名称。端口、密钥及其他参数会获得合理的默认值，之后可在预设中修改。",
+      "default": "默认",
+      "setAsDefault": "设为默认",
+      "deleteConfirm": "确定删除此预设吗？正在使用它的客户端将回退到默认预设。",
+      "regenerateKey": "重新生成密钥",
+      "regeneratePort": "选择空闲端口",
+      "nameLabel": "名称",
+      "nameDesc": "预设的显示名称，仅在面板中使用。",
+      "modeLabel": "协议（mode）",
+      "modeDesc": "WireGuard：混淆 WireGuard 的 UDP 握手。SOCKS5：运行真正的 SOCKS5 代理（可按客户端设置 RFC1929 用户名和密码），并通过混淆后的 TCP 链路进行隧道传输。",
+      "sourceLportLabel": "source-lport（外部 UDP 端口）",
+      "sourceLportLabelSocks5": "source-lport（外部 TCP 端口）",
+      "sourceLportDesc": "服务端混淆器监听的公网 UDP 端口。必须位于 51822-51861 范围内——即 docker-compose 发布的范围，否则客户端无法连接。",
+      "sourceLportDescSocks5": "SOCKS5 服务端监听的公网 TCP 端口。必须位于 51862-51891 范围内——即 docker-compose 发布的范围，否则客户端无法连接。",
+      "targetLabel": "target",
+      "targetDesc": "服务端混淆器把解封装后的流量转发到的位置。留空则使用本机 WireGuard 端点（127.0.0.1:[wg 端口]）。格式：host:port。",
+      "targetPlaceholder": "127.0.0.1:[wireguard 端口]（默认）",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "服务端混淆器绑定的接口 IP。留空表示 AUTO：SOCKS5 预设同时监听 IPv4 和 IPv6，WireGuard 预设监听 0.0.0.0。",
+      "keyLabel": "混淆密钥（key）",
+      "keyDesc": "两端共用且完全一致的混淆密钥。随机生成（200-254 个字符）。长度 1-255 个字符。",
+      "maskingLabel": "伪装模式（masking）",
+      "maskingDesc": "DPI 规避模式。STUN：将流量包装成 STUN。MEDIA：伪装成 RTP/H.264 媒体流，需在两端显式设置。AUTO：服务端自动识别，客户端使用 STUN。NONE：关闭伪装（XOR 仍然保留）。",
+      "maskingDescSocks5": "DPI 规避模式。STUN：将流量包装成 STUN。MEDIA：伪装成 RTP/H.264 媒体流，需在两端显式设置。TLS：伪装成 HTTPS 记录。NONE：关闭伪装（XOR 仍然保留）。SOCKS5 预设不支持 AUTO。",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "对开头多少字节做 XOR。0 = 整个数据包。大于 0 时会关闭填充字节。两端必须一致。对于 MEDIA：0 会自动按 16 处理，最小值为 4。",
+      "dummyLabel": "最大填充字节（max-dummy）",
+      "dummyDesc": "每个数据包最多添加的随机填充（0-1024）。默认 40。",
+      "dummyDisabledNote": "在 MEDIA 模式下或 obfuscate-bytes > 0 时不生效。",
+      "mediaSsrcDisabledNote": "仅在 MEDIA 伪装模式下生效。",
+      "verboseLabel": "verbose（日志级别）",
+      "verboseDesc": "日志详细程度。error/warn/info/debug/trace。生产环境建议使用 error；debug/trace 会显著增加 CPU 负载。",
+      "clientLocalPortLabel": "客户端本地 WireGuard 端口",
+      "clientLocalPortDesc": "客户端 WireGuard 发送数据的本地 UDP 端口（Endpoint 127.0.0.1:[端口]），同时也是客户端混淆器的 source-lport。默认 13255。",
+      "clientLocalPortSocks5Label": "客户端本地 SOCKS5 端口",
+      "clientLocalPortSocks5Desc": "客户端侧 SOCKS5 混淆器监听的本地 TCP 端口。请把应用的 SOCKS5 代理设置指向 127.0.0.1:[端口]。默认 1080。",
+      "mediaSsrcLabel": "RTP SSRC（media-ssrc）",
+      "mediaSsrcDesc": "固定的 SSRC 标识，用于两端可靠识别以 MEDIA 伪装的帧。选择 MEDIA 时自动填入；0 = 未设置。",
+      "clientCount": "{n} 个客户端"
     }
   },
   "zod": {
@@ -243,7 +362,10 @@
       "address6": "IPv6地址",
       "serverAllowedIps": "服务端允许的IP",
       "firewallIps": "防火墙允许的IP",
-      "firewallIpsInvalid": "IP格式错误。请查看相关文档获取支持的写法。"
+      "firewallIpsInvalid": "IP格式错误。请查看相关文档获取支持的写法。",
+      "presetId": "混淆器预设 ID",
+      "nameTooLong": "客户端名称不得超过 32 个字符。",
+      "nameInvalidChars": "客户端名称只能包含拉丁字母、数字、连字符、点号和 {'@'}（不能包含空格或其他特殊字符）。"
     },
     "user": {
       "username": "用户名",
@@ -303,6 +425,26 @@
       "interval": "更新间隔（天）",
       "key": "WireGuard 密钥",
       "license": "WARP+ 许可证密钥（最少 26 个字符）"
+    },
+    "obfuscatorPreset": {
+      "id": "混淆器预设 ID",
+      "name": "预设名称",
+      "mode": "协议",
+      "extPort": "外部端口（WireGuard/UDP 51822-51861，SOCKS5/TCP 51862-51891）",
+      "key": "混淆器密钥",
+      "masking": "伪装模式",
+      "maskingAutoSocks5": "SOCKS5 模式的预设不支持 AUTO 伪装",
+      "maskingTlsWireguard": "TLS 伪装仅适用于 SOCKS5 模式的预设",
+      "sourceIf": "监听接口（IP）",
+      "target": "target 必须为 host:port 格式",
+      "obfuscateBytes": "混淆字节数（0-1024）",
+      "obfuscateBytesMedia": "MEDIA 模式下最小值为 4（或填 0 使用默认值 16）",
+      "verbose": "日志级别",
+      "idle": "空闲超时",
+      "dummy": "最大填充字节",
+      "clientWgLocalPort": "客户端本地 WireGuard 端口",
+      "mediaSsrc": "RTP SSRC",
+      "clientLocalPort": "客户端本地端口（1-65535）"
     }
   },
   "hooks": {
@@ -315,6 +457,7 @@
     "notSupported": "不支持复制",
     "copied": "已复制!",
     "failed": "复制失败",
-    "copy": "复制"
+    "copy": "复制",
+    "copyConfig": "点击将配置复制到剪贴板"
   }
 }

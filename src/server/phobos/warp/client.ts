@@ -103,7 +103,8 @@ async function request(
     const response = await fetch(`${WARP_API_BASE}${path}`, {
       method,
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body:
+        options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
     });
 

@@ -8,7 +8,8 @@
       "config": "Umum",
       "interface": "Antarmuka",
       "hooks": "Hooks",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Preset obfuscator"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Buat Akun",
     "successful": "Pengaturan berhasil",
     "hostDesc": "Hostname publik yang akan digunakan klien untuk terhubung",
-    "portDesc": "Port UDP publik yang akan digunakan klien untuk terhubung dan dibaca oleh WireGuard"
+    "portDesc": "Port UDP publik yang akan digunakan klien untuk terhubung dan dibaca oleh WireGuard",
+    "tls": {
+      "title": "Sertifikat HTTPS / TLS",
+      "desc": "Siapkan sertifikat TLS untuk mengaktifkan akses HTTPS yang aman. Tanpa HTTPS, proses masuk diblokir secara bawaan.",
+      "selfSigned": "Sertifikat bertanda tangan sendiri",
+      "selfSignedDesc": "Dibuat seketika untuk host Anda. Peramban akan menampilkan peringatan keamanan — klik Lanjutan → Lanjutkan.",
+      "selfSignedHstsWarning": "Jika peramban memblokir halaman dengan galat HSTS dan tanpa pilihan «Lanjutkan», berarti ia menyimpan kebijakan HSTS dari sertifikat sebelumnya pada domain ini. Buka URL di jendela penyamaran, atau hapus entri HSTS di chrome://net-internals/#hsts (Delete domain).",
+      "import": "Impor sertifikat yang sudah ada",
+      "importDesc": "Tempelkan sertifikat PEM dan kunci privat Anda sendiri.",
+      "importPath": "Impor sertifikat dari jalur berkas",
+      "importPathDesc": "Masukkan jalur absolut ke berkas sertifikat dan kunci yang ada di disk (mis. /etc/letsencrypt/live/example.com/*.pem). Berkas harus dapat dibaca dari dalam kontainer.",
+      "certPathLabel": "Jalur berkas sertifikat (PEM fullchain)",
+      "keyPathLabel": "Jalur berkas kunci privat (PEM)",
+      "importPathHint": "Berkas ditautkan secara simbolik, bukan disalin. Ketika berkas sumber berubah di disk (mis. setelah certbot renew), server mendeteksinya dalam ~30 detik dan memulai ulang secara otomatis untuk memuat sertifikat baru. Kontainer memiliki akses baca-saja ke direktori host berikut: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Lewati (tanpa HTTPS)",
+      "skipDesc": "Tetap memakai HTTP.",
+      "certLabel": "Sertifikat (PEM fullchain)",
+      "keyLabel": "Kunci privat (PEM)",
+      "generate": "Buat sertifikat",
+      "apply": "Terapkan",
+      "restarting": "Sertifikat diterapkan. Server sedang dimulai ulang dengan HTTPS...",
+      "redirectPrompt": "Buka versi aman:",
+      "openLink": "Buka HTTPS",
+      "skipWarning": "Tanpa sertifikat TLS, antarmuka web hanya dapat diakses melalui HTTP.",
+      "errorCert": "Validasi sertifikat gagal",
+      "errorKey": "Validasi kunci privat gagal"
+    }
   },
   "theme": {
     "dark": "Tema gelap",
@@ -114,17 +141,44 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "delete": "Hapus",
+    "search": "Cari klien...",
+    "config": "Konfigurasi",
+    "viewConfig": "Lihat konfigurasi",
+    "firewallIps": "IP yang diizinkan firewall",
+    "firewallIpsDesc": "IP/CIDR tujuan yang boleh diakses klien ini (diterapkan di sisi server). Biarkan kosong untuk memakai Allowed IPs. Mendukung penyaringan opsional berdasarkan porta dan protokol. Lihat dokumentasi untuk sintaksnya.",
+    "downloadPng": "Unduh PNG",
+    "copyLink": "Salin tautan phobos://",
+    "linkShort": "Tautan",
+    "linkCopied": "Tautan phobos:// disalin ke papan klip",
+    "linkFailed": "Gagal menyalin tautan phobos://",
+    "preset": "Preset obfuscator",
+    "protocol": "Protokol",
+    "presetDesc": "Pilih preset obfuscator yang merutekan klien ini. Protokol preset (WireGuard atau SOCKS5) menentukan bidang mana di bawah yang berlaku — misalnya kredensial SOCKS5 hanya muncul untuk preset bermode SOCKS5, karena WireGuard tidak memakainya. Biarkan pada nilai bawaan agar mengikuti preset bawaan server (WireGuard).",
+    "presetUseDefault": "Gunakan preset bawaan",
+    "socks5Login": "Nama pengguna SOCKS5",
+    "socks5Password": "Kata sandi SOCKS5",
+    "socks5CredentialsHint": "Masukkan nama pengguna dan kata sandi ini pada pengaturan SOCKS5 di aplikasi klien itu sendiri (peramban, curl, dsb.) — obfuscator hanya mengenkripsi lalu lintas, ia tidak menyimpan maupun memeriksa kredensial ini.",
+    "socks5ConfigNote": "Klien ini memakai preset bermode SOCKS5, sehingga konfigurasi di bawah adalah blok klien obfuscator SOCKS5, bukan WireGuard. Atur nama pengguna dan kata sandi SOCKS5 yang tampil di halaman klien ini pada aplikasi SOCKS5 Anda sendiri.",
+    "nameHint": "Hanya huruf Latin, angka, tanda hubung, titik, dan {'@'}; maksimal 32 karakter; harus unik.",
+    "nameError": {
+      "tooLong": "Nama tidak boleh melebihi {max} karakter.",
+      "invalidChars": "Hanya huruf Latin, angka, tanda hubung, titik, dan {'@'} yang diizinkan (tanpa spasi atau karakter khusus lain).",
+      "duplicate": "Klien dengan nama ini sudah ada."
+    }
   },
   "dialog": {
     "change": "Ubah",
     "cancel": "Batal",
-    "create": "Buat"
+    "create": "Buat",
+    "delete": "Hapus"
   },
   "toast": {
     "success": "Berhasil",
     "saved": "Tersimpan",
-    "error": "Kesalahan"
+    "error": "Kesalahan",
+    "unknown": "Galat tidak dikenal. Lihat konsol untuk detail selengkapnya"
   },
   "form": {
     "actions": "Tindakan",
@@ -146,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Rute untuk metrik dalam format JSON",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Rute untuk metrik Prometheus"
+      "prometheusDesc": "Rute untuk metrik Prometheus",
+      "metricsPasswordSet": "Kata sandi sudah diatur — biarkan kosong untuk mempertahankannya",
+      "metricsPasswordUnset": "Kata sandi belum diatur"
     },
     "config": {
       "connection": "Koneksi",
@@ -170,7 +226,22 @@
       "restartSuccess": "Antarmuka telah dimulai ulang.",
       "egress": "Keluar",
       "egressWarp": "Rute lalu lintas klien melalui WARP",
-      "egressWarpDesc": "Jika diaktifkan, klien keluar melalui Cloudflare WARP alih-alih WAN server, menyembunyikan IP server. Memerlukan konfigurasi WARP yang terdaftar. MTU klien yang lebih rendah mungkin diperlukan."
+      "egressWarpDesc": "Jika diaktifkan, klien keluar melalui Cloudflare WARP alih-alih WAN server, menyembunyikan IP server. Memerlukan konfigurasi WARP yang terdaftar. MTU klien yang lebih rendah mungkin diperlukan.",
+      "subnet": "Subnet WireGuard",
+      "ipv4Cidr": "Subnet IPv4 WireGuard (CIDR)",
+      "ipv4CidrDesc": "Kumpulan alamat untuk klien (mis. 10.8.0.0/24). Perlebar mask (mis. /16) agar memuat lebih banyak klien atau rentang lain. Mengubahnya akan memberikan alamat IPv4 baru kepada setiap klien.",
+      "ipv6Cidr": "Subnet IPv6 WireGuard (CIDR)",
+      "ipv6CidrDesc": "Kumpulan alamat IPv6 untuk klien. Mengubahnya akan memberikan alamat IPv6 baru kepada setiap klien.",
+      "firewall": "Penyaringan lalu lintas",
+      "firewallEnabled": "Aktifkan firewall per klien",
+      "firewallEnabledDesc": "Membatasi lalu lintas klien ke IP tujuan tertentu memakai iptables. Bila aktif, setiap klien dapat diatur tujuan yang diizinkan.",
+      "publicAddress": "Alamat publik",
+      "publicIpV4": "IPv4 publik server",
+      "publicIpV4Desc": "Dipakai sebagai target dalam konfigurasi obfuscator klien.",
+      "publicIpV6": "IPv6 publik server",
+      "publicIpV6Desc": "Target IPv6 opsional.",
+      "publicDomain": "Domain publik server",
+      "publicDomainDesc": "Bila diisi, dipakai dalam konfigurasi klien sebagai target obfuscator menggantikan IPv4/IPv6."
     },
     "introText": "Selamat datang di panel admin.\n\nDi sini Anda dapat mengelola pengaturan umum, konfigurasi, pengaturan antarmuka, dan hooks.\n\nMulailah dengan memilih salah satu bagian di bilah samping.",
     "warp": {
@@ -211,6 +282,65 @@
       "checkOffline": "WARP offline",
       "notActiveEgress": "WARP tidak aktif sebagai egress",
       "notActiveEgressTip": "Aktifkan \"Rutekan lalu lintas klien melalui WARP\" di bagian Antarmuka jaringan untuk menggunakan dan menguji terowongan WARP."
+    },
+    "tls": {
+      "title": "Sertifikat TLS",
+      "desc": "Ganti sertifikat HTTPS yang aktif atau kembali ke HTTP biasa.",
+      "current": "Sertifikat aktif",
+      "apply": "Terapkan konfigurasi TLS",
+      "applied": "Konfigurasi TLS diterapkan. Server sedang dimulai ulang.",
+      "appliedRestart": "Konfigurasi TLS diterapkan. Server sedang dimulai ulang; buka kembali {url} dalam beberapa detik.",
+      "externalManaged": "TLS dikelola oleh reverse proxy eksternal (TLS_TERMINATION=external). Sertifikat harus diterbitkan dan diperbarui di luar PhobosWG.",
+      "origin": {
+        "self-signed": "Bertanda tangan sendiri",
+        "imported": "Diimpor (PEM yang ditempel)",
+        "imported-path": "Diimpor dari jalur (tautan simbolik, dimuat ulang otomatis)",
+        "none": "Tidak ada (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Preset obfuscator",
+      "desc": "Setiap preset menjalankan pendengar wg-obfuscator tersendiri dengan porta, kunci, dan penyamaran yang mandiri. Preset bawaan dipakai oleh setiap klien yang tidak ditetapkan secara eksplisit. Preset WireGuard memakai porta UDP 51822-51861, preset SOCKS5 memakai porta TCP 51862-51891 — rentang yang dipublikasikan docker-compose.",
+      "add": "Tambah preset",
+      "addDesc": "Cukup masukkan nama. Porta, kunci, dan parameter lain akan mendapat nilai bawaan yang wajar dan bisa disunting di preset setelahnya.",
+      "default": "bawaan",
+      "setAsDefault": "Jadikan bawaan",
+      "deleteConfirm": "Hapus preset ini? Klien yang memakainya akan kembali ke preset bawaan.",
+      "regenerateKey": "Buat ulang kunci",
+      "regeneratePort": "Pilih porta kosong",
+      "nameLabel": "Nama",
+      "nameDesc": "Nama tampilan preset. Hanya dipakai di panel.",
+      "modeLabel": "Protokol (mode)",
+      "modeDesc": "WireGuard: mengaburkan jabat tangan UDP WireGuard. SOCKS5: menjalankan proxy SOCKS5 sungguhan (dengan kredensial RFC1929 opsional per klien) yang disalurkan melalui terowongan sambungan TCP yang dikaburkan.",
+      "sourceLportLabel": "source-lport (porta UDP eksternal)",
+      "sourceLportLabelSocks5": "source-lport (porta TCP eksternal)",
+      "sourceLportDesc": "Porta UDP publik tempat obfuscator server mendengarkan. Harus berada dalam 51822-51861 — rentang yang dipublikasikan docker-compose, jika tidak klien tak dapat menjangkaunya.",
+      "sourceLportDescSocks5": "Porta TCP publik tempat server SOCKS5 mendengarkan. Harus berada dalam 51862-51891 — rentang yang dipublikasikan docker-compose, jika tidak klien tak dapat menjangkaunya.",
+      "targetLabel": "target",
+      "targetDesc": "Ke mana obfuscator server meneruskan lalu lintas yang sudah dibuka. Biarkan kosong untuk memakai titik ujung WireGuard lokal (127.0.0.1:[porta wg]). Format: host:port.",
+      "targetPlaceholder": "127.0.0.1:[porta wireguard] (bawaan)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP antarmuka tempat obfuscator server terikat. Biarkan kosong untuk AUTO: preset SOCKS5 mendengarkan di IPv4 dan IPv6, preset WireGuard di 0.0.0.0.",
+      "keyLabel": "Kunci pengaburan (key)",
+      "keyDesc": "Kunci pengaburan bersama, sama persis di kedua sisi. Dibuat secara acak (200-254 karakter). 1-255 karakter.",
+      "maskingLabel": "Mode penyamaran (masking)",
+      "maskingDesc": "Mode pengelakan DPI. STUN: membungkus lalu lintas sebagai STUN. MEDIA: menyamarkannya sebagai media RTP/H.264, setel secara eksplisit di kedua sisi. AUTO: server mendeteksi otomatis, klien memakai STUN. NONE: penyamaran mati (XOR tetap ada).",
+      "maskingDescSocks5": "Mode pengelakan DPI. STUN: membungkus lalu lintas sebagai STUN. MEDIA: menyamarkannya sebagai media RTP/H.264, setel secara eksplisit di kedua sisi. TLS: menyamarkannya sebagai rekaman HTTPS. NONE: penyamaran mati (XOR tetap ada). AUTO tidak tersedia untuk preset SOCKS5.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Berapa bita awal yang di-XOR. 0 = seluruh paket. Nilai >0 mematikan bita pengisi. Harus sama di kedua sisi. Untuk MEDIA: 0 otomatis memakai 16, minimum 4.",
+      "dummyLabel": "Bita pengisi maks. (max-dummy)",
+      "dummyDesc": "Pengisi acak maksimum yang ditambahkan per paket (0-1024). Bawaan 40.",
+      "dummyDisabledNote": "Tidak dipakai dengan MEDIA atau ketika obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Hanya berlaku pada mode penyamaran MEDIA.",
+      "verboseLabel": "verbose (tingkat log)",
+      "verboseDesc": "Tingkat rincian log. error/warn/info/debug/trace. Pada lingkungan produksi disarankan error; debug/trace sangat membebani CPU.",
+      "clientLocalPortLabel": "Porta WireGuard lokal di sisi klien",
+      "clientLocalPortDesc": "Porta UDP lokal tujuan pengiriman WireGuard klien (Endpoint 127.0.0.1:[porta]) sekaligus source-lport obfuscator klien. Bawaan 13255.",
+      "clientLocalPortSocks5Label": "Porta SOCKS5 lokal di sisi klien",
+      "clientLocalPortSocks5Desc": "Porta TCP lokal tempat obfuscator SOCKS5 sisi klien mendengarkan. Arahkan setelan proxy SOCKS5 aplikasi Anda ke 127.0.0.1:[porta]. Bawaan 1080.",
+      "mediaSsrcLabel": "SSRC RTP (media-ssrc)",
+      "mediaSsrcDesc": "Nilai SSRC tetap yang dipakai untuk mengenali bingkai bersamaran MEDIA secara andal di kedua sisi. Terisi otomatis saat MEDIA dipilih; 0 = tidak diatur.",
+      "clientCount": "{n} klien"
     }
   },
   "zod": {
@@ -221,7 +351,8 @@
       "validBoolean": "{0} harus berupa boolean yang valid",
       "validArray": "{0} harus berupa array yang valid",
       "stringMin": "{0} harus memiliki setidaknya {1} karakter",
-      "numberMin": "{0} harus minimal {1}"
+      "numberMin": "{0} harus minimal {1}",
+      "validNumberRange": "{0} harus berupa angka atau rentang angka yang sah"
     },
     "client": {
       "id": "ID Klien",
@@ -229,7 +360,12 @@
       "expiresAt": "Berakhir pada",
       "address4": "Alamat IPv4",
       "address6": "Alamat IPv6",
-      "serverAllowedIps": "IP yang diizinkan untuk Server"
+      "serverAllowedIps": "IP yang diizinkan untuk Server",
+      "firewallIps": "IP yang diizinkan firewall",
+      "firewallIpsInvalid": "Entri IP firewall tidak sah. Lihat dokumentasi untuk sintaks yang didukung.",
+      "presetId": "ID preset obfuscator",
+      "nameTooLong": "Nama klien tidak boleh melebihi 32 karakter.",
+      "nameInvalidChars": "Nama klien hanya boleh memuat huruf Latin, angka, tanda hubung, titik, dan {'@'} (tanpa spasi atau karakter khusus lain)."
     },
     "user": {
       "username": "Nama Pengguna",
@@ -289,6 +425,26 @@
       "interval": "Interval pembaruan (hari)",
       "key": "Kunci WireGuard",
       "license": "Kunci lisensi WARP+ (min. 26 karakter)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID preset obfuscator",
+      "name": "Nama preset",
+      "mode": "Protokol",
+      "extPort": "Porta eksternal (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Kunci obfuscator",
+      "masking": "Mode penyamaran",
+      "maskingAutoSocks5": "Penyamaran AUTO tidak tersedia untuk preset bermode SOCKS5",
+      "maskingTlsWireguard": "Penyamaran TLS hanya tersedia untuk preset bermode SOCKS5",
+      "sourceIf": "Antarmuka pendengar (IP)",
+      "target": "target harus berformat host:port",
+      "obfuscateBytes": "Bita yang dikaburkan (0-1024)",
+      "obfuscateBytesMedia": "Untuk MEDIA nilai minimumnya 4 (atau 0 untuk nilai bawaan 16)",
+      "verbose": "Tingkat log",
+      "idle": "Batas waktu menganggur",
+      "dummy": "Bita pengisi maks.",
+      "clientWgLocalPort": "Porta WireGuard lokal di sisi klien",
+      "mediaSsrc": "SSRC RTP",
+      "clientLocalPort": "Porta lokal di sisi klien (1-65535)"
     }
   },
   "hooks": {
@@ -296,5 +452,12 @@
     "postUp": "PostUp",
     "preDown": "PreDown",
     "postDown": "PostDown"
+  },
+  "copy": {
+    "notSupported": "Penyalinan tidak didukung",
+    "copied": "Tersalin!",
+    "failed": "Penyalinan gagal",
+    "copy": "Salin",
+    "copyConfig": "Klik untuk menyalin konfigurasi ke papan klip"
   }
 }

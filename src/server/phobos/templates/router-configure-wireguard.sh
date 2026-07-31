@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-RCI_URL="http://localhost:79/rci/"
+RCI_URL="http://127.0.0.1:79/rci/"
 MAX_INTERFACE_NUM=9
 
 check_dependencies() {

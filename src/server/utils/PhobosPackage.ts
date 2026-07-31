@@ -6,7 +6,6 @@ import { createGzip } from 'node:zlib';
 import debug from 'debug';
 import tar from 'tar-stream';
 
-import type { InterfaceType } from '#db/repositories/interface/types';
 import { readTlsOrigin, isUntrustedTls } from '~~/server/utils/TlsInfo';
 
 const PACKAGE_DEBUG = debug('PhobosPackage');

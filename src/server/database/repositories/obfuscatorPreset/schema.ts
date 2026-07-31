@@ -13,7 +13,7 @@ export const obfuscatorPreset = sqliteTable(
       .notNull()
       .default('WIREGUARD'),
     extPort: int('ext_port').notNull().unique(),
-    sourceIf: text('source_if').notNull().default('0.0.0.0'),
+    sourceIf: text('source_if').notNull(),
     target: text(),
     key: text().notNull(),
     masking: text({ enum: ['STUN', 'MEDIA', 'AUTO', 'NONE', 'TLS'] })

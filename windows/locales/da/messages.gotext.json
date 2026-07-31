@@ -1,0 +1,2086 @@
+{
+    "language": "da",
+    "messages": [
+        {
+            "id": "Error",
+            "message": "Error",
+            "translation": "Fejl",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Error:",
+            "message": "Error:",
+            "translation": "Fejl:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "(no argument): elevate and install manager service",
+            "message": "(no argument): elevate and install manager service",
+            "translation": "(intet argument): ophøj og installer manager-tjenesten",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Usage: {Args0} [\n{String}]",
+            "message": "Usage: {Args0} [\n{String}]",
+            "translation": "Brug: {Args0} [\n{String}]",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Args0",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "os.Args[0]"
+                },
+                {
+                    "id": "String",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "builder.String()"
+                }
+            ]
+        },
+        {
+            "id": "Command Line Options",
+            "message": "Command Line Options",
+            "translation": "Kommandolinjeindstillinger",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to determine whether the process is running under WOW64: {Err}",
+            "message": "Unable to determine whether the process is running under WOW64: {Err}",
+            "translation": "Kan ikke afgøre om processen kører under WOW64: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "You must use the native version of Phobos on this computer.",
+            "message": "You must use the native version of Phobos on this computer.",
+            "translation": "Du skal bruge den native version af Phobos på denne computer.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to open current process token: {Err}",
+            "message": "Unable to open current process token: {Err}",
+            "translation": "Kan ikke åbne aktuelle procestoken: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Phobos may only be used by users who are a member of the Builtin {AdminGroupName} group.",
+            "message": "Phobos may only be used by users who are a member of the Builtin {AdminGroupName} group.",
+            "translation": "Phobos må kun bruges af brugere, der er medlem af den indbygget {AdminGroupName} gruppe.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "AdminGroupName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "elevate.AdminGroupName()"
+                }
+            ]
+        },
+        {
+            "id": "Phobos is running, but the UI is only accessible from desktops of the Builtin {AdminGroupName} group.",
+            "message": "Phobos is running, but the UI is only accessible from desktops of the Builtin {AdminGroupName} group.",
+            "translation": "Phobos kører, men brugergrænsefladen er kun tilgængelig fra skriveborde i den indbygget {AdminGroupName} gruppe.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "AdminGroupName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "elevate.AdminGroupName()"
+                }
+            ]
+        },
+        {
+            "id": "Phobos system tray icon did not appear after 30 seconds.",
+            "message": "Phobos system tray icon did not appear after 30 seconds.",
+            "translation": "Phobos statusikonet blev ikke vist efter 30 sekunder.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Not a phobos:// link: {Link}",
+            "message": "Not a phobos:// link: {Link}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Link",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "link"
+                }
+            ]
+        },
+        {
+            "id": "Now",
+            "message": "Now",
+            "translation": "Nu",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "System clock wound backward!",
+            "message": "System clock wound backward!",
+            "translation": "Systemuret er sat bagud!",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{Years} year(s)",
+            "message": "{Years} year(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Years",
+                    "cases": {
+                        "one": {
+                            "msg": "{Years} år"
+                        },
+                        "other": {
+                            "msg": "{Years} år"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Years",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "years"
+                }
+            ]
+        },
+        {
+            "id": "{Days} day(s)",
+            "message": "{Days} day(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Days",
+                    "cases": {
+                        "one": {
+                            "msg": "{Days} dag"
+                        },
+                        "other": {
+                            "msg": "{Days} dage"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Days",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "days"
+                }
+            ]
+        },
+        {
+            "id": "{Hours} hour(s)",
+            "message": "{Hours} hour(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Hours",
+                    "cases": {
+                        "one": {
+                            "msg": "{Hours} time"
+                        },
+                        "other": {
+                            "msg": "{Hours} timer"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Hours",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "hours"
+                }
+            ]
+        },
+        {
+            "id": "{Minutes} minute(s)",
+            "message": "{Minutes} minute(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Minutes",
+                    "cases": {
+                        "one": {
+                            "msg": "{Minutes} minut"
+                        },
+                        "other": {
+                            "msg": "{Minutes} minutter"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Minutes",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "minutes"
+                }
+            ]
+        },
+        {
+            "id": "{Seconds} second(s)",
+            "message": "{Seconds} second(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Seconds",
+                    "cases": {
+                        "one": {
+                            "msg": "{Seconds} sekund"
+                        },
+                        "other": {
+                            "msg": "{Seconds} sekunder"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Seconds",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "seconds"
+                }
+            ]
+        },
+        {
+            "id": "{Timestamp} ago",
+            "message": "{Timestamp} ago",
+            "translation": "{Timestamp} siden",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Timestamp",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "timestamp"
+                }
+            ]
+        },
+        {
+            "id": "{Bytes} B",
+            "message": "{Bytes} B",
+            "translation": "{Bytes} B",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Bytes",
+                    "string": "%[1]d",
+                    "type": "golang.zx2c4.com/wireguard/windows/conf.Bytes",
+                    "underlyingType": "uint64",
+                    "argNum": 1,
+                    "expr": "b"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024} KiB",
+            "message": "{Float64b__1024} KiB",
+            "translation": "{Float64b__1024} KiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / 1024"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024} MiB",
+            "message": "{Float64b__1024__1024} MiB",
+            "translation": "{Float64b__1024__1024} MiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024)"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024__1024} GiB",
+            "message": "{Float64b__1024__1024__1024} GiB",
+            "translation": "{Float64b__1024__1024__1024} GiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024 * 1024)"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024__1024__1024} TiB",
+            "message": "{Float64b__1024__1024__1024__1024} TiB",
+            "translation": "{Float64b__1024__1024__1024__1024} TiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024 * 1024) / 1024"
+                }
+            ]
+        },
+        {
+            "id": "{Why}: {Offender}",
+            "message": "{Why}: {Offender}",
+            "translation": "{Why}: {Offender}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Why",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "e.why"
+                },
+                {
+                    "id": "Offender",
+                    "string": "%[2]q",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "e.offender"
+                }
+            ]
+        },
+        {
+            "id": "Invalid IP address:",
+            "message": "Invalid IP address:",
+            "translation": "Ugyldig IP-adresse:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Missing port from endpoint",
+            "message": "Missing port from endpoint",
+            "translation": "Endepunkt mangler angivelse af port",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid endpoint host",
+            "message": "Invalid endpoint host",
+            "translation": "Ugyldig endepunkt vært",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Brackets must contain an IPv6 address",
+            "message": "Brackets must contain an IPv6 address",
+            "translation": "Parenteser skal indeholde en IPv6-adresse",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid MTU",
+            "message": "Invalid MTU",
+            "translation": "Ugyldig MTU",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid port",
+            "message": "Invalid port",
+            "translation": "Ugyldig port",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid persistent keepalive",
+            "message": "Invalid persistent keepalive",
+            "translation": "Ugyldig persistente keepalive",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key: {Err}",
+            "message": "Invalid key: {Err}",
+            "translation": "Ugyldig nøgle: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Keys must decode to exactly 32 bytes",
+            "message": "Keys must decode to exactly 32 bytes",
+            "translation": "Nøgler skal afkode til præcis 32 bytes",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Two commas in a row",
+            "message": "Two commas in a row",
+            "translation": "To kommaer i træk",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid {What}",
+            "message": "Invalid {What}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "What",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "what"
+                }
+            ]
+        },
+        {
+            "id": "Invalid obfuscator mode",
+            "message": "Invalid obfuscator mode",
+            "translation": ""
+        },
+        {
+            "id": "Invalid masking type",
+            "message": "Invalid masking type",
+            "translation": ""
+        },
+        {
+            "id": "Invalid media SSRC",
+            "message": "Invalid media SSRC",
+            "translation": ""
+        },
+        {
+            "id": "An obfuscator instance must have a target",
+            "message": "An obfuscator instance must have a target",
+            "translation": ""
+        },
+        {
+            "id": "[none specified]",
+            "message": "[none specified]",
+            "translation": "[ingen angivet]",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "An obfuscator instance must have a key",
+            "message": "An obfuscator instance must have a key",
+            "translation": ""
+        },
+        {
+            "id": "A SOCKS5 tunnel accepts exactly one [Instance] section",
+            "message": "A SOCKS5 tunnel accepts exactly one [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "{Lenobfuscations} given",
+            "message": "{Lenobfuscations} given",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Lenobfuscations",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "len(obfuscations)"
+                }
+            ]
+        },
+        {
+            "id": "A SOCKS5 tunnel must not declare peers",
+            "message": "A SOCKS5 tunnel must not declare peers",
+            "translation": ""
+        },
+        {
+            "id": "An [Instance] section requires a peer to attach to",
+            "message": "An [Instance] section requires a peer to attach to",
+            "translation": ""
+        },
+        {
+            "id": "No peer matches the obfuscator source port",
+            "message": "No peer matches the obfuscator source port",
+            "translation": ""
+        },
+        {
+            "id": "A peer accepts only one [Instance] section",
+            "message": "A peer accepts only one [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Tunnel name is not valid",
+            "message": "Tunnel name is not valid",
+            "translation": "Navn for tunnel er ikke gyldigt",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A [Socks5] section must follow an [Instance] section",
+            "message": "A [Socks5] section must follow an [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Line must occur in a section",
+            "message": "Line must occur in a section",
+            "translation": "Linje skal forekomme i en sektion",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Config key is missing an equals separator",
+            "message": "Config key is missing an equals separator",
+            "translation": "Konfigurationsnøgle mangler et lighedstegn som separator",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Key must have a value",
+            "message": "Key must have a value",
+            "translation": "Nøglen skal have en værdi",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key for [Interface] section",
+            "message": "Invalid key for [Interface] section",
+            "translation": "Ugyldig nøgle for [Interface] sektion",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key for [Peer] section",
+            "message": "Invalid key for [Peer] section",
+            "translation": "Ugyldig nøgle for [Peer] sektion",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Only the client obfuscator role is supported",
+            "message": "Only the client obfuscator role is supported",
+            "translation": ""
+        },
+        {
+            "id": "Invalid RTP payload type",
+            "message": "Invalid RTP payload type",
+            "translation": ""
+        },
+        {
+            "id": "Invalid media clock",
+            "message": "Invalid media clock",
+            "translation": ""
+        },
+        {
+            "id": "Invalid key for [Instance] section",
+            "message": "Invalid key for [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Invalid key for [Socks5] section",
+            "message": "Invalid key for [Socks5] section",
+            "translation": ""
+        },
+        {
+            "id": "An interface must have a private key",
+            "message": "An interface must have a private key",
+            "translation": "Et interface skal have en privat nøgle",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "All peers must have public keys",
+            "message": "All peers must have public keys",
+            "translation": "Alle modparter skal have offentlige nøgler",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Not a phobos:// link",
+            "message": "Not a phobos:// link",
+            "translation": ""
+        },
+        {
+            "id": "The link carries no configuration",
+            "message": "The link carries no configuration",
+            "translation": ""
+        },
+        {
+            "id": "The link payload is not valid base64url: {Err}",
+            "message": "The link payload is not valid base64url: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "The link payload is not valid UTF-8 text",
+            "message": "The link payload is not valid UTF-8 text",
+            "translation": ""
+        },
+        {
+            "id": "[EnumerationSeparator]",
+            "message": "[EnumerationSeparator]",
+            "translation": "",
+            "comment": "Text to insert between items when listing - most western languages will translate ‘[EnumerationSeparator]’ into ‘, ’ to produce lists like ‘apple, orange, strawberry’. Eastern languages might translate into ‘、’ to produce lists like ‘リンゴ、オレンジ、イチゴ’."
+        },
+        {
+            "id": "[UnitSeparator]",
+            "message": "[UnitSeparator]",
+            "translation": "",
+            "comment": "Text to insert when combining units of a measure - most languages will translate ‘[UnitSeparator]’ into ‘ ’ (space) to produce lists like ‘2 minuti 30 sekund’, or empty string ‘’ to produce ‘2分30秒’."
+        },
+        {
+            "id": "SOCKS5 proxy listening on 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "message": "SOCKS5 proxy listening on 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "c.ListenPort()"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "c.config.Target"
+                },
+                {
+                    "id": "Masking",
+                    "string": "%[3]v",
+                    "type": "golang.zx2c4.com/wireguard/windows/phobos.Masking",
+                    "underlyingType": "int",
+                    "argNum": 3,
+                    "expr": "c.config.Masking"
+                }
+            ]
+        },
+        {
+            "id": "SOCKS5 proxy stopped",
+            "message": "SOCKS5 proxy stopped",
+            "translation": ""
+        },
+        {
+            "id": "SOCKS5 proxy: {Err}",
+            "message": "SOCKS5 proxy: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator started: 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "message": "Obfuscator started: 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "p.listenPort"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "p.config.Target"
+                },
+                {
+                    "id": "Masking",
+                    "string": "%[3]v",
+                    "type": "golang.zx2c4.com/wireguard/windows/phobos.Masking",
+                    "underlyingType": "int",
+                    "argNum": 3,
+                    "expr": "p.config.Masking"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator stopped: 127.0.0.1:{ListenPort} -\u003e {Target}",
+            "message": "Obfuscator stopped: 127.0.0.1:{ListenPort} -\u003e {Target}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "p.listenPort"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "p.config.Target"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator {What} failed: {Err}",
+            "message": "Obfuscator {What} failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "What",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "what"
+                },
+                {
+                    "id": "Err",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: wait failed: {Err}",
+            "message": "tun2socks: wait failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: adapter read failed: {Err}",
+            "message": "tun2socks: adapter read failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: cannot reach {Target}: {DialErr}",
+            "message": "tun2socks: cannot reach {Target}: {DialErr}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Target",
+                    "string": "%[1]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 1,
+                    "expr": "target"
+                },
+                {
+                    "id": "DialErr",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "dialErr"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: cannot open a UDP session for {Source}: {Err}",
+            "message": "tun2socks: cannot open a UDP session for {Source}: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Source",
+                    "string": "%[1]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 1,
+                    "expr": "source"
+                },
+                {
+                    "id": "Err",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "About Phobos",
+            "message": "About Phobos",
+            "translation": "Om Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos logo image",
+            "message": "Phobos logo image",
+            "translation": "Phobos logo billede",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "App version: {Number}\nDriver version: {Version}\nGo version: {Version_go}\nOperating system: {OsName}\nArchitecture: {Arch}",
+            "message": "App version: {Number}\nDriver version: {Version}\nGo version: {Version_go}\nOperating system: {OsName}\nArchitecture: {Arch}",
+            "translation": "App-version: {Number}\nDriverversion: {Version}\nGo-version: {Version_go}\nOperativsystem: {OsName}\nArkitektur: {Arch}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Number",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "version.Number"
+                },
+                {
+                    "id": "Version",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "driver.Version()"
+                },
+                {
+                    "id": "Version_go",
+                    "string": "%[3]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 3,
+                    "expr": "strings.TrimPrefix(runtime.Version(), \"go\")"
+                },
+                {
+                    "id": "OsName",
+                    "string": "%[4]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 4,
+                    "expr": "version.OsName()"
+                },
+                {
+                    "id": "Arch",
+                    "string": "%[5]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 5,
+                    "expr": "version.Arch()"
+                }
+            ]
+        },
+        {
+            "id": "Close",
+            "message": "Close",
+            "translation": "Luk",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Status:",
+            "message": "Status:",
+            "translation": "Status:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Deactivate",
+            "message": "\u0026Deactivate",
+            "translation": "\u0026Deaktivér",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Activate",
+            "message": "\u0026Activate",
+            "translation": "\u0026Aktivér",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Public key:",
+            "message": "Public key:",
+            "translation": "Offentlig nøgle:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Listen port:",
+            "message": "Listen port:",
+            "translation": "Lytteport:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "MTU:",
+            "message": "MTU:",
+            "translation": "MTU:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Addresses:",
+            "message": "Addresses:",
+            "translation": "Adresser:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "DNS servers:",
+            "message": "DNS servers:",
+            "translation": "DNS servere:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Scripts:",
+            "message": "Scripts:",
+            "translation": "Skripter:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Table:",
+            "message": "Table:",
+            "translation": "Tabel:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Preshared key:",
+            "message": "Preshared key:",
+            "translation": "Forhåndsdelt nøgle:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Allowed IPs:",
+            "message": "Allowed IPs:",
+            "translation": "Tilladte IP-adresser:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Endpoint:",
+            "message": "Endpoint:",
+            "translation": "Slutpunkt:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Obfuscator:",
+            "message": "Obfuscator:",
+            "translation": ""
+        },
+        {
+            "id": "Persistent keepalive:",
+            "message": "Persistent keepalive:",
+            "translation": "Vedvarende keepalive:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Latest handshake:",
+            "message": "Latest handshake:",
+            "translation": "Seneste håndtryk:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Transfer:",
+            "message": "Transfer:",
+            "translation": "Overførsel:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Server:",
+            "message": "Server:",
+            "translation": ""
+        },
+        {
+            "id": "Masking:",
+            "message": "Masking:",
+            "translation": ""
+        },
+        {
+            "id": "SOCKS5 login:",
+            "message": "SOCKS5 login:",
+            "translation": ""
+        },
+        {
+            "id": "Local proxy:",
+            "message": "Local proxy:",
+            "translation": ""
+        },
+        {
+            "id": "{String} received, {String_1} sent",
+            "message": "{String} received, {String_1} sent",
+            "translation": "{String} modtaget, {String_1} sendt",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "o.RxBytes.String()"
+                },
+                {
+                    "id": "String_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "o.TxBytes.String()"
+                }
+            ]
+        },
+        {
+            "id": "{String}, masking {String_1}",
+            "message": "{String}, masking {String_1}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "o.Target.String()"
+                },
+                {
+                    "id": "String_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "o.Masking.String()"
+                }
+            ]
+        },
+        {
+            "id": "pre-up",
+            "message": "pre-up",
+            "translation": "før opstart",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "post-up",
+            "message": "post-up",
+            "translation": "efter opstart",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "pre-down",
+            "message": "pre-down",
+            "translation": "før nedlukning",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "post-down",
+            "message": "post-down",
+            "translation": "efter nedlukning",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "disabled, per policy",
+            "message": "disabled, per policy",
+            "translation": "deaktiveret, jf. politik",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "off",
+            "message": "off",
+            "translation": "fra",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "enabled",
+            "message": "enabled",
+            "translation": "aktiveret",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to determine tunnel state",
+            "message": "Failed to determine tunnel state",
+            "translation": "Kunne ikke bestemme tunneltilstand",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to activate tunnel",
+            "message": "Failed to activate tunnel",
+            "translation": "Fejl ved aktivering af tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to deactivate tunnel",
+            "message": "Failed to deactivate tunnel",
+            "translation": "Fejl ved deaktivering af tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Obfuscator",
+            "message": "Obfuscator",
+            "translation": ""
+        },
+        {
+            "id": "Interface: {Name}",
+            "message": "Interface: {Name}",
+            "translation": "Grænseflade: {Name}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "config.Name"
+                }
+            ]
+        },
+        {
+            "id": "Peer",
+            "message": "Peer",
+            "translation": "Modpart",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Create new tunnel",
+            "message": "Create new tunnel",
+            "translation": "Opret ny tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Edit tunnel",
+            "message": "Edit tunnel",
+            "translation": "Redigér tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Name:",
+            "message": "\u0026Name:",
+            "translation": "\u0026Navn:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Public key:",
+            "message": "\u0026Public key:",
+            "translation": "\u0026Offentlig nøgle:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "(unknown)",
+            "message": "(unknown)",
+            "translation": "(ukendt)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Block untunneled traffic (kill-switch)",
+            "message": "\u0026Block untunneled traffic (kill-switch)",
+            "translation": "\u0026Blokér untunneled trafik (kill-switch)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "When a configuration has exactly one peer, and that peer has an allowed IPs containing at least one of 0.0.0.0/0 or ::/0, and the interface does not have table off, then the tunnel service engages a firewall ruleset to block all traffic that is neither to nor from the tunnel interface or is to the wrong DNS server, with special exceptions for DHCP and NDP.",
+            "message": "When a configuration has exactly one peer, and that peer has an allowed IPs containing at least one of 0.0.0.0/0 or ::/0, and the interface does not have table off, then the tunnel service engages a firewall ruleset to block all traffic that is neither to nor from the tunnel interface or is to the wrong DNS server, with special exceptions for DHCP and NDP.",
+            "translation": "Når en konfiguration har præcis én modpart, og denne modpart har tilladte IP-adresser indeholdende mindst én af 0.0.0.0/0 eller ::/0, og interfacet ikke har table off, anvender tunneltjenesten et firewall-regelsæt til at blokere al trafik, der hverken er til eller fra tunnelgrænsefladen eller er til den forkerte DNS-server, med særlige undtagelser for DHCP og NDP.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Save",
+            "message": "\u0026Save",
+            "translation": "\u0026Gem",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Cancel",
+            "message": "Cancel",
+            "translation": "Annullér",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Configuration:",
+            "message": "\u0026Configuration:",
+            "translation": "\u0026Konfiguration:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid name",
+            "message": "Invalid name",
+            "translation": "Ugyldigt navn",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A name is required.",
+            "message": "A name is required.",
+            "translation": "Et navn er påkrævet.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel name ‘{NewName}’ is invalid.",
+            "message": "Tunnel name ‘{NewName}’ is invalid.",
+            "translation": "Tunnelnavnet '{NewName}' er ugyldigt.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NewName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "newName"
+                }
+            ]
+        },
+        {
+            "id": "Unable to list existing tunnels",
+            "message": "Unable to list existing tunnels",
+            "translation": "Kan ikke liste eksisterende tunneller",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel already exists",
+            "message": "Tunnel already exists",
+            "translation": "Tunnelen eksisterer allerede",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Another tunnel already exists with the name ‘{NewName}’.",
+            "message": "Another tunnel already exists with the name ‘{NewName}’.",
+            "translation": "En anden tunnel findes allerede med navnet '{NewName}'.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NewName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "newName"
+                }
+            ]
+        },
+        {
+            "id": "Unable to create new configuration",
+            "message": "Unable to create new configuration",
+            "translation": "Kan ikke oprette ny konfiguration",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Writing file failed",
+            "message": "Writing file failed",
+            "translation": "Fejl ved skrivning af fil",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "File ‘{FilePath}’ already exists.\n\nDo you want to overwrite it?",
+            "message": "File ‘{FilePath}’ already exists.\n\nDo you want to overwrite it?",
+            "translation": "Filen '{FilePath}' findes allerede.\n\nVil du overskrive den?",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "FilePath",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "filePath"
+                }
+            ]
+        },
+        {
+            "id": "Active",
+            "message": "Active",
+            "translation": "Aktiv",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Activating",
+            "message": "Activating",
+            "translation": "Aktiverer",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Inactive",
+            "message": "Inactive",
+            "translation": "Inaktiv",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Deactivating",
+            "message": "Deactivating",
+            "translation": "Deaktiverer",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unknown state",
+            "message": "Unknown state",
+            "translation": "Ukendt tilstand",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos Detection Error",
+            "message": "Phobos Detection Error",
+            "translation": "Fejl i Phobos-registrering",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos did not start in time to import the link.",
+            "message": "Phobos did not start in time to import the link.",
+            "translation": ""
+        },
+        {
+            "id": "Import tunnel from link",
+            "message": "Import tunnel from link",
+            "translation": ""
+        },
+        {
+            "id": "Paste a phobos:// link. The tunnel name is taken from the link.",
+            "message": "Paste a phobos:// link. The tunnel name is taken from the link.",
+            "translation": ""
+        },
+        {
+            "id": "\u0026Import",
+            "message": "\u0026Import",
+            "translation": ""
+        },
+        {
+            "id": "Invalid link",
+            "message": "Invalid link",
+            "translation": ""
+        },
+        {
+            "id": "Log",
+            "message": "Log",
+            "translation": "Log",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Copy",
+            "message": "\u0026Copy",
+            "translation": "\u0026Kopiér",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Select \u0026all",
+            "message": "Select \u0026all",
+            "translation": "Vælg \u0026alle",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Save to file…",
+            "message": "\u0026Save to file…",
+            "translation": "\u0026Gem til fil…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Time",
+            "message": "Time",
+            "translation": "Tid",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Log message",
+            "message": "Log message",
+            "translation": "Log besked",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            "message": "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            "translation": "Tekstfiler (*.txt)|*.txt|Alle filer (*.*)|*.*",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export log to file",
+            "message": "Export log to file",
+            "translation": "Eksportér log til fil",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026About Phobos…",
+            "message": "\u0026About Phobos…",
+            "translation": "\u0026Om Phobos…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel Error",
+            "message": "Tunnel Error",
+            "translation": "Tunnel fejl",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{ErrMsg}\n\nPlease consult the log for more information.",
+            "message": "{ErrMsg}\n\nPlease consult the log for more information.",
+            "translation": "{ErrMsg}\n\nSe loggen for mere information.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "ErrMsg",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "errMsg"
+                }
+            ]
+        },
+        {
+            "id": "Unable to wait for Phobos window to appear: {Err}",
+            "message": "Unable to wait for Phobos window to appear: {Err}",
+            "translation": "Kunne ikke vente på Phobos vinduet vises: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Phobos: Deactivated",
+            "message": "Phobos: Deactivated",
+            "translation": "Phobos: Deaktiveret",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Status: Unknown",
+            "message": "Status: Unknown",
+            "translation": "Status: Ukendt",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Addresses: None",
+            "message": "Addresses: None",
+            "translation": "Adresser: Ingen",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Manage tunnels…",
+            "message": "\u0026Manage tunnels…",
+            "translation": "\u0026Håndtér tunneler…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Import tunnel(s) from file…",
+            "message": "\u0026Import tunnel(s) from file…",
+            "translation": "\u0026Importér tunnel(er) fra fil…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "E\u0026xit",
+            "message": "E\u0026xit",
+            "translation": "\u0026Afslut",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Tunnels",
+            "message": "\u0026Tunnels",
+            "translation": "\u0026Tunneler",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos Activated",
+            "message": "Phobos Activated",
+            "translation": "Phobos aktiveret",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "The {Name} tunnel has been activated.",
+            "message": "The {Name} tunnel has been activated.",
+            "translation": "{Name} tunnelen er blevet aktiveret.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnel.Name"
+                }
+            ]
+        },
+        {
+            "id": "Phobos Deactivated",
+            "message": "Phobos Deactivated",
+            "translation": "Phobos deaktiveret",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "The {Name} tunnel has been deactivated.",
+            "message": "The {Name} tunnel has been deactivated.",
+            "translation": "{Name} tunnelen er blevet deaktiveret.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnel.Name"
+                }
+            ]
+        },
+        {
+            "id": "Phobos Tunnel Error",
+            "message": "Phobos Tunnel Error",
+            "translation": "Phobos tunnel fejl",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos: {TextForStateglobalState_true}",
+            "message": "Phobos: {TextForStateglobalState_true}",
+            "translation": "Phobos: {TextForStateglobalState_true}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TextForStateglobalState_true",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "textForState(globalState, true)"
+                }
+            ]
+        },
+        {
+            "id": "Status: {StateText}",
+            "message": "Status: {StateText}",
+            "translation": "Status: {StateText}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "StateText",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "stateText"
+                }
+            ]
+        },
+        {
+            "id": "Addresses: {EnumerationSeparator}",
+            "message": "Addresses: {EnumerationSeparator}",
+            "translation": "Adresser: {EnumerationSeparator}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "EnumerationSeparator",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "strings.Join(addrs, l18n.EnumerationSeparator())"
+                }
+            ]
+        },
+        {
+            "id": "Tunnels",
+            "message": "Tunnels",
+            "translation": "Tunneler",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Edit",
+            "message": "\u0026Edit",
+            "translation": "\u0026Redigér",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Import tunnel from \u0026link…",
+            "message": "Import tunnel from \u0026link…",
+            "translation": ""
+        },
+        {
+            "id": "Add \u0026empty tunnel…",
+            "message": "Add \u0026empty tunnel…",
+            "translation": "Tilføj \u0026tom tunnel…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Add Tunnel",
+            "message": "Add Tunnel",
+            "translation": "Tilføj tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Remove selected tunnel(s)",
+            "message": "Remove selected tunnel(s)",
+            "translation": "Fjern valgte tunnel(er)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export all tunnels to zip",
+            "message": "Export all tunnels to zip",
+            "translation": "Eksportér alle tunneler til zip-fil",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Toggle",
+            "message": "\u0026Toggle",
+            "translation": "\u0026Skift",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export all tunnels to \u0026zip…",
+            "message": "Export all tunnels to \u0026zip…",
+            "translation": "Eksportér alle tunneler til \u0026zip-fil…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Edit \u0026selected tunnel…",
+            "message": "Edit \u0026selected tunnel…",
+            "translation": "Redigér \u0026valgte tunnel…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Remove selected tunnel(s)",
+            "message": "\u0026Remove selected tunnel(s)",
+            "translation": "\u0026Fjern valgte tunnel(er)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "no configuration files were found",
+            "message": "no configuration files were found",
+            "translation": "ingen konfigurationsfiler blev fundet",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Could not import selected configuration: {LastErr}",
+            "message": "Could not import selected configuration: {LastErr}",
+            "translation": "Kunne ikke importere valgte konfiguration: {LastErr}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LastErr",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "lastErr"
+                }
+            ]
+        },
+        {
+            "id": "Could not enumerate existing tunnels: {Err}",
+            "message": "Could not enumerate existing tunnels: {Err}",
+            "translation": "Kunne ikke opregne eksisterende tunneler: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Another tunnel already exists with the name ‘{Name}’",
+            "message": "Another tunnel already exists with the name ‘{Name}’",
+            "translation": "En anden tunnel findes allerede med navnet '{Name}'",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "unparsedConfig.Name"
+                }
+            ]
+        },
+        {
+            "id": "Unable to import configuration: {LastErr}",
+            "message": "Unable to import configuration: {LastErr}",
+            "translation": "Kan ikke importere konfiguration: {LastErr}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LastErr",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "lastErr"
+                }
+            ]
+        },
+        {
+            "id": "Imported tunnels",
+            "message": "Imported tunnels",
+            "translation": "Importeret tunneler",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Imported {M} tunnels",
+            "message": "Imported {M} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "M",
+                    "cases": {
+                        "one": {
+                            "msg": "Importeret {M} tunnel"
+                        },
+                        "other": {
+                            "msg": "Importeret {M} tunneler"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "M",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "m"
+                }
+            ]
+        },
+        {
+            "id": "Imported {M} of {N} tunnels",
+            "message": "Imported {M} of {N} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "N",
+                    "cases": {
+                        "one": {
+                            "msg": "Importeret {M} ud af {N} tunnel"
+                        },
+                        "other": {
+                            "msg": "Importeret {M} ud af {N} tunneler"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "M",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "m"
+                },
+                {
+                    "id": "N",
+                    "string": "%[2]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 2,
+                    "expr": "n"
+                }
+            ]
+        },
+        {
+            "id": "Unable to create tunnel",
+            "message": "Unable to create tunnel",
+            "translation": "Ikke i stand til at oprette tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Delete {TunnelCount} tunnels",
+            "message": "Delete {TunnelCount} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "TunnelCount",
+                    "cases": {
+                        "one": {
+                            "msg": "Slet {TunnelCount} tunnel"
+                        },
+                        "other": {
+                            "msg": "Slet {TunnelCount} tunneler"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "TunnelCount",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "tunnelCount"
+                }
+            ]
+        },
+        {
+            "id": "Are you sure you would like to delete {TunnelCount} tunnels?",
+            "message": "Are you sure you would like to delete {TunnelCount} tunnels?",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "TunnelCount",
+                    "cases": {
+                        "one": {
+                            "msg": "Er du sikker på, at du vil slette {TunnelCount} tunnel?"
+                        },
+                        "other": {
+                            "msg": "Er du sikker på du ønsker at slette {TunnelCount} tunneler?"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "TunnelCount",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "tunnelCount"
+                }
+            ]
+        },
+        {
+            "id": "Delete tunnel ‘{TunnelName}’",
+            "message": "Delete tunnel ‘{TunnelName}’",
+            "translation": "Slet tunnel '{TunnelName}'",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TunnelName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnelName"
+                }
+            ]
+        },
+        {
+            "id": "Are you sure you would like to delete tunnel ‘{TunnelName}’?",
+            "message": "Are you sure you would like to delete tunnel ‘{TunnelName}’?",
+            "translation": "Er du sikker på, at du vil slette tunnelen '{TunnelName}'?",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TunnelName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnelName"
+                }
+            ]
+        },
+        {
+            "id": "{Question} You cannot undo this action.",
+            "message": "{Question} You cannot undo this action.",
+            "translation": "{Question} Du kan ikke fortryde denne handling.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Question",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "question"
+                }
+            ]
+        },
+        {
+            "id": "Unable to delete tunnel",
+            "message": "Unable to delete tunnel",
+            "translation": "Ikke i stand til at slette tunnel",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A tunnel was unable to be removed: {Error}",
+            "message": "A tunnel was unable to be removed: {Error}",
+            "translation": "En tunnel kunne ikke fjernes: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "errors[0].Error()"
+                }
+            ]
+        },
+        {
+            "id": "Unable to delete tunnels",
+            "message": "Unable to delete tunnels",
+            "translation": "Ikke i stand til at slette tunneler",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{Lenerrors} tunnels were unable to be removed.",
+            "message": "{Lenerrors} tunnels were unable to be removed.",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Lenerrors",
+                    "cases": {
+                        "one": {
+                            "msg": "{Lenerrors} tunnel kunne ikke fjernes."
+                        },
+                        "other": {
+                            "msg": "{Lenerrors} tunneller kunne ikke fjernes."
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Lenerrors",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "len(errors)"
+                }
+            ]
+        },
+        {
+            "id": "Configuration Files (*.zip, *.conf)|*.zip;*.conf|All Files (*.*)|*.*",
+            "message": "Configuration Files (*.zip, *.conf)|*.zip;*.conf|All Files (*.*)|*.*",
+            "translation": "Konfigurationsfiler (*.zip, *.conf)|*.zip;*.conf|Alle filer (*.*)|*.*",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Import tunnel(s) from file",
+            "message": "Import tunnel(s) from file",
+            "translation": "Importér tunnel(er) fra fil",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Configuration ZIP Files (*.zip)|*.zip",
+            "message": "Configuration ZIP Files (*.zip)|*.zip",
+            "translation": "Konfigurations-zip-filer (*.zip)|*.zip",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export tunnels to zip",
+            "message": "Export tunnels to zip",
+            "translation": "Eksportér tunneler til zip-fil",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Error Exiting Phobos",
+            "message": "Error Exiting Phobos",
+            "translation": "Fejl ved afslutning af Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to exit service due to: {Err}. You may want to stop Phobos from the service manager.",
+            "message": "Unable to exit service due to: {Err}. You may want to stop Phobos from the service manager.",
+            "translation": "Kan ikke afslutte tjenesten på grund af: {Err}. Du kan stoppe Phobos fra serviceadministratoren.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "{B}",
+            "message": "{B}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "B",
+                    "string": "%[1]s",
+                    "type": "[]byte",
+                    "underlyingType": "[]byte",
+                    "argNum": 1,
+                    "expr": "b"
+                }
+            ]
+        }
+    ]
+}

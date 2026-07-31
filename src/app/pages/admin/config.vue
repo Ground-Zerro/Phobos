@@ -60,8 +60,6 @@
 </template>
 
 <script lang="ts" setup>
-const globalStore = useGlobalStore();
-
 const { data: _data, refresh } = await useFetch(`/api/admin/userconfig`, {
   method: 'get',
 });

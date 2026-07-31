@@ -19,6 +19,14 @@
 #endif
 
 #define OBFUSCATION_VERSION     1
+#define MAX_XOR_KEY_LENGTH      256
+
+#ifndef MAX_DUMMY_LENGTH_TOTAL
+#define MAX_DUMMY_LENGTH_TOTAL          1024
+#endif
+#ifndef MAX_DUMMY_LENGTH_HANDSHAKE
+#define MAX_DUMMY_LENGTH_HANDSHAKE      512
+#endif
 
 #define WG_TYPE_HANDSHAKE       0x01
 #define WG_TYPE_HANDSHAKE_RESP  0x02
@@ -43,6 +51,7 @@ static volatile int crc8_table_initialized = 0;
 typedef struct {
     int length;
     int key_length;
+    uint8_t key[MAX_XOR_KEY_LENGTH];
     uint8_t mask[XOR_CACHE_MAX_LEN];
 } xor_cache_entry_t;
 
@@ -81,7 +90,11 @@ static _Thread_local uint32_t rng_state = 0;
 static inline void fast_rng_init(void) {
     if (rng_state) return;
     struct timespec ts;
+#ifdef _WIN32
+    timespec_get(&ts, TIME_UTC);
+#else
     clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
     rng_state = (uint32_t)(ts.tv_nsec ^ ts.tv_sec ^ (uintptr_t)&rng_state);
     if (rng_state == 0) rng_state = 1;
 }
@@ -208,27 +221,29 @@ static inline void xor_apply_mask(uint8_t *buffer, const uint8_t *mask, int leng
 #endif
 }
 
-static inline xor_cache_entry_t *xor_cache_find(int length, int key_length) {
+static inline xor_cache_entry_t *xor_cache_find(int length, const char *key, int key_length) {
     for (int i = 0; i < xor_cache_count; i++) {
-        if (xor_cache[i].length == length && xor_cache[i].key_length == key_length) {
+        if (xor_cache[i].length == length && xor_cache[i].key_length == key_length
+            && memcmp(xor_cache[i].key, key, (size_t)key_length) == 0) {
             return &xor_cache[i];
         }
     }
     return NULL;
 }
 
-static inline xor_cache_entry_t *xor_cache_alloc(int length, int key_length) {
+static inline xor_cache_entry_t *xor_cache_alloc(int length, const char *key, int key_length) {
     xor_cache_entry_t *entry = (xor_cache_count < xor_cache_cap)
         ? &xor_cache[xor_cache_count++]
         : &xor_cache[fast_rand() % xor_cache_cap];
     entry->length = length;
     entry->key_length = key_length;
+    memcpy(entry->key, key, (size_t)key_length);
     return entry;
 }
 
 static inline void xor_gen_apply(uint8_t *buffer, uint8_t *mask, int length, char *key, int key_length) {
     uint8_t crc = 0;
-    uint8_t key_adj[256];
+    uint8_t key_adj[MAX_XOR_KEY_LENGTH];
     const uint8_t base = (uint8_t)(length + key_length);
     for (int k = 0; k < key_length; k++) key_adj[k] = key[k] + base;
     int ki = 0;
@@ -241,7 +256,7 @@ static inline void xor_gen_apply(uint8_t *buffer, uint8_t *mask, int length, cha
 }
 
 static inline void xor_data_stream(uint8_t *buffer, int length, char *key, int key_length) {
-    uint8_t key_adj[256];
+    uint8_t key_adj[MAX_XOR_KEY_LENGTH];
     const uint8_t base = (uint8_t)(length + key_length);
     for (int k = 0; k < key_length; k++) key_adj[k] = key[k] + base;
     uint8_t crc = 0;
@@ -262,13 +277,14 @@ static inline void xor_data_stream(uint8_t *buffer, int length, char *key, int k
 
 static inline void xor_data(uint8_t *buffer, int length, char *key, int key_length) {
     if (!crc8_table_initialized) init_crc8_table();
+    if (key_length > MAX_XOR_KEY_LENGTH) key_length = MAX_XOR_KEY_LENGTH;
 
     if (length <= XOR_CACHE_MAX_LEN) {
-        xor_cache_entry_t *entry = xor_cache_find(length, key_length);
+        xor_cache_entry_t *entry = xor_cache_find(length, key, key_length);
         if (entry) {
             xor_apply_mask(buffer, entry->mask, length);
         } else {
-            entry = xor_cache_alloc(length, key_length);
+            entry = xor_cache_alloc(length, key, key_length);
             xor_gen_apply(buffer, entry->mask, length, key, key_length);
         }
     } else {
@@ -280,12 +296,12 @@ typedef struct {
     uint8_t crc;
     int ki;
     int key_length;
-    uint8_t key_adj[256];
+    uint8_t key_adj[MAX_XOR_KEY_LENGTH];
 } stream_cipher_t;
 
 static inline void stream_cipher_init(stream_cipher_t *s, const char *key, int key_length) {
     if (!crc8_table_initialized) init_crc8_table();
-    if (key_length > 256) key_length = 256;
+    if (key_length > MAX_XOR_KEY_LENGTH) key_length = MAX_XOR_KEY_LENGTH;
     s->crc = 0;
     s->ki = 0;
     s->key_length = key_length;
@@ -326,6 +342,10 @@ static inline int encode(uint8_t *buffer, int length, char *key, int key_length,
         uint16_t dummy_length = 0;
         if (!partial && length < MAX_DUMMY_LENGTH_TOTAL) {
             uint16_t max_dummy_length = MAX_DUMMY_LENGTH_TOTAL - length;
+            if (obfuscate_bytes > 0) {
+                int partial_room = obfuscate_bytes - length + 1;
+                if (partial_room < (int)max_dummy_length) max_dummy_length = (uint16_t)partial_room;
+            }
             switch (packet_type) {
                 case WG_TYPE_HANDSHAKE:
                 case WG_TYPE_HANDSHAKE_RESP:
@@ -344,7 +364,7 @@ static inline int encode(uint8_t *buffer, int length, char *key, int key_length,
         buffer[2] = dummy_length & 0xFF;
         buffer[3] = dummy_length >> 8;
         if (dummy_length > 0) {
-            memset(buffer + length, 0xFF, dummy_length);
+            fast_rand_bytes(buffer + length, dummy_length);
             length += dummy_length;
         }
     }

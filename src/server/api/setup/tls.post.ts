@@ -20,7 +20,10 @@ const TlsSetupSchema = z.discriminatedUnion('mode', [
 ]);
 
 export default defineSetupEventHandler('tls', async ({ event }) => {
-  const body = await readValidatedBody(event, validateZod(TlsSetupSchema, event));
+  const body = await readValidatedBody(
+    event,
+    validateZod(TlsSetupSchema, event)
+  );
 
   if (isExternalTlsManaged()) {
     if (!hasActiveTlsCert() && body.mode !== 'skip') {

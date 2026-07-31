@@ -148,7 +148,7 @@
             <BaseInput
               v-model.trim="p.sourceIf"
               type="text"
-              placeholder="0.0.0.0"
+              placeholder="AUTO"
             />
           </div>
           <div class="flex flex-col gap-1 sm:col-span-2">
@@ -296,8 +296,12 @@
 </template>
 
 <script setup lang="ts">
+import {
+  effectiveObfuscateBytes,
+  type ObfuscationMasking,
+} from '~~/shared/utils/obfuscation';
+
 type Mode = 'WIREGUARD' | 'SOCKS5';
-type Masking = 'STUN' | 'MEDIA' | 'AUTO' | 'NONE' | 'TLS';
 type Verbose = 'error' | 'warn' | 'info' | 'debug' | 'trace';
 type Preset = {
   id: number;
@@ -308,7 +312,7 @@ type Preset = {
   sourceIf: string;
   target: string | null;
   key: string;
-  masking: Masking;
+  masking: ObfuscationMasking;
   obfuscateBytes: number;
   dummy: number;
   verbose: Verbose;
@@ -340,7 +344,7 @@ const newPreset = ref<{ name: string; mode: Mode }>({
 const canCreate = computed(() => newPreset.value.name.trim().length > 0);
 
 function dummyDisabled(p: Preset): boolean {
-  return p.masking === 'MEDIA' || p.obfuscateBytes > 0;
+  return effectiveObfuscateBytes(p) > 0;
 }
 
 function mediaSsrcDisabled(p: Preset): boolean {

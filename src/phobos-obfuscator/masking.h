@@ -2,7 +2,7 @@
 #define _MASKING_H_
 
 #include <stdint.h>
-#include <netinet/in.h>
+#include "compat_net.h"
 #include "wg-obfuscator.h"
 
 typedef ssize_t (*send_data_callback_t)(uint8_t *buffer, int length);

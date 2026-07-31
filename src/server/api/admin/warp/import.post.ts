@@ -40,78 +40,86 @@ const RawImportSchema = z.object({
   config: z.string().min(1),
 });
 
-export default definePermissionEventHandler('admin', 'any', async ({ event }) => {
-  const { config } = await readValidatedBody(
-    event,
-    validateZod(RawImportSchema, event)
-  );
+export default definePermissionEventHandler(
+  'admin',
+  'any',
+  async ({ event }) => {
+    const { config } = await readValidatedBody(
+      event,
+      validateZod(RawImportSchema, event)
+    );
 
-  const sections = parseWgConfig(config);
-  const iface = sections['interface'] ?? {};
-  const peer = sections['peer'] ?? {};
+    const sections = parseWgConfig(config);
+    const iface = sections['interface'] ?? {};
+    const peer = sections['peer'] ?? {};
 
-  const required = ['privatekey', 'address'] as const;
-  const peerRequired = ['publickey', 'endpoint'] as const;
+    const required = ['privatekey', 'address'] as const;
+    const peerRequired = ['publickey', 'endpoint'] as const;
 
-  for (const key of required) {
-    if (!iface[key]) {
+    for (const key of required) {
+      if (!iface[key]) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: `Invalid WireGuard config: missing [Interface] ${key}`,
+        });
+      }
+    }
+    for (const key of peerRequired) {
+      if (!peer[key]) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: `Invalid WireGuard config: missing [Peer] ${key}`,
+        });
+      }
+    }
+
+    const { v4, v6 } = extractAddresses(iface['address']!);
+
+    if (!v4) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Invalid WireGuard config: missing [Interface] ${key}`,
+        statusMessage:
+          'Invalid WireGuard config: no valid IPv4 address in Address field',
       });
     }
-  }
-  for (const key of peerRequired) {
-    if (!peer[key]) {
+
+    const mtuRaw = iface['mtu'] ? Number.parseInt(iface['mtu'], 10) : 1280;
+    const keepaliveRaw = peer['persistentkeepalive']
+      ? Number.parseInt(peer['persistentkeepalive'], 10)
+      : 25;
+
+    const parsed = await validateZod(
+      WarpManualSchema,
+      event
+    )({
+      privateKey: iface['privatekey'],
+      peerPublicKey: peer['publickey'],
+      endpoint: peer['endpoint'],
+      addressV4: v4,
+      addressV6: v6,
+      mtu: Number.isNaN(mtuRaw) ? 1280 : mtuRaw,
+      dns: iface['dns'] ?? '',
+      presharedKey: peer['presharedkey'] ?? '',
+      persistentKeepalive: Number.isNaN(keepaliveRaw) ? 25 : keepaliveRaw,
+    });
+
+    if (!(await Database.warp.isRegistered())) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Invalid WireGuard config: missing [Peer] ${key}`,
+        statusMessage: 'WARP is not registered.',
       });
     }
+
+    try {
+      await WarpInterface.importConfig(parsed);
+    } catch (e) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: (e as Error).message,
+      });
+    }
+
+    const warp = await Database.warp.get();
+    return maskWarp(warp);
   }
-
-  const { v4, v6 } = extractAddresses(iface['address']!);
-
-  if (!v4) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Invalid WireGuard config: no valid IPv4 address in Address field',
-    });
-  }
-
-  const mtuRaw = iface['mtu'] ? Number.parseInt(iface['mtu'], 10) : 1280;
-  const keepaliveRaw = peer['persistentkeepalive']
-    ? Number.parseInt(peer['persistentkeepalive'], 10)
-    : 25;
-
-  const parsed = await validateZod(WarpManualSchema, event)({
-    privateKey: iface['privatekey'],
-    peerPublicKey: peer['publickey'],
-    endpoint: peer['endpoint'],
-    addressV4: v4,
-    addressV6: v6,
-    mtu: Number.isNaN(mtuRaw) ? 1280 : mtuRaw,
-    dns: iface['dns'] ?? '',
-    presharedKey: peer['presharedkey'] ?? '',
-    persistentKeepalive: Number.isNaN(keepaliveRaw) ? 25 : keepaliveRaw,
-  });
-
-  if (!(await Database.warp.isRegistered())) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'WARP is not registered.',
-    });
-  }
-
-  try {
-    await WarpInterface.importConfig(parsed);
-  } catch (e) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: (e as Error).message,
-    });
-  }
-
-  const warp = await Database.warp.get();
-  return maskWarp(warp);
-});
+);

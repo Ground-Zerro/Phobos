@@ -127,9 +127,7 @@ PostDown = ${iptablesTemplate(hooks.postDown, wgInterface)}`;
     const dnsLine =
       dnsServers.length > 0 ? `DNS = ${dnsServers.join(', ')}` : null;
 
-    const extraLines = [dnsLine, ...hookLines].filter(
-      (v) => v !== null
-    );
+    const extraLines = [dnsLine, ...hookLines].filter((v) => v !== null);
 
     return `[Interface]
 PrivateKey = ${client.privateKey}

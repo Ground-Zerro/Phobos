@@ -24,10 +24,7 @@
           :disabled="loading || fetching"
         />
 
-        <p
-          v-if="errorMsg"
-          class="mt-2 text-sm text-red-600 dark:text-red-400"
-        >
+        <p v-if="errorMsg" class="mt-2 text-sm text-red-600 dark:text-red-400">
           {{ errorMsg }}
         </p>
 
@@ -37,7 +34,10 @@
               {{ $t('dialog.cancel') }}
             </BaseSecondaryButton>
           </DialogClose>
-          <BasePrimaryButton :disabled="loading || fetching || !configText.trim()" @click="apply">
+          <BasePrimaryButton
+            :disabled="loading || fetching || !configText.trim()"
+            @click="apply"
+          >
             {{ loading ? $t('general.loading') : $t('admin.warp.importApply') }}
           </BasePrimaryButton>
         </div>
@@ -95,13 +95,17 @@ async function apply() {
       body: { config: configText.value },
     });
     open.value = false;
-    toast.showToast({ type: 'success', message: t('admin.warp.importSuccess') });
+    toast.showToast({
+      type: 'success',
+      message: t('admin.warp.importSuccess'),
+    });
     emit('success');
   } catch (e: unknown) {
     const msg =
       e instanceof Error
         ? e.message
-        : (e as { data?: { message?: string } })?.data?.message ?? t('general.error');
+        : ((e as { data?: { message?: string } })?.data?.message ??
+          t('general.error'));
     errorMsg.value = msg;
   } finally {
     loading.value = false;

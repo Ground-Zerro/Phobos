@@ -40,7 +40,6 @@ const extPort = z
 
 const sourceIf = z
   .string({ message: t('zod.obfuscatorPreset.sourceIf') })
-  .min(1, { message: t('zod.obfuscatorPreset.sourceIf') })
   .max(255)
   .pipe(safeStringRefine);
 

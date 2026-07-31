@@ -3,27 +3,31 @@ import {
   ObfuscatorPresetUpdateSchema,
 } from '#db/repositories/obfuscatorPreset/types';
 
-export default definePermissionEventHandler('admin', 'any', async ({ event }) => {
-  const { presetId } = await getValidatedRouterParams(
-    event,
-    validateZod(ObfuscatorPresetGetSchema, event)
-  );
-  const data = await readValidatedBody(
-    event,
-    validateZod(ObfuscatorPresetUpdateSchema, event)
-  );
+export default definePermissionEventHandler(
+  'admin',
+  'any',
+  async ({ event }) => {
+    const { presetId } = await getValidatedRouterParams(
+      event,
+      validateZod(ObfuscatorPresetGetSchema, event)
+    );
+    const data = await readValidatedBody(
+      event,
+      validateZod(ObfuscatorPresetUpdateSchema, event)
+    );
 
-  let preset;
-  try {
-    preset = await Database.obfuscatorPresets.update(presetId, data);
-  } catch (e) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: (e as Error).message,
-    });
+    let preset;
+    try {
+      preset = await Database.obfuscatorPresets.update(presetId, data);
+    } catch (e) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: (e as Error).message,
+      });
+    }
+
+    await Obfuscator.applyAll();
+    PhobosPackage.invalidate();
+    return preset;
   }
-
-  await Obfuscator.applyAll();
-  PhobosPackage.invalidate();
-  return preset;
-});
+);

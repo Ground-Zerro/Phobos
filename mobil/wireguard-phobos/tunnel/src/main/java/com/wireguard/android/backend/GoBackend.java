@@ -29,9 +29,12 @@ import com.wireguard.crypto.Key;
 import com.wireguard.crypto.KeyFormatException;
 import com.wireguard.util.NonNullForAll;
 
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -414,14 +417,33 @@ public final class GoBackend implements Backend {
         tunnel.onStateChange(state);
     }
 
+    private static String[] preferredAddressPerFamily(final InetAddress[] addresses) {
+        final List<String> picked = new ArrayList<>(2);
+        boolean hasV6 = false;
+        boolean hasV4 = false;
+        for (final InetAddress address : addresses) {
+            final boolean isV6 = address instanceof Inet6Address;
+            if (isV6 ? hasV6 : hasV4)
+                continue;
+            if (isV6)
+                hasV6 = true;
+            else
+                hasV4 = true;
+            picked.add(address.getHostAddress());
+        }
+        return picked.toArray(new String[0]);
+    }
+
     private void bringUpSocks5(final Tunnel tunnel, final Config config, final Socks5Settings socks5,
                                final VpnService service) throws Exception {
-        final String serverIp;
+        final String[] serverIps;
         try {
-            serverIp = InetAddress.getByName(socks5.getTargetHost()).getHostAddress();
+            serverIps = preferredAddressPerFamily(InetAddress.getAllByName(socks5.getTargetHost()));
         } catch (final Exception e) {
             throw new BackendException(Reason.DNS_RESOLUTION_FAILURE, socks5.getTargetHost());
         }
+        if (serverIps.length == 0)
+            throw new BackendException(Reason.DNS_RESOLUTION_FAILURE, socks5.getTargetHost());
 
         final VpnService.Builder builder = service.getBuilder();
         builder.setSession(tunnel.getName());
@@ -451,7 +473,7 @@ public final class GoBackend implements Backend {
         NativeSocks5.INSTANCE.ensureLoaded(context);
         NativeSocks5.INSTANCE.setProtector(service::protect);
 
-        final Socks5Engine engine = new Socks5Engine(serverIp, socks5.getTargetPort(),
+        final Socks5Engine engine = new Socks5Engine(serverIps, socks5.getTargetPort(),
                 socks5.getKey().getBytes(StandardCharsets.UTF_8), socks5.getMaskingId(),
                 socks5.getMediaSsrc(), socks5.getListenPort());
         ParcelFileDescriptor tun = null;

@@ -2,7 +2,7 @@
 #define _MASKING_STUN_H_
 
 #include <stdint.h>
-#include <netinet/in.h>
+#include "compat_net.h"
 #include "wg-obfuscator.h"
 #include "masking.h"
 

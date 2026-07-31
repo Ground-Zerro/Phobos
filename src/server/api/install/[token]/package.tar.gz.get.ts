@@ -26,11 +26,7 @@ export default defineEventHandler(async (event) => {
   const filename = await PhobosPackage.getFilename(link.id);
 
   setHeader(event, 'Content-Type', 'application/gzip');
-  setHeader(
-    event,
-    'Content-Disposition',
-    `attachment; filename="${filename}"`
-  );
+  setHeader(event, 'Content-Disposition', `attachment; filename="${filename}"`);
   setHeader(event, 'Content-Length', buf.length);
   setHeader(event, 'Cache-Control', 'no-store');
   return buf;

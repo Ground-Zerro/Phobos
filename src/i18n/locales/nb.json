@@ -8,7 +8,8 @@
       "config": "Oppsett",
       "interface": "Grensesnitt",
       "hooks": "Hooks",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Obfuskator-forhåndsinnstillinger"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Opprett konto",
     "successful": "Oppsett vellykket",
     "hostDesc": "Offentlig vertsnavn klienter vil koble seg til",
-    "portDesc": "Offentlig UDP-port klienter vil koble til og WireGuard vil lytte på"
+    "portDesc": "Offentlig UDP-port klienter vil koble til og WireGuard vil lytte på",
+    "tls": {
+      "title": "HTTPS-/TLS-sertifikat",
+      "desc": "Sett opp et TLS-sertifikat for å aktivere sikker HTTPS-tilgang. Uten HTTPS er innlogging blokkert som standard.",
+      "selfSigned": "Selvsignert sertifikat",
+      "selfSignedDesc": "Genereres umiddelbart for verten din. Nettleseren viser en sikkerhetsadvarsel — klikk Avansert → Fortsett.",
+      "selfSignedHstsWarning": "Hvis nettleseren blokkerer siden med en HSTS-feil og uten «Fortsett»-valg, har den bufret en HSTS-policy fra et tidligere sertifikat på dette domenet. Åpne adressen i et privat vindu, eller slett HSTS-oppføringen i chrome://net-internals/#hsts (Delete domain).",
+      "import": "Importer eksisterende sertifikat",
+      "importDesc": "Lim inn ditt eget PEM-sertifikat og den private nøkkelen.",
+      "importPath": "Importer sertifikat fra filbaner",
+      "importPathDesc": "Oppgi absolutte baner til eksisterende sertifikat- og nøkkelfiler på disken (f.eks. /etc/letsencrypt/live/example.com/*.pem). Filene må kunne leses fra inni containeren.",
+      "certPathLabel": "Bane til sertifikatfil (PEM fullchain)",
+      "keyPathLabel": "Bane til privatnøkkelfil (PEM)",
+      "importPathHint": "Filene symlenkes, de kopieres ikke. Når kildefilene endres på disken (f.eks. etter certbot renew), oppdager serveren det innen ca. 30 s og starter automatisk på nytt for å ta i bruk det nye sertifikatet. Containeren har lesetilgang til disse vertskatalogene: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Hopp over (ingen HTTPS)",
+      "skipDesc": "Fortsett på HTTP.",
+      "certLabel": "Sertifikat (PEM fullchain)",
+      "keyLabel": "Privat nøkkel (PEM)",
+      "generate": "Generer sertifikat",
+      "apply": "Bruk",
+      "restarting": "Sertifikatet er tatt i bruk. Serveren starter på nytt med HTTPS ...",
+      "redirectPrompt": "Åpne den sikre versjonen:",
+      "openLink": "Åpne HTTPS",
+      "skipWarning": "Uten TLS-sertifikat er nettgrensesnittet bare tilgjengelig over HTTP.",
+      "errorCert": "Validering av sertifikatet mislyktes",
+      "errorKey": "Validering av den private nøkkelen mislyktes"
+    }
   },
   "theme": {
     "dark": "Mørkt tema",
@@ -118,17 +145,40 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "firewallIps": "IP-adresser tillatt av brannmuren",
+    "firewallIpsDesc": "Mål-IP-adresser/CIDR som denne klienten får tilgang til (håndheves på serveren). La stå tomt for å bruke Allowed IPs. Støtter valgfri filtrering på port og protokoll. Se dokumentasjonen for syntaks.",
+    "downloadPng": "Last ned PNG",
+    "copyLink": "Kopier phobos://-lenke",
+    "linkShort": "Lenke",
+    "linkCopied": "phobos://-lenken er kopiert til utklippstavlen",
+    "linkFailed": "Klarte ikke å kopiere phobos://-lenken",
+    "preset": "Obfuskator-forhåndsinnstilling",
+    "protocol": "Protokoll",
+    "presetDesc": "Velg hvilken obfuskator-forhåndsinnstilling denne klienten går gjennom. Protokollen til forhåndsinnstillingen (WireGuard eller SOCKS5) avgjør hvilke felt nedenfor som gjelder — SOCKS5-påloggingen vises for eksempel bare for en forhåndsinnstilling i SOCKS5-modus, siden WireGuard ikke bruker den. La den stå på standard for å følge serverens standardforhåndsinnstilling (WireGuard).",
+    "presetUseDefault": "Bruk standardforhåndsinnstillingen",
+    "socks5Login": "SOCKS5-brukernavn",
+    "socks5Password": "SOCKS5-passord",
+    "socks5CredentialsHint": "Skriv inn dette brukernavnet og passordet i SOCKS5-innstillingene i selve klientprogrammet (nettleser, curl osv.) — obfuskatoren krypterer bare trafikken, den verken lagrer eller kontrollerer disse opplysningene.",
+    "socks5ConfigNote": "Denne klienten bruker en forhåndsinnstilling i SOCKS5-modus, så konfigurasjonen nedenfor er en klientblokk for SOCKS5-obfuskatoren, ikke WireGuard. Legg inn SOCKS5-brukernavnet og passordet som vises på denne klientsiden i ditt eget SOCKS5-program.",
+    "nameHint": "Bare latinske bokstaver, sifre, bindestrek, punktum og {'@'}; maks. 32 tegn; må være unikt.",
+    "nameError": {
+      "tooLong": "Navnet kan ikke være lengre enn {max} tegn.",
+      "invalidChars": "Bare latinske bokstaver, sifre, bindestrek, punktum og {'@'} er tillatt (ingen mellomrom eller andre spesialtegn).",
+      "duplicate": "Det finnes allerede en klient med dette navnet."
+    }
   },
   "dialog": {
     "change": "Endre",
     "cancel": "Avbryt",
-    "create": "Opprett"
+    "create": "Opprett",
+    "delete": "Slett"
   },
   "toast": {
     "success": "Vellykket",
     "saved": "Lagret",
-    "error": "Feil"
+    "error": "Feil",
+    "unknown": "Ukjent feil. Se konsollen for flere detaljer"
   },
   "form": {
     "actions": "Handlinger",
@@ -150,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Rute for metrics i JSON-format",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Rute for Prometheus-målinger"
+      "prometheusDesc": "Rute for Prometheus-målinger",
+      "metricsPasswordSet": "Passord er satt — la stå tomt for å beholde det",
+      "metricsPasswordUnset": "Ingen passord er satt"
     },
     "config": {
       "connection": "Tilkobling",
@@ -174,7 +226,22 @@
       "restartSuccess": "Grensesnitt startet på nytt",
       "egress": "Utgangspunkt",
       "egressWarp": "Rute klienttrafikk gjennom WARP",
-      "egressWarpDesc": "Når aktivert, kobler klienter til internett via Cloudflare WARP i stedet for serverens WAN, noe som skjuler server-IP. Krever en registrert WARP-konfigurasjon. En lavere klient-MTU kan være nødvendig."
+      "egressWarpDesc": "Når aktivert, kobler klienter til internett via Cloudflare WARP i stedet for serverens WAN, noe som skjuler server-IP. Krever en registrert WARP-konfigurasjon. En lavere klient-MTU kan være nødvendig.",
+      "subnet": "WireGuard-subnett",
+      "ipv4Cidr": "WireGuard IPv4-subnett (CIDR)",
+      "ipv4CidrDesc": "Adressepulje for klienter (f.eks. 10.8.0.0/24). Utvid masken (f.eks. /16) for å tillate flere klienter eller andre områder. Endring tildeler alle klienter ny IPv4-adresse.",
+      "ipv6Cidr": "WireGuard IPv6-subnett (CIDR)",
+      "ipv6CidrDesc": "IPv6-adressepulje for klienter. Endring tildeler alle klienter ny IPv6-adresse.",
+      "firewall": "Trafikkfiltrering",
+      "firewallEnabled": "Slå på brannmur per klient",
+      "firewallEnabledDesc": "Begrenser klienttrafikk til bestemte mål-IP-adresser ved hjelp av iptables. Når den er på, kan hver klient få egne tillatte destinasjoner.",
+      "publicAddress": "Offentlig adresse",
+      "publicIpV4": "Serverens offentlige IPv4",
+      "publicIpV4Desc": "Brukes som target i konfigurasjonen til klientobfuskatoren.",
+      "publicIpV6": "Serverens offentlige IPv6",
+      "publicIpV6Desc": "Valgfri IPv6-target.",
+      "publicDomain": "Serverens offentlige domene",
+      "publicDomainDesc": "Når det er satt, brukes det i klientkonfigurasjonen som obfuskator-target i stedet for IPv4/IPv6."
     },
     "introText": "Velkommen til adminpanelet.\n\nHer kan du administrere de generelle innstillingene, konfigurasjonen, grensesnittinnstillingene og hooks.\n\nStart med å velge en av seksjonene i sidepanelet.",
     "warp": {
@@ -215,6 +282,65 @@
       "checkOffline": "WARP er frakoblet",
       "notActiveEgress": "WARP er ikke aktiv som utgang",
       "notActiveEgressTip": "Aktiver «Rut klienttrafikk gjennom WARP» i Nettverksgrensesnitt-delen for å bruke og teste WARP-tunnelen."
+    },
+    "tls": {
+      "title": "TLS-sertifikat",
+      "desc": "Bytt ut det aktive HTTPS-sertifikatet eller gå tilbake til vanlig HTTP.",
+      "current": "Aktivt sertifikat",
+      "apply": "Bruk TLS-konfigurasjonen",
+      "applied": "TLS-konfigurasjonen er tatt i bruk. Serveren starter på nytt.",
+      "appliedRestart": "TLS-konfigurasjonen er tatt i bruk. Serveren starter på nytt; åpne {url} igjen om noen sekunder.",
+      "externalManaged": "TLS håndteres av en ekstern omvendt proxy (TLS_TERMINATION=external). Sertifikatet må utstedes og fornyes utenfor PhobosWG.",
+      "origin": {
+        "self-signed": "Selvsignert",
+        "imported": "Importert (innlimt PEM)",
+        "imported-path": "Importert fra bane (symlenke, lastes automatisk på nytt)",
+        "none": "Ingen (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Obfuskator-forhåndsinnstillinger",
+      "desc": "Hver forhåndsinnstilling kjører sin egen wg-obfuscator-lytter med egen port, nøkkel og maskering. Standardforhåndsinnstillingen gjelder alle klienter uten eksplisitt tildeling. WireGuard-forhåndsinnstillinger bruker UDP-portene 51822-51861, SOCKS5-forhåndsinnstillinger TCP-portene 51862-51891 — områdene som docker-compose publiserer.",
+      "add": "Legg til forhåndsinnstilling",
+      "addDesc": "Skriv inn bare et navn. Port, nøkkel og øvrige parametere får fornuftige standardverdier og kan redigeres i forhåndsinnstillingen etterpå.",
+      "default": "standard",
+      "setAsDefault": "Angi som standard",
+      "deleteConfirm": "Slette denne forhåndsinnstillingen? Klienter som bruker den, faller tilbake til standardforhåndsinnstillingen.",
+      "regenerateKey": "Generer nøkkel på nytt",
+      "regeneratePort": "Velg ledig port",
+      "nameLabel": "Navn",
+      "nameDesc": "Visningsnavnet til forhåndsinnstillingen. Brukes bare i panelet.",
+      "modeLabel": "Protokoll (mode)",
+      "modeDesc": "WireGuard: obfuskerer WireGuards UDP-håndtrykk. SOCKS5: kjører en ekte SOCKS5-proxy (med valgfri RFC1929-pålogging per klient) tunnelert over en obfuskert TCP-forbindelse.",
+      "sourceLportLabel": "source-lport (ekstern UDP-port)",
+      "sourceLportLabelSocks5": "source-lport (ekstern TCP-port)",
+      "sourceLportDesc": "Offentlig UDP-port som serverobfuskatoren lytter på. Må ligge innenfor 51822-51861 — området docker-compose publiserer, ellers når ikke klientene den.",
+      "sourceLportDescSocks5": "Offentlig TCP-port som SOCKS5-serveren lytter på. Må ligge innenfor 51862-51891 — området docker-compose publiserer, ellers når ikke klientene den.",
+      "targetLabel": "target",
+      "targetDesc": "Hvor serverobfuskatoren videresender den utpakkede trafikken. La stå tomt for å bruke det lokale WireGuard-endepunktet (127.0.0.1:[wg-port]). Format: host:port.",
+      "targetPlaceholder": "127.0.0.1:[wireguard-port] (standard)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP-adressen til grensesnittet serverobfuskatoren binder seg til. La stå tomt for AUTO: SOCKS5-forhåndsinnstillinger lytter på IPv4 og IPv6, WireGuard-forhåndsinnstillinger på 0.0.0.0.",
+      "keyLabel": "Obfuskeringsnøkkel (key)",
+      "keyDesc": "Delt obfuskeringsnøkkel, identisk på begge sider. Genereres tilfeldig (200-254 tegn). 1-255 tegn.",
+      "maskingLabel": "Maskeringsmodus (masking)",
+      "maskingDesc": "Modus for å omgå DPI. STUN: pakker trafikken som STUN. MEDIA: maskerer den som RTP/H.264-media, settes eksplisitt på begge sider. AUTO: serveren oppdager automatisk, klienten bruker STUN. NONE: maskering av (XOR beholdes).",
+      "maskingDescSocks5": "Modus for å omgå DPI. STUN: pakker trafikken som STUN. MEDIA: maskerer den som RTP/H.264-media, settes eksplisitt på begge sider. TLS: maskerer den som HTTPS-poster. NONE: maskering av (XOR beholdes). AUTO er ikke tilgjengelig for SOCKS5-forhåndsinnstillinger.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Hvor mange innledende byte som XOR-behandles. 0 = hele pakken. Verdi >0 slår av fyllbyte. Må stemme på begge sider. For MEDIA: 0 gir automatisk 16, minimum 4.",
+      "dummyLabel": "Maks. fyllbyte (max-dummy)",
+      "dummyDesc": "Maksimal tilfeldig fyll som legges til per pakke (0-1024). Standard 40.",
+      "dummyDisabledNote": "Brukes ikke med MEDIA eller når obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Gjelder bare med maskeringsmodusen MEDIA.",
+      "verboseLabel": "verbose (loggnivå)",
+      "verboseDesc": "Detaljnivå i loggen. error/warn/info/debug/trace. I produksjon anbefales error; debug/trace belaster prosessoren kraftig.",
+      "clientLocalPortLabel": "Lokal WireGuard-port på klientsiden",
+      "clientLocalPortDesc": "Lokal UDP-port som klientens WireGuard sender til (Endpoint 127.0.0.1:[port]), og samtidig source-lport for klientobfuskatoren. Standard 13255.",
+      "clientLocalPortSocks5Label": "Lokal SOCKS5-port på klientsiden",
+      "clientLocalPortSocks5Desc": "Lokal TCP-port som SOCKS5-obfuskatoren på klientsiden lytter på. Pek programmets SOCKS5-proxyinnstilling til 127.0.0.1:[port]. Standard 1080.",
+      "mediaSsrcLabel": "RTP-SSRC (media-ssrc)",
+      "mediaSsrcDesc": "Fast SSRC-verdi som gjør at MEDIA-maskerte rammer gjenkjennes pålitelig på begge sider. Fylles ut automatisk når MEDIA velges; 0 = ikke satt.",
+      "clientCount": "{n} klient(er)"
     }
   },
   "zod": {
@@ -225,7 +351,8 @@
       "validBoolean": "{0} må være en gyldig boolsk verdi",
       "validArray": "{0} må være en gyldig liste",
       "stringMin": "{0} må være minst {1} tegn",
-      "numberMin": "{0} må være minst {1}"
+      "numberMin": "{0} må være minst {1}",
+      "validNumberRange": "{0} må være et gyldig tall eller tallområde"
     },
     "client": {
       "id": "Klient-ID",
@@ -233,7 +360,12 @@
       "expiresAt": "Utløper",
       "address4": "IPv4-adresse",
       "address6": "IPv6-adresse",
-      "serverAllowedIps": "Server tillatte IP-er"
+      "serverAllowedIps": "Server tillatte IP-er",
+      "firewallIps": "IP-adresser tillatt av brannmuren",
+      "firewallIpsInvalid": "Ugyldig IP-oppføring for brannmuren. Se dokumentasjonen for støttet syntaks.",
+      "presetId": "ID for obfuskator-forhåndsinnstillingen",
+      "nameTooLong": "Klientnavnet kan ikke være lengre enn 32 tegn.",
+      "nameInvalidChars": "Klientnavnet kan bare inneholde latinske bokstaver, sifre, bindestrek, punktum og {'@'} (ingen mellomrom eller andre spesialtegn)."
     },
     "user": {
       "username": "Brukernavn",
@@ -293,6 +425,26 @@
       "interval": "Oppdateringsintervall (dager)",
       "key": "WireGuard-nøkkel",
       "license": "WARP+-lisensnøkkel (min. 26 tegn)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID for obfuskator-forhåndsinnstillingen",
+      "name": "Navn på forhåndsinnstillingen",
+      "mode": "Protokoll",
+      "extPort": "Ekstern port (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Obfuskatornøkkel",
+      "masking": "Maskeringsmodus",
+      "maskingAutoSocks5": "Maskeringen AUTO er ikke tilgjengelig for forhåndsinnstillinger i SOCKS5-modus",
+      "maskingTlsWireguard": "Maskeringen TLS er bare tilgjengelig for forhåndsinnstillinger i SOCKS5-modus",
+      "sourceIf": "Lyttegrensesnitt (IP)",
+      "target": "target må være på formen host:port",
+      "obfuscateBytes": "Obfuskerte byte (0-1024)",
+      "obfuscateBytesMedia": "For MEDIA er minimum 4 (eller 0 for standardverdien 16)",
+      "verbose": "Loggnivå",
+      "idle": "Tidsavbrudd ved inaktivitet",
+      "dummy": "Maks. fyllbyte",
+      "clientWgLocalPort": "Lokal WireGuard-port på klientsiden",
+      "mediaSsrc": "RTP-SSRC",
+      "clientLocalPort": "Lokal port på klientsiden (1-65535)"
     }
   },
   "hooks": {
@@ -305,6 +457,7 @@
     "notSupported": "Kopiering støttes ikke",
     "copied": "Kopiert!",
     "failed": "Kopiering mislyktes",
-    "copy": "Kopier"
+    "copy": "Kopier",
+    "copyConfig": "Klikk for å kopiere konfigurasjonen til utklippstavlen"
   }
 }

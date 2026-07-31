@@ -1,0 +1,2146 @@
+{
+    "language": "uk",
+    "messages": [
+        {
+            "id": "Error",
+            "message": "Error",
+            "translation": "Помилка",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Error:",
+            "message": "Error:",
+            "translation": "Помилка:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "(no argument): elevate and install manager service",
+            "message": "(no argument): elevate and install manager service",
+            "translation": "(немає аргумента): отримати права аднімістратора і встановити службу",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Usage: {Args0} [\n{String}]",
+            "message": "Usage: {Args0} [\n{String}]",
+            "translation": "Використання: {Args0} [\n{String}]",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Args0",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "os.Args[0]"
+                },
+                {
+                    "id": "String",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "builder.String()"
+                }
+            ]
+        },
+        {
+            "id": "Command Line Options",
+            "message": "Command Line Options",
+            "translation": "Параметри командного рядка",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to determine whether the process is running under WOW64: {Err}",
+            "message": "Unable to determine whether the process is running under WOW64: {Err}",
+            "translation": "Неможливо визначити, чи працює процес під WOW64: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "You must use the native version of Phobos on this computer.",
+            "message": "You must use the native version of Phobos on this computer.",
+            "translation": "Ви повинні використовувати рідну версію Phobos на цьому комп'ютері.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to open current process token: {Err}",
+            "message": "Unable to open current process token: {Err}",
+            "translation": "Не вдалося відкрити токен поточного процесу: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Phobos may only be used by users who are a member of the Builtin {AdminGroupName} group.",
+            "message": "Phobos may only be used by users who are a member of the Builtin {AdminGroupName} group.",
+            "translation": "Phobos може бути використаний тільки користувачами, які є членами вбудованих {AdminGroupName} груп.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "AdminGroupName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "elevate.AdminGroupName()"
+                }
+            ]
+        },
+        {
+            "id": "Phobos is running, but the UI is only accessible from desktops of the Builtin {AdminGroupName} group.",
+            "message": "Phobos is running, but the UI is only accessible from desktops of the Builtin {AdminGroupName} group.",
+            "translation": "Phobos запущено, але UI доступний лише з комп\"ютерів вбудованої {AdminGroupName} групи.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "AdminGroupName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "elevate.AdminGroupName()"
+                }
+            ]
+        },
+        {
+            "id": "Phobos system tray icon did not appear after 30 seconds.",
+            "message": "Phobos system tray icon did not appear after 30 seconds.",
+            "translation": "Значок системи Phobos не з'явився через 30 секунд.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Not a phobos:// link: {Link}",
+            "message": "Not a phobos:// link: {Link}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Link",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "link"
+                }
+            ]
+        },
+        {
+            "id": "Now",
+            "message": "Now",
+            "translation": "Зараз",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "System clock wound backward!",
+            "message": "System clock wound backward!",
+            "translation": "Системний годинник налаштований некоректно!",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{Years} year(s)",
+            "message": "{Years} year(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Years",
+                    "cases": {
+                        "few": {
+                            "msg": "{Years} роки"
+                        },
+                        "many": {
+                            "msg": "{Years} років"
+                        },
+                        "one": {
+                            "msg": "{Years} рік"
+                        },
+                        "other": {
+                            "msg": "{Years} років"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Years",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "years"
+                }
+            ]
+        },
+        {
+            "id": "{Days} day(s)",
+            "message": "{Days} day(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Days",
+                    "cases": {
+                        "few": {
+                            "msg": "{Days} дні"
+                        },
+                        "many": {
+                            "msg": "{Days} днів"
+                        },
+                        "one": {
+                            "msg": "{Days} день"
+                        },
+                        "other": {
+                            "msg": "{Days} днів"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Days",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "days"
+                }
+            ]
+        },
+        {
+            "id": "{Hours} hour(s)",
+            "message": "{Hours} hour(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Hours",
+                    "cases": {
+                        "few": {
+                            "msg": "{Hours} години"
+                        },
+                        "many": {
+                            "msg": "{Hours} години"
+                        },
+                        "one": {
+                            "msg": "{Hours} година"
+                        },
+                        "other": {
+                            "msg": "{Hours} годин"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Hours",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "hours"
+                }
+            ]
+        },
+        {
+            "id": "{Minutes} minute(s)",
+            "message": "{Minutes} minute(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Minutes",
+                    "cases": {
+                        "few": {
+                            "msg": "{Minutes} хвилини"
+                        },
+                        "many": {
+                            "msg": "{Minutes} хвилин"
+                        },
+                        "one": {
+                            "msg": "{Minutes} хвилина"
+                        },
+                        "other": {
+                            "msg": "{Minutes} хвилин"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Minutes",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "minutes"
+                }
+            ]
+        },
+        {
+            "id": "{Seconds} second(s)",
+            "message": "{Seconds} second(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Seconds",
+                    "cases": {
+                        "few": {
+                            "msg": "{Seconds} секунди"
+                        },
+                        "many": {
+                            "msg": "{Seconds} секунд"
+                        },
+                        "one": {
+                            "msg": "{Seconds} секунда"
+                        },
+                        "other": {
+                            "msg": "{Seconds} секунд"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Seconds",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "seconds"
+                }
+            ]
+        },
+        {
+            "id": "{Timestamp} ago",
+            "message": "{Timestamp} ago",
+            "translation": "{Timestamp} тому",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Timestamp",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "timestamp"
+                }
+            ]
+        },
+        {
+            "id": "{Bytes} B",
+            "message": "{Bytes} B",
+            "translation": "{Bytes} Б",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Bytes",
+                    "string": "%[1]d",
+                    "type": "golang.zx2c4.com/wireguard/windows/conf.Bytes",
+                    "underlyingType": "uint64",
+                    "argNum": 1,
+                    "expr": "b"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024} KiB",
+            "message": "{Float64b__1024} KiB",
+            "translation": "{Float64b__1024} КБ",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / 1024"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024} MiB",
+            "message": "{Float64b__1024__1024} MiB",
+            "translation": "{Float64b__1024__1024} МБ",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024)"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024__1024} GiB",
+            "message": "{Float64b__1024__1024__1024} GiB",
+            "translation": "{Float64b__1024__1024__1024} ГБ",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024 * 1024)"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024__1024__1024} TiB",
+            "message": "{Float64b__1024__1024__1024__1024} TiB",
+            "translation": "{Float64b__1024__1024__1024__1024} TiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024 * 1024) / 1024"
+                }
+            ]
+        },
+        {
+            "id": "{Why}: {Offender}",
+            "message": "{Why}: {Offender}",
+            "translation": "{Why}: {Offender}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Why",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "e.why"
+                },
+                {
+                    "id": "Offender",
+                    "string": "%[2]q",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "e.offender"
+                }
+            ]
+        },
+        {
+            "id": "Invalid IP address:",
+            "message": "Invalid IP address:",
+            "translation": "Недійсна IP-адреса:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Missing port from endpoint",
+            "message": "Missing port from endpoint",
+            "translation": "Відсутній порт з кінцевої точки",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid endpoint host",
+            "message": "Invalid endpoint host",
+            "translation": "Недійсний хост кінцевої точки",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Brackets must contain an IPv6 address",
+            "message": "Brackets must contain an IPv6 address",
+            "translation": "Дужки повинні містити адресу IPv6",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid MTU",
+            "message": "Invalid MTU",
+            "translation": "Недійсний MTU",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid port",
+            "message": "Invalid port",
+            "translation": "Недійсний порт",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid persistent keepalive",
+            "message": "Invalid persistent keepalive",
+            "translation": "Некоректне значення keepalive",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key: {Err}",
+            "message": "Invalid key: {Err}",
+            "translation": "Недійсний ключ: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Keys must decode to exactly 32 bytes",
+            "message": "Keys must decode to exactly 32 bytes",
+            "translation": "Ключ повинен декодуватись до 32 байт",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Two commas in a row",
+            "message": "Two commas in a row",
+            "translation": "Дві коми поспіль",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid {What}",
+            "message": "Invalid {What}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "What",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "what"
+                }
+            ]
+        },
+        {
+            "id": "Invalid obfuscator mode",
+            "message": "Invalid obfuscator mode",
+            "translation": ""
+        },
+        {
+            "id": "Invalid masking type",
+            "message": "Invalid masking type",
+            "translation": ""
+        },
+        {
+            "id": "Invalid media SSRC",
+            "message": "Invalid media SSRC",
+            "translation": ""
+        },
+        {
+            "id": "An obfuscator instance must have a target",
+            "message": "An obfuscator instance must have a target",
+            "translation": ""
+        },
+        {
+            "id": "[none specified]",
+            "message": "[none specified]",
+            "translation": "[жодного не вказано]",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "An obfuscator instance must have a key",
+            "message": "An obfuscator instance must have a key",
+            "translation": ""
+        },
+        {
+            "id": "A SOCKS5 tunnel accepts exactly one [Instance] section",
+            "message": "A SOCKS5 tunnel accepts exactly one [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "{Lenobfuscations} given",
+            "message": "{Lenobfuscations} given",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Lenobfuscations",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "len(obfuscations)"
+                }
+            ]
+        },
+        {
+            "id": "A SOCKS5 tunnel must not declare peers",
+            "message": "A SOCKS5 tunnel must not declare peers",
+            "translation": ""
+        },
+        {
+            "id": "An [Instance] section requires a peer to attach to",
+            "message": "An [Instance] section requires a peer to attach to",
+            "translation": ""
+        },
+        {
+            "id": "No peer matches the obfuscator source port",
+            "message": "No peer matches the obfuscator source port",
+            "translation": ""
+        },
+        {
+            "id": "A peer accepts only one [Instance] section",
+            "message": "A peer accepts only one [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Tunnel name is not valid",
+            "message": "Tunnel name is not valid",
+            "translation": "Назва тунелю некоректна",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A [Socks5] section must follow an [Instance] section",
+            "message": "A [Socks5] section must follow an [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Line must occur in a section",
+            "message": "Line must occur in a section",
+            "translation": "Рядок повинен бути вказаним у розділі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Config key is missing an equals separator",
+            "message": "Config key is missing an equals separator",
+            "translation": "Ключ конфігурації відсутній роздільник рівності",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Key must have a value",
+            "message": "Key must have a value",
+            "translation": "Ключ повинен мати значення",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key for [Interface] section",
+            "message": "Invalid key for [Interface] section",
+            "translation": "Хибний ключ для [Interface] розділу",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key for [Peer] section",
+            "message": "Invalid key for [Peer] section",
+            "translation": "Хибний ключ для [Peer] розділу",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Only the client obfuscator role is supported",
+            "message": "Only the client obfuscator role is supported",
+            "translation": ""
+        },
+        {
+            "id": "Invalid RTP payload type",
+            "message": "Invalid RTP payload type",
+            "translation": ""
+        },
+        {
+            "id": "Invalid media clock",
+            "message": "Invalid media clock",
+            "translation": ""
+        },
+        {
+            "id": "Invalid key for [Instance] section",
+            "message": "Invalid key for [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Invalid key for [Socks5] section",
+            "message": "Invalid key for [Socks5] section",
+            "translation": ""
+        },
+        {
+            "id": "An interface must have a private key",
+            "message": "An interface must have a private key",
+            "translation": "Інтерфейс повинен мати особистий ключ",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "All peers must have public keys",
+            "message": "All peers must have public keys",
+            "translation": "Всі учасники повинні мати відкриті ключі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Not a phobos:// link",
+            "message": "Not a phobos:// link",
+            "translation": ""
+        },
+        {
+            "id": "The link carries no configuration",
+            "message": "The link carries no configuration",
+            "translation": ""
+        },
+        {
+            "id": "The link payload is not valid base64url: {Err}",
+            "message": "The link payload is not valid base64url: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "The link payload is not valid UTF-8 text",
+            "message": "The link payload is not valid UTF-8 text",
+            "translation": ""
+        },
+        {
+            "id": "[EnumerationSeparator]",
+            "message": "[EnumerationSeparator]",
+            "translation": "",
+            "comment": "Text to insert between items when listing - most western languages will translate ‘[EnumerationSeparator]’ into ‘, ’ to produce lists like ‘apple, orange, strawberry’. Eastern languages might translate into ‘、’ to produce lists like ‘リンゴ、オレンジ、イチゴ’."
+        },
+        {
+            "id": "[UnitSeparator]",
+            "message": "[UnitSeparator]",
+            "translation": "",
+            "comment": "Text to insert when combining units of a measure - most languages will translate ‘[UnitSeparator]’ into ‘ ’ (space) to produce lists like ‘2 minuti 30 sekund’, or empty string ‘’ to produce ‘2分30秒’."
+        },
+        {
+            "id": "SOCKS5 proxy listening on 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "message": "SOCKS5 proxy listening on 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "c.ListenPort()"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "c.config.Target"
+                },
+                {
+                    "id": "Masking",
+                    "string": "%[3]v",
+                    "type": "golang.zx2c4.com/wireguard/windows/phobos.Masking",
+                    "underlyingType": "int",
+                    "argNum": 3,
+                    "expr": "c.config.Masking"
+                }
+            ]
+        },
+        {
+            "id": "SOCKS5 proxy stopped",
+            "message": "SOCKS5 proxy stopped",
+            "translation": ""
+        },
+        {
+            "id": "SOCKS5 proxy: {Err}",
+            "message": "SOCKS5 proxy: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator started: 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "message": "Obfuscator started: 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "p.listenPort"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "p.config.Target"
+                },
+                {
+                    "id": "Masking",
+                    "string": "%[3]v",
+                    "type": "golang.zx2c4.com/wireguard/windows/phobos.Masking",
+                    "underlyingType": "int",
+                    "argNum": 3,
+                    "expr": "p.config.Masking"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator stopped: 127.0.0.1:{ListenPort} -\u003e {Target}",
+            "message": "Obfuscator stopped: 127.0.0.1:{ListenPort} -\u003e {Target}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "p.listenPort"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "p.config.Target"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator {What} failed: {Err}",
+            "message": "Obfuscator {What} failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "What",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "what"
+                },
+                {
+                    "id": "Err",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: wait failed: {Err}",
+            "message": "tun2socks: wait failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: adapter read failed: {Err}",
+            "message": "tun2socks: adapter read failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: cannot reach {Target}: {DialErr}",
+            "message": "tun2socks: cannot reach {Target}: {DialErr}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Target",
+                    "string": "%[1]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 1,
+                    "expr": "target"
+                },
+                {
+                    "id": "DialErr",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "dialErr"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: cannot open a UDP session for {Source}: {Err}",
+            "message": "tun2socks: cannot open a UDP session for {Source}: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Source",
+                    "string": "%[1]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 1,
+                    "expr": "source"
+                },
+                {
+                    "id": "Err",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "About Phobos",
+            "message": "About Phobos",
+            "translation": "Про Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos logo image",
+            "message": "Phobos logo image",
+            "translation": "Зображення логотипу Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "App version: {Number}\nDriver version: {Version}\nGo version: {Version_go}\nOperating system: {OsName}\nArchitecture: {Arch}",
+            "message": "App version: {Number}\nDriver version: {Version}\nGo version: {Version_go}\nOperating system: {OsName}\nArchitecture: {Arch}",
+            "translation": "Версія додатку: {Number}\nВерсія драйвера: {Version}\nВерсія Go: {Version_go}\nОпераційна система: {OsName}\nАрхітектура: {Arch}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Number",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "version.Number"
+                },
+                {
+                    "id": "Version",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "driver.Version()"
+                },
+                {
+                    "id": "Version_go",
+                    "string": "%[3]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 3,
+                    "expr": "strings.TrimPrefix(runtime.Version(), \"go\")"
+                },
+                {
+                    "id": "OsName",
+                    "string": "%[4]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 4,
+                    "expr": "version.OsName()"
+                },
+                {
+                    "id": "Arch",
+                    "string": "%[5]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 5,
+                    "expr": "version.Arch()"
+                }
+            ]
+        },
+        {
+            "id": "Close",
+            "message": "Close",
+            "translation": "Закрити",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Status:",
+            "message": "Status:",
+            "translation": "Статус:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Deactivate",
+            "message": "\u0026Deactivate",
+            "translation": "\u0026Деактивувати",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Activate",
+            "message": "\u0026Activate",
+            "translation": "\u0026Активувати",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Public key:",
+            "message": "Public key:",
+            "translation": "Відкритий ключ:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Listen port:",
+            "message": "Listen port:",
+            "translation": "Порт:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "MTU:",
+            "message": "MTU:",
+            "translation": "MTU:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Addresses:",
+            "message": "Addresses:",
+            "translation": "Адреси:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "DNS servers:",
+            "message": "DNS servers:",
+            "translation": "DNS-сервери:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Scripts:",
+            "message": "Scripts:",
+            "translation": "Скрипти:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Table:",
+            "message": "Table:",
+            "translation": "Таблиця:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Preshared key:",
+            "message": "Preshared key:",
+            "translation": "Preshared ключ:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Allowed IPs:",
+            "message": "Allowed IPs:",
+            "translation": "Дозволені IP адреси:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Endpoint:",
+            "message": "Endpoint:",
+            "translation": "Кінцева точка:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Obfuscator:",
+            "message": "Obfuscator:",
+            "translation": ""
+        },
+        {
+            "id": "Persistent keepalive:",
+            "message": "Persistent keepalive:",
+            "translation": "Постійний keepalive:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Latest handshake:",
+            "message": "Latest handshake:",
+            "translation": "Останнє рукостискання:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Transfer:",
+            "message": "Transfer:",
+            "translation": "Передано:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Server:",
+            "message": "Server:",
+            "translation": ""
+        },
+        {
+            "id": "Masking:",
+            "message": "Masking:",
+            "translation": ""
+        },
+        {
+            "id": "SOCKS5 login:",
+            "message": "SOCKS5 login:",
+            "translation": ""
+        },
+        {
+            "id": "Local proxy:",
+            "message": "Local proxy:",
+            "translation": ""
+        },
+        {
+            "id": "{String} received, {String_1} sent",
+            "message": "{String} received, {String_1} sent",
+            "translation": "{String} отримано, {String_1} відправлено",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "o.RxBytes.String()"
+                },
+                {
+                    "id": "String_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "o.TxBytes.String()"
+                }
+            ]
+        },
+        {
+            "id": "{String}, masking {String_1}",
+            "message": "{String}, masking {String_1}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "o.Target.String()"
+                },
+                {
+                    "id": "String_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "o.Masking.String()"
+                }
+            ]
+        },
+        {
+            "id": "pre-up",
+            "message": "pre-up",
+            "translation": "до підключення",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "post-up",
+            "message": "post-up",
+            "translation": "після підключення",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "pre-down",
+            "message": "pre-down",
+            "translation": "до відключення",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "post-down",
+            "message": "post-down",
+            "translation": "після відключення",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "disabled, per policy",
+            "message": "disabled, per policy",
+            "translation": "вимкнено політикою",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "off",
+            "message": "off",
+            "translation": "вимкнено",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "enabled",
+            "message": "enabled",
+            "translation": "увімкнено",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to determine tunnel state",
+            "message": "Failed to determine tunnel state",
+            "translation": "Не вдалося визначити стан тунелю",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to activate tunnel",
+            "message": "Failed to activate tunnel",
+            "translation": "Не вдалося активувати тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to deactivate tunnel",
+            "message": "Failed to deactivate tunnel",
+            "translation": "Не вдалося деактивувати тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Obfuscator",
+            "message": "Obfuscator",
+            "translation": ""
+        },
+        {
+            "id": "Interface: {Name}",
+            "message": "Interface: {Name}",
+            "translation": "Інтерфейс: {Name}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "config.Name"
+                }
+            ]
+        },
+        {
+            "id": "Peer",
+            "message": "Peer",
+            "translation": "Пір",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Create new tunnel",
+            "message": "Create new tunnel",
+            "translation": "Створити новий тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Edit tunnel",
+            "message": "Edit tunnel",
+            "translation": "Редагувати тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Name:",
+            "message": "\u0026Name:",
+            "translation": "\u0026Назва:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Public key:",
+            "message": "\u0026Public key:",
+            "translation": "\u0026Публічний ключ:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "(unknown)",
+            "message": "(unknown)",
+            "translation": "(невідомий)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Block untunneled traffic (kill-switch)",
+            "message": "\u0026Block untunneled traffic (kill-switch)",
+            "translation": "\u0026Блокувати трафік поза тунелем",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "When a configuration has exactly one peer, and that peer has an allowed IPs containing at least one of 0.0.0.0/0 or ::/0, and the interface does not have table off, then the tunnel service engages a firewall ruleset to block all traffic that is neither to nor from the tunnel interface or is to the wrong DNS server, with special exceptions for DHCP and NDP.",
+            "message": "When a configuration has exactly one peer, and that peer has an allowed IPs containing at least one of 0.0.0.0/0 or ::/0, and the interface does not have table off, then the tunnel service engages a firewall ruleset to block all traffic that is neither to nor from the tunnel interface or is to the wrong DNS server, with special exceptions for DHCP and NDP.",
+            "translation": "У випадку якщо в конфігурації вказаний лише один пір, та його дозволені IP-адреси містять 0.0.0.0/0 або ::/0, і інтерфейс не має table off, сервіс тунелю вводить у дію правила фаєрволу, що блокують увесь трафік поза тунелем або спрямований до неправильного DNS-сервера, з виключеннями для DHCP та NDP.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Save",
+            "message": "\u0026Save",
+            "translation": "\u0026Зберегти",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Cancel",
+            "message": "Cancel",
+            "translation": "Скасувати",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Configuration:",
+            "message": "\u0026Configuration:",
+            "translation": "\u0026Налаштування:",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid name",
+            "message": "Invalid name",
+            "translation": "Хибне ім'я",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A name is required.",
+            "message": "A name is required.",
+            "translation": "Необхідно ввести ім'я.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel name ‘{NewName}’ is invalid.",
+            "message": "Tunnel name ‘{NewName}’ is invalid.",
+            "translation": "Ім'я тунелю '{NewName}' некоректне.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NewName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "newName"
+                }
+            ]
+        },
+        {
+            "id": "Unable to list existing tunnels",
+            "message": "Unable to list existing tunnels",
+            "translation": "Не вдалося відобразити існуючі тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel already exists",
+            "message": "Tunnel already exists",
+            "translation": "Тунель вже існує",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Another tunnel already exists with the name ‘{NewName}’.",
+            "message": "Another tunnel already exists with the name ‘{NewName}’.",
+            "translation": "Тунель з ім'ям ‘{NewName}’ вже існує.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NewName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "newName"
+                }
+            ]
+        },
+        {
+            "id": "Unable to create new configuration",
+            "message": "Unable to create new configuration",
+            "translation": "Неможливо створити нову конфігурацію",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Writing file failed",
+            "message": "Writing file failed",
+            "translation": "Помилка запису файлу",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "File ‘{FilePath}’ already exists.\n\nDo you want to overwrite it?",
+            "message": "File ‘{FilePath}’ already exists.\n\nDo you want to overwrite it?",
+            "translation": "Файл \"{FilePath}\" вже існує.\n\nВи хочете перезаписати його?",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "FilePath",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "filePath"
+                }
+            ]
+        },
+        {
+            "id": "Active",
+            "message": "Active",
+            "translation": "Активний",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Activating",
+            "message": "Activating",
+            "translation": "Активується",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Inactive",
+            "message": "Inactive",
+            "translation": "Неактивний",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Deactivating",
+            "message": "Deactivating",
+            "translation": "Вимикається",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unknown state",
+            "message": "Unknown state",
+            "translation": "Невідомий стан",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos Detection Error",
+            "message": "Phobos Detection Error",
+            "translation": "Помилка виявлення Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos did not start in time to import the link.",
+            "message": "Phobos did not start in time to import the link.",
+            "translation": ""
+        },
+        {
+            "id": "Import tunnel from link",
+            "message": "Import tunnel from link",
+            "translation": ""
+        },
+        {
+            "id": "Paste a phobos:// link. The tunnel name is taken from the link.",
+            "message": "Paste a phobos:// link. The tunnel name is taken from the link.",
+            "translation": ""
+        },
+        {
+            "id": "\u0026Import",
+            "message": "\u0026Import",
+            "translation": ""
+        },
+        {
+            "id": "Invalid link",
+            "message": "Invalid link",
+            "translation": ""
+        },
+        {
+            "id": "Log",
+            "message": "Log",
+            "translation": "Лог",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Copy",
+            "message": "\u0026Copy",
+            "translation": "\u0026Скопіювати",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Select \u0026all",
+            "message": "Select \u0026all",
+            "translation": "Обрати \u0026все",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Save to file…",
+            "message": "\u0026Save to file…",
+            "translation": "\u0026Зберегти у файл…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Time",
+            "message": "Time",
+            "translation": "Час",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Log message",
+            "message": "Log message",
+            "translation": "Повідомлення з логу",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            "message": "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            "translation": "Текстові файли (*.txt)|*.txt|Усі файли (*.*)|*.*",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export log to file",
+            "message": "Export log to file",
+            "translation": "Експортувати лог у файл",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026About Phobos…",
+            "message": "\u0026About Phobos…",
+            "translation": "\u0026Про Phobos…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel Error",
+            "message": "Tunnel Error",
+            "translation": "Помилка тунелю",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{ErrMsg}\n\nPlease consult the log for more information.",
+            "message": "{ErrMsg}\n\nPlease consult the log for more information.",
+            "translation": "{ErrMsg}\n\nБудь ласка, зверніться до логу для отримання додаткової інформації.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "ErrMsg",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "errMsg"
+                }
+            ]
+        },
+        {
+            "id": "Unable to wait for Phobos window to appear: {Err}",
+            "message": "Unable to wait for Phobos window to appear: {Err}",
+            "translation": "Не вдалося дочекатися появи вікна Phobos: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Phobos: Deactivated",
+            "message": "Phobos: Deactivated",
+            "translation": "Phobos: Вимкнений",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Status: Unknown",
+            "message": "Status: Unknown",
+            "translation": "Статус: Невідомий",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Addresses: None",
+            "message": "Addresses: None",
+            "translation": "Адреси: немає",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Manage tunnels…",
+            "message": "\u0026Manage tunnels…",
+            "translation": "\u0026Керування тунелями…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Import tunnel(s) from file…",
+            "message": "\u0026Import tunnel(s) from file…",
+            "translation": "\u0026Імпортувати тунель з файлу…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "E\u0026xit",
+            "message": "E\u0026xit",
+            "translation": "Ви\u0026йти",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Tunnels",
+            "message": "\u0026Tunnels",
+            "translation": "\u0026Тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos Activated",
+            "message": "Phobos Activated",
+            "translation": "Phobos активовано",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "The {Name} tunnel has been activated.",
+            "message": "The {Name} tunnel has been activated.",
+            "translation": "Тунель {Name} активовано.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnel.Name"
+                }
+            ]
+        },
+        {
+            "id": "Phobos Deactivated",
+            "message": "Phobos Deactivated",
+            "translation": "Phobos деактивовано",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "The {Name} tunnel has been deactivated.",
+            "message": "The {Name} tunnel has been deactivated.",
+            "translation": "Тунель {Name} було деактивовано.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnel.Name"
+                }
+            ]
+        },
+        {
+            "id": "Phobos Tunnel Error",
+            "message": "Phobos Tunnel Error",
+            "translation": "Помилка тунелю Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos: {TextForStateglobalState_true}",
+            "message": "Phobos: {TextForStateglobalState_true}",
+            "translation": "Phobos: {TextForStateglobalState_true}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TextForStateglobalState_true",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "textForState(globalState, true)"
+                }
+            ]
+        },
+        {
+            "id": "Status: {StateText}",
+            "message": "Status: {StateText}",
+            "translation": "Статус: {StateText}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "StateText",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "stateText"
+                }
+            ]
+        },
+        {
+            "id": "Addresses: {EnumerationSeparator}",
+            "message": "Addresses: {EnumerationSeparator}",
+            "translation": "Адреси: {EnumerationSeparator}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "EnumerationSeparator",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "strings.Join(addrs, l18n.EnumerationSeparator())"
+                }
+            ]
+        },
+        {
+            "id": "Tunnels",
+            "message": "Tunnels",
+            "translation": "Тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Edit",
+            "message": "\u0026Edit",
+            "translation": "\u0026Редагувати",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Import tunnel from \u0026link…",
+            "message": "Import tunnel from \u0026link…",
+            "translation": ""
+        },
+        {
+            "id": "Add \u0026empty tunnel…",
+            "message": "Add \u0026empty tunnel…",
+            "translation": "Додати \u0026пустий тунель…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Add Tunnel",
+            "message": "Add Tunnel",
+            "translation": "Додати тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Remove selected tunnel(s)",
+            "message": "Remove selected tunnel(s)",
+            "translation": "Видалити обрані тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export all tunnels to zip",
+            "message": "Export all tunnels to zip",
+            "translation": "Експортувати всі тунелі в zip",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Toggle",
+            "message": "\u0026Toggle",
+            "translation": "\u0026Перемкнути",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export all tunnels to \u0026zip…",
+            "message": "Export all tunnels to \u0026zip…",
+            "translation": "Експортувати всі тунелі в \u0026zip…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Edit \u0026selected tunnel…",
+            "message": "Edit \u0026selected tunnel…",
+            "translation": "Редагувати \u0026вибраний тунель…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Remove selected tunnel(s)",
+            "message": "\u0026Remove selected tunnel(s)",
+            "translation": "\u0026Видалити обрані тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "no configuration files were found",
+            "message": "no configuration files were found",
+            "translation": "конфігураційних файлів не знайдено",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Could not import selected configuration: {LastErr}",
+            "message": "Could not import selected configuration: {LastErr}",
+            "translation": "Не вдалося імпортувати вибрану конфігурацію: {LastErr}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LastErr",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "lastErr"
+                }
+            ]
+        },
+        {
+            "id": "Could not enumerate existing tunnels: {Err}",
+            "message": "Could not enumerate existing tunnels: {Err}",
+            "translation": "Не вдалося перелічити існуючі тунелі: {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Another tunnel already exists with the name ‘{Name}’",
+            "message": "Another tunnel already exists with the name ‘{Name}’",
+            "translation": "Тунель з ім'ям ‘{Name}’ вже існує",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "unparsedConfig.Name"
+                }
+            ]
+        },
+        {
+            "id": "Unable to import configuration: {LastErr}",
+            "message": "Unable to import configuration: {LastErr}",
+            "translation": "Не вдалося імпортувати конфігурацію: {LastErr}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LastErr",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "lastErr"
+                }
+            ]
+        },
+        {
+            "id": "Imported tunnels",
+            "message": "Imported tunnels",
+            "translation": "Імпортовано тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Imported {M} tunnels",
+            "message": "Imported {M} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "M",
+                    "cases": {
+                        "few": {
+                            "msg": "Імпортовано {M} тунелі"
+                        },
+                        "many": {
+                            "msg": "Імпортовано {M} тунелів"
+                        },
+                        "one": {
+                            "msg": "Імпортовано {M} тунель"
+                        },
+                        "other": {
+                            "msg": "Імпортовано {M} тунелів"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "M",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "m"
+                }
+            ]
+        },
+        {
+            "id": "Imported {M} of {N} tunnels",
+            "message": "Imported {M} of {N} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "N",
+                    "cases": {
+                        "few": {
+                            "msg": "Імпортовано {M} з {N} тунелів"
+                        },
+                        "many": {
+                            "msg": "Імпортовано {M} з {N} тунелів"
+                        },
+                        "one": {
+                            "msg": "Імпортовано {M} з {N} тунелів"
+                        },
+                        "other": {
+                            "msg": "Імпортовано {M} з {N} тунелів"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "M",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "m"
+                },
+                {
+                    "id": "N",
+                    "string": "%[2]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 2,
+                    "expr": "n"
+                }
+            ]
+        },
+        {
+            "id": "Unable to create tunnel",
+            "message": "Unable to create tunnel",
+            "translation": "Не вдалося створити тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Delete {TunnelCount} tunnels",
+            "message": "Delete {TunnelCount} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "TunnelCount",
+                    "cases": {
+                        "few": {
+                            "msg": "Видалити {TunnelCount} тунелі"
+                        },
+                        "many": {
+                            "msg": "Видалити {TunnelCount} тунелів"
+                        },
+                        "one": {
+                            "msg": "Видалити {TunnelCount} тунель"
+                        },
+                        "other": {
+                            "msg": "Видалити {TunnelCount} тунелів"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "TunnelCount",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "tunnelCount"
+                }
+            ]
+        },
+        {
+            "id": "Are you sure you would like to delete {TunnelCount} tunnels?",
+            "message": "Are you sure you would like to delete {TunnelCount} tunnels?",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "TunnelCount",
+                    "cases": {
+                        "few": {
+                            "msg": "Ви впевнені, що хочете видалити {TunnelCount} тунелі?"
+                        },
+                        "many": {
+                            "msg": "Ви впевнені, що хочете видалити {TunnelCount} тунелів?"
+                        },
+                        "one": {
+                            "msg": "Ви впевнені, що хочете видалити {TunnelCount} тунель?"
+                        },
+                        "other": {
+                            "msg": "Ви впевнені, що хочете видалити {TunnelCount} тунелі?"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "TunnelCount",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "tunnelCount"
+                }
+            ]
+        },
+        {
+            "id": "Delete tunnel ‘{TunnelName}’",
+            "message": "Delete tunnel ‘{TunnelName}’",
+            "translation": "Видалити тунель '{TunnelName}'",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TunnelName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnelName"
+                }
+            ]
+        },
+        {
+            "id": "Are you sure you would like to delete tunnel ‘{TunnelName}’?",
+            "message": "Are you sure you would like to delete tunnel ‘{TunnelName}’?",
+            "translation": "Ви впевнені, що бажаєте видалити тунель '{TunnelName}'?",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TunnelName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnelName"
+                }
+            ]
+        },
+        {
+            "id": "{Question} You cannot undo this action.",
+            "message": "{Question} You cannot undo this action.",
+            "translation": "{Question} Цю дію не можна буде скасувати.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Question",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "question"
+                }
+            ]
+        },
+        {
+            "id": "Unable to delete tunnel",
+            "message": "Unable to delete tunnel",
+            "translation": "Неможливо видалити тунель",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A tunnel was unable to be removed: {Error}",
+            "message": "A tunnel was unable to be removed: {Error}",
+            "translation": "Тунель не вдалося видалити: {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "errors[0].Error()"
+                }
+            ]
+        },
+        {
+            "id": "Unable to delete tunnels",
+            "message": "Unable to delete tunnels",
+            "translation": "Неможливо видалити тунелі",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{Lenerrors} tunnels were unable to be removed.",
+            "message": "{Lenerrors} tunnels were unable to be removed.",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Lenerrors",
+                    "cases": {
+                        "few": {
+                            "msg": "{Lenerrors} тунелі не вдалося видалити."
+                        },
+                        "many": {
+                            "msg": "{Lenerrors} тунелів не вдалося видалити."
+                        },
+                        "one": {
+                            "msg": "{Lenerrors} тунель не вдалося видалити."
+                        },
+                        "other": {
+                            "msg": "{Lenerrors} тунелів не вдалося видалити."
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Lenerrors",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "len(errors)"
+                }
+            ]
+        },
+        {
+            "id": "Configuration Files (*.zip, *.conf)|*.zip;*.conf|All Files (*.*)|*.*",
+            "message": "Configuration Files (*.zip, *.conf)|*.zip;*.conf|All Files (*.*)|*.*",
+            "translation": "Файли конфігурації (*.zip, *.conf)|*.zip;*.conf|Всі файли (*.*)|*.*",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Import tunnel(s) from file",
+            "message": "Import tunnel(s) from file",
+            "translation": "Імпортувати тунелі з файлу",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Configuration ZIP Files (*.zip)|*.zip",
+            "message": "Configuration ZIP Files (*.zip)|*.zip",
+            "translation": "ZIP-файли конфігурації (*.zip) | *.zip",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export tunnels to zip",
+            "message": "Export tunnels to zip",
+            "translation": "Експортувати тунелі в zip",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Error Exiting Phobos",
+            "message": "Error Exiting Phobos",
+            "translation": "Помилка при виході з Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to exit service due to: {Err}. You may want to stop Phobos from the service manager.",
+            "message": "Unable to exit service due to: {Err}. You may want to stop Phobos from the service manager.",
+            "translation": "Не вдалося зупинити службу через: {Err}. Ви можете зупинити її вручну через менеджер сервісів.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "{B}",
+            "message": "{B}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "B",
+                    "string": "%[1]s",
+                    "type": "[]byte",
+                    "underlyingType": "[]byte",
+                    "argNum": 1,
+                    "expr": "b"
+                }
+            ]
+        }
+    ]
+}

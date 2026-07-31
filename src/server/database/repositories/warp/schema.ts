@@ -11,9 +11,7 @@ export const warp = sqliteTable('warp_table', {
   clientId: text('client_id').notNull().default(''),
 
   peerPublicKey: text('peer_public_key').notNull().default(''),
-  endpoint: text()
-    .notNull()
-    .default('engage.cloudflareclient.com:2408'),
+  endpoint: text().notNull().default('engage.cloudflareclient.com:2408'),
   addressV4: text('address_v4').notNull().default(''),
   addressV6: text('address_v6').notNull().default(''),
   mtu: int().notNull().default(1280),

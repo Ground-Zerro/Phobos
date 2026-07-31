@@ -10,19 +10,30 @@ export default defineNitroPlugin((nitroApp) => {
   let restartTimer: NodeJS.Timeout | null = null;
   const watched = [paths.certPath, paths.keyPath];
 
-  function onChange(curr: { mtimeMs: number; size: number }, prev: { mtimeMs: number; size: number }) {
+  function onChange(
+    curr: { mtimeMs: number; size: number },
+    prev: { mtimeMs: number; size: number }
+  ) {
     if (curr.mtimeMs === prev.mtimeMs && curr.size === prev.size) return;
     if (restartTimer) return;
-    console.log(`[tlsWatcher] TLS source file changed, restarting in ${RESTART_DEBOUNCE_MS}ms`);
+    console.log(
+      `[tlsWatcher] TLS source file changed, restarting in ${RESTART_DEBOUNCE_MS}ms`
+    );
     restartTimer = setTimeout(() => {
       scheduleNodeRestart();
     }, RESTART_DEBOUNCE_MS);
   }
 
   for (const path of watched) {
-    watchFile(path, { interval: WATCH_INTERVAL_MS, persistent: false }, onChange);
+    watchFile(
+      path,
+      { interval: WATCH_INTERVAL_MS, persistent: false },
+      onChange
+    );
   }
-  console.log(`[tlsWatcher] watching ${watched.length} TLS source files (interval ${WATCH_INTERVAL_MS}ms)`);
+  console.log(
+    `[tlsWatcher] watching ${watched.length} TLS source files (interval ${WATCH_INTERVAL_MS}ms)`
+  );
 
   nitroApp.hooks.hook('close', () => {
     for (const path of watched) {

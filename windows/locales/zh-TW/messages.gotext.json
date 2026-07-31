@@ -1,0 +1,2058 @@
+{
+    "language": "zh-TW",
+    "messages": [
+        {
+            "id": "Error",
+            "message": "Error",
+            "translation": "錯誤",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Error:",
+            "message": "Error:",
+            "translation": "錯誤：",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "(no argument): elevate and install manager service",
+            "message": "(no argument): elevate and install manager service",
+            "translation": "(無參數)：提升權限並安裝管理服務",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Usage: {Args0} [\n{String}]",
+            "message": "Usage: {Args0} [\n{String}]",
+            "translation": "使用方法： {Args0} [\n{String}]",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Args0",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "os.Args[0]"
+                },
+                {
+                    "id": "String",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "builder.String()"
+                }
+            ]
+        },
+        {
+            "id": "Command Line Options",
+            "message": "Command Line Options",
+            "translation": "命令列選項",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to determine whether the process is running under WOW64: {Err}",
+            "message": "Unable to determine whether the process is running under WOW64: {Err}",
+            "translation": "無法確定該處理程序是否在 WOW64 下執行： {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "You must use the native version of Phobos on this computer.",
+            "message": "You must use the native version of Phobos on this computer.",
+            "translation": "在這台電腦上必須使用原生版本的 Phobos。",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to open current process token: {Err}",
+            "message": "Unable to open current process token: {Err}",
+            "translation": "無法開啓目前處理程序的權杖： {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Phobos may only be used by users who are a member of the Builtin {AdminGroupName} group.",
+            "message": "Phobos may only be used by users who are a member of the Builtin {AdminGroupName} group.",
+            "translation": "Phobos 可能只能被內建的「{AdminGroupName}」群組成員使用。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "AdminGroupName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "elevate.AdminGroupName()"
+                }
+            ]
+        },
+        {
+            "id": "Phobos is running, but the UI is only accessible from desktops of the Builtin {AdminGroupName} group.",
+            "message": "Phobos is running, but the UI is only accessible from desktops of the Builtin {AdminGroupName} group.",
+            "translation": "Phobos 正在執行，但 UI 只能從內建的內建的「{AdminGroupName}」群組成員的桌面存取。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "AdminGroupName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "elevate.AdminGroupName()"
+                }
+            ]
+        },
+        {
+            "id": "Phobos system tray icon did not appear after 30 seconds.",
+            "message": "Phobos system tray icon did not appear after 30 seconds.",
+            "translation": "Phobos 的工作列圖示在 30 秒後並沒有顯示。",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Not a phobos:// link: {Link}",
+            "message": "Not a phobos:// link: {Link}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Link",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "link"
+                }
+            ]
+        },
+        {
+            "id": "Now",
+            "message": "Now",
+            "translation": "就是現在",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "System clock wound backward!",
+            "message": "System clock wound backward!",
+            "translation": "系統時鐘倒退了！",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{Years} year(s)",
+            "message": "{Years} year(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Years",
+                    "cases": {
+                        "other": {
+                            "msg": "{Years} 年"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Years",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "years"
+                }
+            ]
+        },
+        {
+            "id": "{Days} day(s)",
+            "message": "{Days} day(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Days",
+                    "cases": {
+                        "other": {
+                            "msg": "{Days} 天"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Days",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "days"
+                }
+            ]
+        },
+        {
+            "id": "{Hours} hour(s)",
+            "message": "{Hours} hour(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Hours",
+                    "cases": {
+                        "other": {
+                            "msg": "{Hours} 小時"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Hours",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "hours"
+                }
+            ]
+        },
+        {
+            "id": "{Minutes} minute(s)",
+            "message": "{Minutes} minute(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Minutes",
+                    "cases": {
+                        "other": {
+                            "msg": "{Minutes} 分鐘"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Minutes",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "minutes"
+                }
+            ]
+        },
+        {
+            "id": "{Seconds} second(s)",
+            "message": "{Seconds} second(s)",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Seconds",
+                    "cases": {
+                        "other": {
+                            "msg": "{Seconds} 秒"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Seconds",
+                    "string": "%[1]d",
+                    "type": "int64",
+                    "underlyingType": "int64",
+                    "argNum": 1,
+                    "expr": "seconds"
+                }
+            ]
+        },
+        {
+            "id": "{Timestamp} ago",
+            "message": "{Timestamp} ago",
+            "translation": "{Timestamp} 前",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Timestamp",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "timestamp"
+                }
+            ]
+        },
+        {
+            "id": "{Bytes} B",
+            "message": "{Bytes} B",
+            "translation": "{Bytes} B",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Bytes",
+                    "string": "%[1]d",
+                    "type": "golang.zx2c4.com/wireguard/windows/conf.Bytes",
+                    "underlyingType": "uint64",
+                    "argNum": 1,
+                    "expr": "b"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024} KiB",
+            "message": "{Float64b__1024} KiB",
+            "translation": "{Float64b__1024} KiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / 1024"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024} MiB",
+            "message": "{Float64b__1024__1024} MiB",
+            "translation": "{Float64b__1024__1024} MiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024)"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024__1024} GiB",
+            "message": "{Float64b__1024__1024__1024} GiB",
+            "translation": "{Float64b__1024__1024__1024} GiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024 * 1024)"
+                }
+            ]
+        },
+        {
+            "id": "{Float64b__1024__1024__1024__1024} TiB",
+            "message": "{Float64b__1024__1024__1024__1024} TiB",
+            "translation": "{Float64b__1024__1024__1024__1024} TiB",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Float64b__1024__1024__1024__1024",
+                    "string": "%.2[1]f",
+                    "type": "float64",
+                    "underlyingType": "float64",
+                    "argNum": 1,
+                    "expr": "float64(b) / (1024 * 1024 * 1024) / 1024"
+                }
+            ]
+        },
+        {
+            "id": "{Why}: {Offender}",
+            "message": "{Why}: {Offender}",
+            "translation": "{Why}： {Offender}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Why",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "e.why"
+                },
+                {
+                    "id": "Offender",
+                    "string": "%[2]q",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "e.offender"
+                }
+            ]
+        },
+        {
+            "id": "Invalid IP address:",
+            "message": "Invalid IP address:",
+            "translation": "無效的 IP 位址：",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Missing port from endpoint",
+            "message": "Missing port from endpoint",
+            "translation": "Endpoint 中沒有指定埠號",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid endpoint host",
+            "message": "Invalid endpoint host",
+            "translation": "無效的 Endpoint 位址",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Brackets must contain an IPv6 address",
+            "message": "Brackets must contain an IPv6 address",
+            "translation": "括號中必須包含一個 IPv6 位址",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid MTU",
+            "message": "Invalid MTU",
+            "translation": "無效的 MTU",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid port",
+            "message": "Invalid port",
+            "translation": "無效的埠號",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid persistent keepalive",
+            "message": "Invalid persistent keepalive",
+            "translation": "無效的 Persistent Keepalive 設定",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key: {Err}",
+            "message": "Invalid key: {Err}",
+            "translation": "無效的金鑰： {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Keys must decode to exactly 32 bytes",
+            "message": "Keys must decode to exactly 32 bytes",
+            "translation": "金鑰必須剛好長 32 bytes",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Two commas in a row",
+            "message": "Two commas in a row",
+            "translation": "一行中有兩個逗號",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid {What}",
+            "message": "Invalid {What}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "What",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "what"
+                }
+            ]
+        },
+        {
+            "id": "Invalid obfuscator mode",
+            "message": "Invalid obfuscator mode",
+            "translation": ""
+        },
+        {
+            "id": "Invalid masking type",
+            "message": "Invalid masking type",
+            "translation": ""
+        },
+        {
+            "id": "Invalid media SSRC",
+            "message": "Invalid media SSRC",
+            "translation": ""
+        },
+        {
+            "id": "An obfuscator instance must have a target",
+            "message": "An obfuscator instance must have a target",
+            "translation": ""
+        },
+        {
+            "id": "[none specified]",
+            "message": "[none specified]",
+            "translation": "[未指定]",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "An obfuscator instance must have a key",
+            "message": "An obfuscator instance must have a key",
+            "translation": ""
+        },
+        {
+            "id": "A SOCKS5 tunnel accepts exactly one [Instance] section",
+            "message": "A SOCKS5 tunnel accepts exactly one [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "{Lenobfuscations} given",
+            "message": "{Lenobfuscations} given",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Lenobfuscations",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "len(obfuscations)"
+                }
+            ]
+        },
+        {
+            "id": "A SOCKS5 tunnel must not declare peers",
+            "message": "A SOCKS5 tunnel must not declare peers",
+            "translation": ""
+        },
+        {
+            "id": "An [Instance] section requires a peer to attach to",
+            "message": "An [Instance] section requires a peer to attach to",
+            "translation": ""
+        },
+        {
+            "id": "No peer matches the obfuscator source port",
+            "message": "No peer matches the obfuscator source port",
+            "translation": ""
+        },
+        {
+            "id": "A peer accepts only one [Instance] section",
+            "message": "A peer accepts only one [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Tunnel name is not valid",
+            "message": "Tunnel name is not valid",
+            "translation": "隧道名稱無效",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A [Socks5] section must follow an [Instance] section",
+            "message": "A [Socks5] section must follow an [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Line must occur in a section",
+            "message": "Line must occur in a section",
+            "translation": "行必須出現在段落中",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Config key is missing an equals separator",
+            "message": "Config key is missing an equals separator",
+            "translation": "設定的項目必須要有一個等號",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Key must have a value",
+            "message": "Key must have a value",
+            "translation": "必須要有一個值",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key for [Interface] section",
+            "message": "Invalid key for [Interface] section",
+            "translation": "[Interface] 中有無效選項",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid key for [Peer] section",
+            "message": "Invalid key for [Peer] section",
+            "translation": "[Peer] 中有無效選項",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Only the client obfuscator role is supported",
+            "message": "Only the client obfuscator role is supported",
+            "translation": ""
+        },
+        {
+            "id": "Invalid RTP payload type",
+            "message": "Invalid RTP payload type",
+            "translation": ""
+        },
+        {
+            "id": "Invalid media clock",
+            "message": "Invalid media clock",
+            "translation": ""
+        },
+        {
+            "id": "Invalid key for [Instance] section",
+            "message": "Invalid key for [Instance] section",
+            "translation": ""
+        },
+        {
+            "id": "Invalid key for [Socks5] section",
+            "message": "Invalid key for [Socks5] section",
+            "translation": ""
+        },
+        {
+            "id": "An interface must have a private key",
+            "message": "An interface must have a private key",
+            "translation": "Interface 中必須要有一把私鑰",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "All peers must have public keys",
+            "message": "All peers must have public keys",
+            "translation": "每個 Peer 都必須要有公鑰",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Not a phobos:// link",
+            "message": "Not a phobos:// link",
+            "translation": ""
+        },
+        {
+            "id": "The link carries no configuration",
+            "message": "The link carries no configuration",
+            "translation": ""
+        },
+        {
+            "id": "The link payload is not valid base64url: {Err}",
+            "message": "The link payload is not valid base64url: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "The link payload is not valid UTF-8 text",
+            "message": "The link payload is not valid UTF-8 text",
+            "translation": ""
+        },
+        {
+            "id": "[EnumerationSeparator]",
+            "message": "[EnumerationSeparator]",
+            "translation": "、",
+            "comment": "Text to insert between items when listing - most western languages will translate ‘[EnumerationSeparator]’ into ‘, ’ to produce lists like ‘apple, orange, strawberry’. Eastern languages might translate into ‘、’ to produce lists like ‘リンゴ、オレンジ、イチゴ’.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "[UnitSeparator]",
+            "message": "[UnitSeparator]",
+            "translation": " ",
+            "comment": "Text to insert when combining units of a measure - most languages will translate ‘[UnitSeparator]’ into ‘ ’ (space) to produce lists like ‘2 minuti 30 sekund’, or empty string ‘’ to produce ‘2分30秒’.",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "SOCKS5 proxy listening on 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "message": "SOCKS5 proxy listening on 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "c.ListenPort()"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "c.config.Target"
+                },
+                {
+                    "id": "Masking",
+                    "string": "%[3]v",
+                    "type": "golang.zx2c4.com/wireguard/windows/phobos.Masking",
+                    "underlyingType": "int",
+                    "argNum": 3,
+                    "expr": "c.config.Masking"
+                }
+            ]
+        },
+        {
+            "id": "SOCKS5 proxy stopped",
+            "message": "SOCKS5 proxy stopped",
+            "translation": ""
+        },
+        {
+            "id": "SOCKS5 proxy: {Err}",
+            "message": "SOCKS5 proxy: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator started: 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "message": "Obfuscator started: 127.0.0.1:{ListenPort} -\u003e {Target} (masking {Masking})",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "p.listenPort"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "p.config.Target"
+                },
+                {
+                    "id": "Masking",
+                    "string": "%[3]v",
+                    "type": "golang.zx2c4.com/wireguard/windows/phobos.Masking",
+                    "underlyingType": "int",
+                    "argNum": 3,
+                    "expr": "p.config.Masking"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator stopped: 127.0.0.1:{ListenPort} -\u003e {Target}",
+            "message": "Obfuscator stopped: 127.0.0.1:{ListenPort} -\u003e {Target}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "ListenPort",
+                    "string": "%[1]d",
+                    "type": "uint16",
+                    "underlyingType": "uint16",
+                    "argNum": 1,
+                    "expr": "p.listenPort"
+                },
+                {
+                    "id": "Target",
+                    "string": "%[2]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 2,
+                    "expr": "p.config.Target"
+                }
+            ]
+        },
+        {
+            "id": "Obfuscator {What} failed: {Err}",
+            "message": "Obfuscator {What} failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "What",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "what"
+                },
+                {
+                    "id": "Err",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: wait failed: {Err}",
+            "message": "tun2socks: wait failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: adapter read failed: {Err}",
+            "message": "tun2socks: adapter read failed: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: cannot reach {Target}: {DialErr}",
+            "message": "tun2socks: cannot reach {Target}: {DialErr}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Target",
+                    "string": "%[1]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 1,
+                    "expr": "target"
+                },
+                {
+                    "id": "DialErr",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "dialErr"
+                }
+            ]
+        },
+        {
+            "id": "tun2socks: cannot open a UDP session for {Source}: {Err}",
+            "message": "tun2socks: cannot open a UDP session for {Source}: {Err}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "Source",
+                    "string": "%[1]v",
+                    "type": "net/netip.AddrPort",
+                    "underlyingType": "struct{ip net/netip.Addr; port uint16}",
+                    "argNum": 1,
+                    "expr": "source"
+                },
+                {
+                    "id": "Err",
+                    "string": "%[2]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 2,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "About Phobos",
+            "message": "About Phobos",
+            "translation": "關於 Phobos",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos logo image",
+            "message": "Phobos logo image",
+            "translation": "Phobos logo 圖片",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "App version: {Number}\nDriver version: {Version}\nGo version: {Version_go}\nOperating system: {OsName}\nArchitecture: {Arch}",
+            "message": "App version: {Number}\nDriver version: {Version}\nGo version: {Version_go}\nOperating system: {OsName}\nArchitecture: {Arch}",
+            "translation": "應用程式版本： {Number}\n驅動程式版本： {Version}\nGo 版本： {Version_go}\n作業系統： {OsName}\n架構： {Arch}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Number",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "version.Number"
+                },
+                {
+                    "id": "Version",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "driver.Version()"
+                },
+                {
+                    "id": "Version_go",
+                    "string": "%[3]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 3,
+                    "expr": "strings.TrimPrefix(runtime.Version(), \"go\")"
+                },
+                {
+                    "id": "OsName",
+                    "string": "%[4]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 4,
+                    "expr": "version.OsName()"
+                },
+                {
+                    "id": "Arch",
+                    "string": "%[5]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 5,
+                    "expr": "version.Arch()"
+                }
+            ]
+        },
+        {
+            "id": "Close",
+            "message": "Close",
+            "translation": "關閉",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Status:",
+            "message": "Status:",
+            "translation": "狀態",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Deactivate",
+            "message": "\u0026Deactivate",
+            "translation": "中斷連線 (\u0026D)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Activate",
+            "message": "\u0026Activate",
+            "translation": "連線 (\u0026A)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Public key:",
+            "message": "Public key:",
+            "translation": "公鑰",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Listen port:",
+            "message": "Listen port:",
+            "translation": "監聽埠",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "MTU:",
+            "message": "MTU:",
+            "translation": "MTU",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Addresses:",
+            "message": "Addresses:",
+            "translation": "位址",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "DNS servers:",
+            "message": "DNS servers:",
+            "translation": "DNS 伺服器",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Scripts:",
+            "message": "Scripts:",
+            "translation": "指令碼",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Table:",
+            "message": "Table:",
+            "translation": "路由表",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Preshared key:",
+            "message": "Preshared key:",
+            "translation": "預交換金鑰",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Allowed IPs:",
+            "message": "Allowed IPs:",
+            "translation": "允許的位址",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Endpoint:",
+            "message": "Endpoint:",
+            "translation": "連接點",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Obfuscator:",
+            "message": "Obfuscator:",
+            "translation": ""
+        },
+        {
+            "id": "Persistent keepalive:",
+            "message": "Persistent keepalive:",
+            "translation": "Keepalive 間隔",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Latest handshake:",
+            "message": "Latest handshake:",
+            "translation": "最後交握時間",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Transfer:",
+            "message": "Transfer:",
+            "translation": "流量",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Server:",
+            "message": "Server:",
+            "translation": ""
+        },
+        {
+            "id": "Masking:",
+            "message": "Masking:",
+            "translation": ""
+        },
+        {
+            "id": "SOCKS5 login:",
+            "message": "SOCKS5 login:",
+            "translation": ""
+        },
+        {
+            "id": "Local proxy:",
+            "message": "Local proxy:",
+            "translation": ""
+        },
+        {
+            "id": "{String} received, {String_1} sent",
+            "message": "{String} received, {String_1} sent",
+            "translation": "已收到 {String}；已傳送 {String_1}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "o.RxBytes.String()"
+                },
+                {
+                    "id": "String_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "o.TxBytes.String()"
+                }
+            ]
+        },
+        {
+            "id": "{String}, masking {String_1}",
+            "message": "{String}, masking {String_1}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "String",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "o.Target.String()"
+                },
+                {
+                    "id": "String_1",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "o.Masking.String()"
+                }
+            ]
+        },
+        {
+            "id": "pre-up",
+            "message": "pre-up",
+            "translation": "連線前",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "post-up",
+            "message": "post-up",
+            "translation": "連線後",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "pre-down",
+            "message": "pre-down",
+            "translation": "斷線前",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "post-down",
+            "message": "post-down",
+            "translation": "斷線後",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "disabled, per policy",
+            "message": "disabled, per policy",
+            "translation": "已依群組原則停用",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "off",
+            "message": "off",
+            "translation": "關閉",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "enabled",
+            "message": "enabled",
+            "translation": "已啓用",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to determine tunnel state",
+            "message": "Failed to determine tunnel state",
+            "translation": "無法確認隧道狀態",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to activate tunnel",
+            "message": "Failed to activate tunnel",
+            "translation": "無法連接隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Failed to deactivate tunnel",
+            "message": "Failed to deactivate tunnel",
+            "translation": "無法斷開隧道連線",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Obfuscator",
+            "message": "Obfuscator",
+            "translation": ""
+        },
+        {
+            "id": "Interface: {Name}",
+            "message": "Interface: {Name}",
+            "translation": "[隧道] {Name}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "config.Name"
+                }
+            ]
+        },
+        {
+            "id": "Peer",
+            "message": "Peer",
+            "translation": "節點",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Create new tunnel",
+            "message": "Create new tunnel",
+            "translation": "建立新隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Edit tunnel",
+            "message": "Edit tunnel",
+            "translation": "編輯隧道設定",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Name:",
+            "message": "\u0026Name:",
+            "translation": "名稱 (\u0026N)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Public key:",
+            "message": "\u0026Public key:",
+            "translation": "公鑰 (\u0026P)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "(unknown)",
+            "message": "(unknown)",
+            "translation": "(未知)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Block untunneled traffic (kill-switch)",
+            "message": "\u0026Block untunneled traffic (kill-switch)",
+            "translation": "阻斷未經過隧道的流量（kill-switch） (\u0026B)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "When a configuration has exactly one peer, and that peer has an allowed IPs containing at least one of 0.0.0.0/0 or ::/0, and the interface does not have table off, then the tunnel service engages a firewall ruleset to block all traffic that is neither to nor from the tunnel interface or is to the wrong DNS server, with special exceptions for DHCP and NDP.",
+            "message": "When a configuration has exactly one peer, and that peer has an allowed IPs containing at least one of 0.0.0.0/0 or ::/0, and the interface does not have table off, then the tunnel service engages a firewall ruleset to block all traffic that is neither to nor from the tunnel interface or is to the wrong DNS server, with special exceptions for DHCP and NDP.",
+            "translation": "當設定中只有一個節點，且該節點的允許位址包含 0.0.0.0/0 或 ::/0 至少其中之一，並且介面未設定 table off 時，隧道服務會啟用防火牆規則集，阻擋所有未經隧道介面進出或是傳送至錯誤 DNS 伺服器的流量，但對 DHCP 與 NDP 設有特殊例外。",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Save",
+            "message": "\u0026Save",
+            "translation": "儲存 (\u0026S)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Cancel",
+            "message": "Cancel",
+            "translation": "取消",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Configuration:",
+            "message": "\u0026Configuration:",
+            "translation": "設定 (\u0026C)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Invalid name",
+            "message": "Invalid name",
+            "translation": "無效的名稱",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A name is required.",
+            "message": "A name is required.",
+            "translation": "必須填寫名稱。",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel name ‘{NewName}’ is invalid.",
+            "message": "Tunnel name ‘{NewName}’ is invalid.",
+            "translation": "無效的隧道名稱「{NewName}」。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NewName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "newName"
+                }
+            ]
+        },
+        {
+            "id": "Unable to list existing tunnels",
+            "message": "Unable to list existing tunnels",
+            "translation": "無法列出現有隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel already exists",
+            "message": "Tunnel already exists",
+            "translation": "隧道已存在",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Another tunnel already exists with the name ‘{NewName}’.",
+            "message": "Another tunnel already exists with the name ‘{NewName}’.",
+            "translation": "已有同名隧道「{NewName}」。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "NewName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "newName"
+                }
+            ]
+        },
+        {
+            "id": "Unable to create new configuration",
+            "message": "Unable to create new configuration",
+            "translation": "無法建立新的隧道設定",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Writing file failed",
+            "message": "Writing file failed",
+            "translation": "檔案寫入失敗",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "File ‘{FilePath}’ already exists.\n\nDo you want to overwrite it?",
+            "message": "File ‘{FilePath}’ already exists.\n\nDo you want to overwrite it?",
+            "translation": "檔案已存在： {FilePath}\n\n您確定要覆蓋嗎？",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "FilePath",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "filePath"
+                }
+            ]
+        },
+        {
+            "id": "Active",
+            "message": "Active",
+            "translation": "已連線",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Activating",
+            "message": "Activating",
+            "translation": "正在連線…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Inactive",
+            "message": "Inactive",
+            "translation": "已中斷連線",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Deactivating",
+            "message": "Deactivating",
+            "translation": "正在中斷…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unknown state",
+            "message": "Unknown state",
+            "translation": "未知",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos Detection Error",
+            "message": "Phobos Detection Error",
+            "translation": "偵測 Phobos 錯誤",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos did not start in time to import the link.",
+            "message": "Phobos did not start in time to import the link.",
+            "translation": ""
+        },
+        {
+            "id": "Import tunnel from link",
+            "message": "Import tunnel from link",
+            "translation": ""
+        },
+        {
+            "id": "Paste a phobos:// link. The tunnel name is taken from the link.",
+            "message": "Paste a phobos:// link. The tunnel name is taken from the link.",
+            "translation": ""
+        },
+        {
+            "id": "\u0026Import",
+            "message": "\u0026Import",
+            "translation": ""
+        },
+        {
+            "id": "Invalid link",
+            "message": "Invalid link",
+            "translation": ""
+        },
+        {
+            "id": "Log",
+            "message": "Log",
+            "translation": "日誌",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Copy",
+            "message": "\u0026Copy",
+            "translation": "複製 (\u0026C)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Select \u0026all",
+            "message": "Select \u0026all",
+            "translation": "全選 (\u0026A)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Save to file…",
+            "message": "\u0026Save to file…",
+            "translation": "匯出… (\u0026S)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Time",
+            "message": "Time",
+            "translation": "時間",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Log message",
+            "message": "Log message",
+            "translation": "日誌訊息",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            "message": "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+            "translation": "純文字 (*.txt)|*.txt|所有檔案 (*.*)|*.*",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export log to file",
+            "message": "Export log to file",
+            "translation": "匯出日誌…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026About Phobos…",
+            "message": "\u0026About Phobos…",
+            "translation": "關於 Phobos (\u0026A)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Tunnel Error",
+            "message": "Tunnel Error",
+            "translation": "隧道錯誤",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{ErrMsg}\n\nPlease consult the log for more information.",
+            "message": "{ErrMsg}\n\nPlease consult the log for more information.",
+            "translation": "{ErrMsg}\n\n如需更多資訊，請查看日誌。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "ErrMsg",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "errMsg"
+                }
+            ]
+        },
+        {
+            "id": "Unable to wait for Phobos window to appear: {Err}",
+            "message": "Unable to wait for Phobos window to appear: {Err}",
+            "translation": "無法等待 Phobos 視窗開啓： {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Phobos: Deactivated",
+            "message": "Phobos: Deactivated",
+            "translation": "Phobos - 未連線",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Status: Unknown",
+            "message": "Status: Unknown",
+            "translation": "[狀態] 未知",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Addresses: None",
+            "message": "Addresses: None",
+            "translation": "[位址] 無",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Manage tunnels…",
+            "message": "\u0026Manage tunnels…",
+            "translation": "管理隧道 (\u0026M)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Import tunnel(s) from file…",
+            "message": "\u0026Import tunnel(s) from file…",
+            "translation": "從檔案匯入… (\u0026I)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "E\u0026xit",
+            "message": "E\u0026xit",
+            "translation": "離開 (\u0026X)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Tunnels",
+            "message": "\u0026Tunnels",
+            "translation": "隧道 (\u0026T)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos Activated",
+            "message": "Phobos Activated",
+            "translation": "Phobos 已連線",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "The {Name} tunnel has been activated.",
+            "message": "The {Name} tunnel has been activated.",
+            "translation": "已連線至隧道 - {Name}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnel.Name"
+                }
+            ]
+        },
+        {
+            "id": "Phobos Deactivated",
+            "message": "Phobos Deactivated",
+            "translation": "Phobos 已中斷連線",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "The {Name} tunnel has been deactivated.",
+            "message": "The {Name} tunnel has been deactivated.",
+            "translation": "已中斷與隧道的連線 - {Name}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnel.Name"
+                }
+            ]
+        },
+        {
+            "id": "Phobos Tunnel Error",
+            "message": "Phobos Tunnel Error",
+            "translation": "Phobos 隧道錯誤",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Phobos: {TextForStateglobalState_true}",
+            "message": "Phobos: {TextForStateglobalState_true}",
+            "translation": "Phobos - {TextForStateglobalState_true}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TextForStateglobalState_true",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "textForState(globalState, true)"
+                }
+            ]
+        },
+        {
+            "id": "Status: {StateText}",
+            "message": "Status: {StateText}",
+            "translation": "[狀態] {StateText}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "StateText",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "stateText"
+                }
+            ]
+        },
+        {
+            "id": "Addresses: {EnumerationSeparator}",
+            "message": "Addresses: {EnumerationSeparator}",
+            "translation": "[位址] {EnumerationSeparator}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "EnumerationSeparator",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "strings.Join(addrs, l18n.EnumerationSeparator())"
+                }
+            ]
+        },
+        {
+            "id": "Tunnels",
+            "message": "Tunnels",
+            "translation": "隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Edit",
+            "message": "\u0026Edit",
+            "translation": "編輯 (\u0026E)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Import tunnel from \u0026link…",
+            "message": "Import tunnel from \u0026link…",
+            "translation": ""
+        },
+        {
+            "id": "Add \u0026empty tunnel…",
+            "message": "Add \u0026empty tunnel…",
+            "translation": "新增隧道精靈 (\u0026E)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Add Tunnel",
+            "message": "Add Tunnel",
+            "translation": "新增隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Remove selected tunnel(s)",
+            "message": "Remove selected tunnel(s)",
+            "translation": "刪除選取隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export all tunnels to zip",
+            "message": "Export all tunnels to zip",
+            "translation": "匯出所有隧道（ZIP 格式）",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Toggle",
+            "message": "\u0026Toggle",
+            "translation": "切換連線狀態 (\u0026T)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export all tunnels to \u0026zip…",
+            "message": "Export all tunnels to \u0026zip…",
+            "translation": "匯出所有隧道至 \u0026ZIP 壓縮檔",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Edit \u0026selected tunnel…",
+            "message": "Edit \u0026selected tunnel…",
+            "translation": "編輯選取隧道 (\u0026S)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "\u0026Remove selected tunnel(s)",
+            "message": "\u0026Remove selected tunnel(s)",
+            "translation": "刪除已選取隧道 (\u0026R)",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "no configuration files were found",
+            "message": "no configuration files were found",
+            "translation": "找不到設定檔",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Could not import selected configuration: {LastErr}",
+            "message": "Could not import selected configuration: {LastErr}",
+            "translation": "無法匯入設定： {LastErr}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LastErr",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "lastErr"
+                }
+            ]
+        },
+        {
+            "id": "Could not enumerate existing tunnels: {Err}",
+            "message": "Could not enumerate existing tunnels: {Err}",
+            "translation": "無法列舉現有隧道： {Err}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "Another tunnel already exists with the name ‘{Name}’",
+            "message": "Another tunnel already exists with the name ‘{Name}’",
+            "translation": "已有另一個同名的隧道「{Name}」",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Name",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "unparsedConfig.Name"
+                }
+            ]
+        },
+        {
+            "id": "Unable to import configuration: {LastErr}",
+            "message": "Unable to import configuration: {LastErr}",
+            "translation": "無法匯入設定： {LastErr}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "LastErr",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "lastErr"
+                }
+            ]
+        },
+        {
+            "id": "Imported tunnels",
+            "message": "Imported tunnels",
+            "translation": "已匯入隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Imported {M} tunnels",
+            "message": "Imported {M} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "M",
+                    "cases": {
+                        "other": {
+                            "msg": "已匯入 {M} 個隧道"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "M",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "m"
+                }
+            ]
+        },
+        {
+            "id": "Imported {M} of {N} tunnels",
+            "message": "Imported {M} of {N} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "N",
+                    "cases": {
+                        "other": {
+                            "msg": "已匯入 {M} 個隧道（共 {N} 個）"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "M",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "m"
+                },
+                {
+                    "id": "N",
+                    "string": "%[2]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 2,
+                    "expr": "n"
+                }
+            ]
+        },
+        {
+            "id": "Unable to create tunnel",
+            "message": "Unable to create tunnel",
+            "translation": "無法建立隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Delete {TunnelCount} tunnels",
+            "message": "Delete {TunnelCount} tunnels",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "TunnelCount",
+                    "cases": {
+                        "other": {
+                            "msg": "刪除 {TunnelCount} 個隧道"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "TunnelCount",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "tunnelCount"
+                }
+            ]
+        },
+        {
+            "id": "Are you sure you would like to delete {TunnelCount} tunnels?",
+            "message": "Are you sure you would like to delete {TunnelCount} tunnels?",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "TunnelCount",
+                    "cases": {
+                        "other": {
+                            "msg": "您確定要刪除 {TunnelCount} 個隧道嗎？"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "TunnelCount",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "tunnelCount"
+                }
+            ]
+        },
+        {
+            "id": "Delete tunnel ‘{TunnelName}’",
+            "message": "Delete tunnel ‘{TunnelName}’",
+            "translation": "刪除隧道 - {TunnelName}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TunnelName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnelName"
+                }
+            ]
+        },
+        {
+            "id": "Are you sure you would like to delete tunnel ‘{TunnelName}’?",
+            "message": "Are you sure you would like to delete tunnel ‘{TunnelName}’?",
+            "translation": "您確定要刪除隧道「{TunnelName}」嗎？",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "TunnelName",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "tunnelName"
+                }
+            ]
+        },
+        {
+            "id": "{Question} You cannot undo this action.",
+            "message": "{Question} You cannot undo this action.",
+            "translation": "{Question}\n\n您將無法復原此操作。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Question",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "question"
+                }
+            ]
+        },
+        {
+            "id": "Unable to delete tunnel",
+            "message": "Unable to delete tunnel",
+            "translation": "無法刪除隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "A tunnel was unable to be removed: {Error}",
+            "message": "A tunnel was unable to be removed: {Error}",
+            "translation": "無法刪除隧道： {Error}",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Error",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "errors[0].Error()"
+                }
+            ]
+        },
+        {
+            "id": "Unable to delete tunnels",
+            "message": "Unable to delete tunnels",
+            "translation": "無法刪除隧道",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "{Lenerrors} tunnels were unable to be removed.",
+            "message": "{Lenerrors} tunnels were unable to be removed.",
+            "translation": {
+                "select": {
+                    "feature": "plural",
+                    "arg": "Lenerrors",
+                    "cases": {
+                        "other": {
+                            "msg": "無法刪除 {Lenerrors} 個隧道"
+                        }
+                    }
+                }
+            },
+            "placeholders": [
+                {
+                    "id": "Lenerrors",
+                    "string": "%[1]d",
+                    "type": "int",
+                    "underlyingType": "int",
+                    "argNum": 1,
+                    "expr": "len(errors)"
+                }
+            ]
+        },
+        {
+            "id": "Configuration Files (*.zip, *.conf)|*.zip;*.conf|All Files (*.*)|*.*",
+            "message": "Configuration Files (*.zip, *.conf)|*.zip;*.conf|All Files (*.*)|*.*",
+            "translation": "隧道設定檔 (*.zip, *.conf)|*.zip;*.conf|所有檔案 (*.*)|*.*",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Import tunnel(s) from file",
+            "message": "Import tunnel(s) from file",
+            "translation": "從檔案中匯入隧道…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Configuration ZIP Files (*.zip)|*.zip",
+            "message": "Configuration ZIP Files (*.zip)|*.zip",
+            "translation": "隧道設定檔 (*.zip)|*.zip",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Export tunnels to zip",
+            "message": "Export tunnels to zip",
+            "translation": "匯出隧道設定至…",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Error Exiting Phobos",
+            "message": "Error Exiting Phobos",
+            "translation": "離開 Phobos 失敗",
+            "translatorComment": "Copied from source."
+        },
+        {
+            "id": "Unable to exit service due to: {Err}. You may want to stop Phobos from the service manager.",
+            "message": "Unable to exit service due to: {Err}. You may want to stop Phobos from the service manager.",
+            "translation": "無法結束服務： {Err}。\n您可能需要手動從服務管理中結束 Phobos 服務。",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Err",
+                    "string": "%[1]v",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
+                    "argNum": 1,
+                    "expr": "err"
+                }
+            ]
+        },
+        {
+            "id": "{B}",
+            "message": "{B}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "B",
+                    "string": "%[1]s",
+                    "type": "[]byte",
+                    "underlyingType": "[]byte",
+                    "argNum": 1,
+                    "expr": "b"
+                }
+            ]
+        }
+    ]
+}

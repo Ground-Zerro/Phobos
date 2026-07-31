@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
-#include <arpa/inet.h>
+#include "compat_net.h"
 #include "socks5_mask.h"
 #include "masking.h"
 #include "masking_stun.h"

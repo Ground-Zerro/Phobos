@@ -117,7 +117,7 @@ export class ObfuscatorPresetService {
         isDefault: false,
         mode,
         extPort,
-        sourceIf: data.sourceIf ?? '0.0.0.0',
+        sourceIf: data.sourceIf ?? '',
         target: data.target?.trim() ? data.target.trim() : null,
         key: data.key ?? generateObfuscatorKey(),
         masking: data.masking ?? 'STUN',

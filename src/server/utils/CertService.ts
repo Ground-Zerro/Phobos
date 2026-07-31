@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import {
   writeFileSync,
   mkdirSync,
-  unlinkSync,
   existsSync,
   readFileSync,
   symlinkSync,
@@ -27,25 +26,38 @@ function storeCert(name: string, cert: string, key: string, origin: string) {
 
 function activateCert(name: string) {
   const activeLink = join(CERT_ROOT, 'active');
-  try { unlinkSync(activeLink); } catch {}
+  rmSync(activeLink, { force: true });
   symlinkSync(join(CERT_ROOT, name), activeLink);
 }
 
 export function generateSelfSigned(host: string) {
   const san = isIp(host) ? `IP:${host}` : `DNS:${host}`;
-  const name = `self-${host.replace(/[^a-zA-Z0-9.\-]/g, '_')}`;
+  const name = `self-${host.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
   const tmp = tmpdir();
   const certPath = join(tmp, `${name}-cert.pem`);
   const keyPath = join(tmp, `${name}-key.pem`);
 
-  execFileSync('openssl', [
-    'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
-    '-keyout', keyPath,
-    '-out', certPath,
-    '-days', '3650',
-    '-subj', `/CN=${host}`,
-    '-addext', `subjectAltName=${san}`,
-  ], { stdio: 'pipe' });
+  execFileSync(
+    'openssl',
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      keyPath,
+      '-out',
+      certPath,
+      '-days',
+      '3650',
+      '-subj',
+      `/CN=${host}`,
+      '-addext',
+      `subjectAltName=${san}`,
+    ],
+    { stdio: 'pipe' }
+  );
 
   const cert = readFileSync(certPath, 'utf8');
   const key = readFileSync(keyPath, 'utf8');
@@ -71,7 +83,9 @@ export function importCert(certPem: string, keyPem: string) {
   ).toString();
 
   const cnMatch = subjectOutput.match(/commonName\s*=\s*(.+)/);
-  const cn = cnMatch ? cnMatch[1]!.trim().replace(/[^a-zA-Z0-9.\-]/g, '_') : 'cert';
+  const cn = cnMatch
+    ? cnMatch[1]!.trim().replace(/[^a-zA-Z0-9.-]/g, '_')
+    : 'cert';
   const name = `imported-${cn}`;
 
   storeCert(name, certPem, keyPem, 'imported');
@@ -108,7 +122,7 @@ export function importCertFromPath(certPath: string, keyPath: string) {
   const name = 'path-imported';
   const dir = join(CERT_ROOT, name);
 
-  try { rmSync(dir, { recursive: true, force: true }); } catch {}
+  rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
 
   symlinkSync(certPath, join(dir, 'fullchain.pem'));

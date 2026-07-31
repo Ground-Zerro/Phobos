@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <arpa/inet.h>
+#include "compat_net.h"
 #include "wg-obfuscator.h"
 #include "masking.h"
 #include "masking_media.h"

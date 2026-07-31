@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <pthread.h>
-#include <netinet/in.h>
+#include "compat_net.h"
 #include "wg-obfuscator.h"
 
 #define MAX_WORKER_THREADS 256

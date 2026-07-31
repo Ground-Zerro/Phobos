@@ -54,9 +54,11 @@ static void show_usage(void)
         "                             client - local SOCKS5 server, tunnels to server role\n"
         "                             server - exit, terminates SOCKS5, dials targets\n"
         "  -i, --source-if=<ip>       Source interface to listen on\n"
-        "                             (optional, default - 0.0.0.0, e.g. all)\n"
+        "                             (optional, default - all: 0.0.0.0 in wireguard\n"
+        "                             mode, dual-stack :: in socks5 mode)\n"
         "  -p, --source-lport=<port>  Source port to listen\n"
-        "  -t, --target=<ip>:<port>   Target IP and port\n"
+        "  -t, --target=<ip>:<port>   Target IP and port; socks5 mode also accepts\n"
+        "                             IPv6 as [<ip>]:<port> and AAAA hostnames\n"
         "  -k, --key=<key>            Obfuscation key \n"
         "                             (required, must be 1-255 characters long)\n"
         "  -a, --masking=<type>       Masking type (optional, default - AUTO)\n"
@@ -68,6 +70,7 @@ static void show_usage(void)
         "                             two-way mode as <client_ip>:<client_port>:<forward_port>\n"
         "                             SOCKS5 relay: extra listen->target TCP routes as\n"
         "                             <listen_port>:<target_host>:<target_port>,...\n"
+        "                             (IPv6 target as <listen_port>:[<ip>]:<target_port>)\n"
         "  -U, --socks5-users=<login>:<password>,...\n"
         "                             SOCKS5 role=server only: accepted RFC1929\n"
         "                             username/password pairs. If set, the server\n"
@@ -356,15 +359,21 @@ static int parse_opt(const char *lname, char sname, const char *val, void *ctx)
             strncpy(config->socks5_stats_path, val, sizeof(config->socks5_stats_path) - 1);
             config->socks5_stats_path[sizeof(config->socks5_stats_path) - 1] = 0;
             break;
-        case 'k':
-            strncpy(config->xor_key, val, sizeof(config->xor_key));
-            config->xor_key[sizeof(config->xor_key) - 1] = 0; // Ensure null-termination
-            if (strlen(config->xor_key) == 0) {
+        case 'k': {
+            size_t key_len = strlen(val);
+            if (key_len == 0) {
                 log(LL_ERROR, "XOR key cannot be empty");
                 exit(EXIT_FAILURE);
             }
+            if (key_len >= sizeof(config->xor_key)) {
+                log(LL_ERROR, "XOR key is too long: %d characters, maximum is %d",
+                    (int)key_len, (int)(sizeof(config->xor_key) - 1));
+                exit(EXIT_FAILURE);
+            }
+            memcpy(config->xor_key, val, key_len + 1);
             config->xor_key_set = 1;
             break;
+        }
         case 'm':
             config->max_clients = (int)parse_int_range(val, 1, INT_MAX, "maximum number of clients");
             break;

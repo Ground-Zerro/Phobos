@@ -8,7 +8,8 @@
       "config": "Konfigurace",
       "interface": "Rozhraní",
       "hooks": "Nastavení reakcí",
-      "warp": "WARP"
+      "warp": "WARP",
+      "obfuscatorPresets": "Předvolby obfuskátoru"
     }
   },
   "user": {
@@ -56,7 +57,33 @@
     "createAccount": "Vytvořit účet",
     "successful": "Nastavení bylo úspěšné",
     "hostDesc": "Veřejný název hostitele, ke kterému se budou klienti připojovat",
-    "portDesc": "Veřejný UDP port, ke kterému se budou klienti připojovat a na kterém bude WireGuard naslouchat"
+    "portDesc": "Veřejný UDP port, ke kterému se budou klienti připojovat a na kterém bude WireGuard naslouchat",
+    "tls": {
+      "title": "Certifikát HTTPS / TLS",
+      "desc": "Nastavte certifikát TLS, abyste povolili zabezpečený přístup přes HTTPS. Bez HTTPS je přihlášení ve výchozím stavu zablokováno.",
+      "selfSigned": "Certifikát podepsaný svým vydavatelem",
+      "selfSignedDesc": "Vygeneruje se okamžitě pro váš host. Prohlížeč zobrazí bezpečnostní varování — klikněte na Rozšířené → Pokračovat.",
+      "selfSignedHstsWarning": "Pokud prohlížeč blokuje stránku chybou HSTS a nenabízí možnost „Pokračovat“, má uloženou zásadu HSTS z dřívějšího certifikátu na této doméně. Otevřete adresu v anonymním okně, nebo smažte záznam HSTS v chrome://net-internals/#hsts (Delete domain).",
+      "import": "Importovat existující certifikát",
+      "importDesc": "Vložte vlastní certifikát PEM a soukromý klíč.",
+      "importPath": "Importovat certifikát z cest k souborům",
+      "importPathDesc": "Zadejte absolutní cesty k existujícím souborům certifikátu a klíče na disku (např. /etc/letsencrypt/live/example.com/*.pem). Soubory musí být čitelné zevnitř kontejneru.",
+      "certPathLabel": "Cesta k souboru certifikátu (PEM fullchain)",
+      "keyPathLabel": "Cesta k souboru soukromého klíče (PEM)",
+      "importPathHint": "Soubory se propojují symbolickým odkazem, nekopírují se. Když se zdrojové soubory na disku změní (např. po certbot renew), server to zjistí přibližně do 30 s a automaticky se restartuje, aby načetl nový certifikát. Kontejner má přístup jen pro čtení k těmto adresářům hostitele: /etc/letsencrypt (certbot), /root/cert (3x-ui), /root/.acme.sh (acme.sh).",
+      "skip": "Přeskočit (bez HTTPS)",
+      "skipDesc": "Zůstat na HTTP.",
+      "certLabel": "Certifikát (PEM fullchain)",
+      "keyLabel": "Soukromý klíč (PEM)",
+      "generate": "Vygenerovat certifikát",
+      "apply": "Použít",
+      "restarting": "Certifikát byl použit. Server se restartuje s HTTPS...",
+      "redirectPrompt": "Otevřít zabezpečenou verzi:",
+      "openLink": "Otevřít HTTPS",
+      "skipWarning": "Bez certifikátu TLS je webové rozhraní dostupné pouze přes HTTP.",
+      "errorCert": "Ověření certifikátu selhalo",
+      "errorKey": "Ověření soukromého klíče selhalo"
+    }
   },
   "theme": {
     "dark": "Tmavý režim",
@@ -118,17 +145,40 @@
     "copyInstallLink": "Copy install command",
     "installLinkCopied": "Install command copied to clipboard",
     "installLinkFailed": "Failed to generate install link",
-    "downloadPackage": "Download install package"
+    "downloadPackage": "Download install package",
+    "firewallIps": "IP povolené firewallem",
+    "firewallIpsDesc": "Cílové IP adresy/CIDR, na které tento klient smí přistupovat (vynucuje se na serveru). Ponechte prázdné, aby se použily Allowed IPs. Podporuje volitelné filtrování podle portu a protokolu. Syntaxi najdete v dokumentaci.",
+    "downloadPng": "Stáhnout PNG",
+    "copyLink": "Kopírovat odkaz phobos://",
+    "linkShort": "Odkaz",
+    "linkCopied": "Odkaz phobos:// zkopírován do schránky",
+    "linkFailed": "Odkaz phobos:// se nepodařilo zkopírovat",
+    "preset": "Předvolba obfuskátoru",
+    "protocol": "Protokol",
+    "presetDesc": "Vyberte, kterou předvolbou obfuskátoru je tento klient veden. Protokol předvolby (WireGuard nebo SOCKS5) určuje, která pole níže platí — přihlašovací údaje SOCKS5 se například zobrazí jen u předvolby v režimu SOCKS5, protože WireGuard je nepoužívá. Ponechte výchozí hodnotu, aby se použila výchozí předvolba serveru (WireGuard).",
+    "presetUseDefault": "Použít výchozí předvolbu",
+    "socks5Login": "Přihlašovací jméno SOCKS5",
+    "socks5Password": "Heslo SOCKS5",
+    "socks5CredentialsHint": "Zadejte toto jméno a heslo v nastavení SOCKS5 samotné klientské aplikace (prohlížeč, curl apod.) — obfuskátor pouze šifruje provoz, tyto údaje neukládá ani neověřuje.",
+    "socks5ConfigNote": "Tento klient používá předvolbu v režimu SOCKS5, takže konfigurace níže je blok klienta obfuskátoru SOCKS5, nikoli WireGuard. Přihlašovací jméno a heslo SOCKS5 uvedené na stránce tohoto klienta zadejte ve své aplikaci SOCKS5.",
+    "nameHint": "Pouze latinská písmena, číslice, pomlčka, tečka a {'@'}; nejvýše 32 znaků; musí být jedinečné.",
+    "nameError": {
+      "tooLong": "Název nesmí přesáhnout {max} znaků.",
+      "invalidChars": "Povolena jsou pouze latinská písmena, číslice, pomlčka, tečka a {'@'} (bez mezer a jiných zvláštních znaků).",
+      "duplicate": "Klient s tímto názvem již existuje."
+    }
   },
   "dialog": {
     "change": "Změnit",
     "cancel": "Zrušit",
-    "create": "Vytvořit"
+    "create": "Vytvořit",
+    "delete": "Smazat"
   },
   "toast": {
     "success": "Úspěch",
     "saved": "Uloženo",
-    "error": "Chyba"
+    "error": "Chyba",
+    "unknown": "Neznámá chyba. Podrobnosti najdete v konzoli"
   },
   "form": {
     "actions": "Akce",
@@ -150,7 +200,9 @@
       "json": "JSON",
       "jsonDesc": "Cesta pro metriky ve formátu JSON",
       "prometheus": "Prometheus",
-      "prometheusDesc": "Cesta pro metriky Prometheus"
+      "prometheusDesc": "Cesta pro metriky Prometheus",
+      "metricsPasswordSet": "Heslo je nastaveno — ponechte prázdné, aby zůstalo zachováno",
+      "metricsPasswordUnset": "Heslo není nastaveno"
     },
     "config": {
       "connection": "Připojení",
@@ -174,7 +226,22 @@
       "restartSuccess": "Rozhraní bylo restartováno",
       "egress": "Výstup",
       "egressWarp": "Směrovat provoz klientů přes WARP",
-      "egressWarpDesc": "Po aktivaci klienti vycházejí přes Cloudflare WARP místo přes WAN serveru, čímž se skryje IP serveru. Vyžaduje registrovanou konfiguraci WARP. Může být nutné snížit MTU klientů."
+      "egressWarpDesc": "Po aktivaci klienti vycházejí přes Cloudflare WARP místo přes WAN serveru, čímž se skryje IP serveru. Vyžaduje registrovanou konfiguraci WARP. Může být nutné snížit MTU klientů.",
+      "subnet": "Podsíť WireGuard",
+      "ipv4Cidr": "Podsíť IPv4 pro WireGuard (CIDR)",
+      "ipv4CidrDesc": "Fond adres pro klienty (např. 10.8.0.0/24). Rozšiřte masku (např. /16), abyste umožnili více klientů nebo jiné rozsahy. Změna znovu přidělí adresu IPv4 každému klientovi.",
+      "ipv6Cidr": "Podsíť IPv6 pro WireGuard (CIDR)",
+      "ipv6CidrDesc": "Fond adres IPv6 pro klienty. Změna znovu přidělí adresu IPv6 každému klientovi.",
+      "firewall": "Filtrování provozu",
+      "firewallEnabled": "Zapnout firewall pro jednotlivé klienty",
+      "firewallEnabledDesc": "Omezí provoz klienta na konkrétní cílové IP adresy pomocí iptables. Po zapnutí lze každému klientovi nastavit povolené cíle.",
+      "publicAddress": "Veřejná adresa",
+      "publicIpV4": "Veřejná IPv4 serveru",
+      "publicIpV4Desc": "Používá se jako target v konfiguraci klientského obfuskátoru.",
+      "publicIpV6": "Veřejná IPv6 serveru",
+      "publicIpV6Desc": "Volitelný target IPv6.",
+      "publicDomain": "Veřejná doména serveru",
+      "publicDomainDesc": "Je-li nastavena, použije se v konfiguraci klienta jako target obfuskátoru namísto IPv4/IPv6."
     },
     "introText": "Vítejte v administraci.\n\nZde můžete spravovat obecná nastavení, konfiguraci, nastavení rozhraní a hooky.\n\nZačněte výběrem jedné ze sekcí v bočním panelu.",
     "warp": {
@@ -215,6 +282,65 @@
       "checkOffline": "WARP je offline",
       "notActiveEgress": "WARP není aktivní jako výstup",
       "notActiveEgressTip": "Zapněte „Směrovat provoz klientů přes WARP\" v sekci Síťové rozhraní, abyste mohli tunel WARP používat a otestovat."
+    },
+    "tls": {
+      "title": "Certifikát TLS",
+      "desc": "Nahraďte aktivní certifikát HTTPS, nebo přejděte na prosté HTTP.",
+      "current": "Aktivní certifikát",
+      "apply": "Použít konfiguraci TLS",
+      "applied": "Konfigurace TLS byla použita. Server se restartuje.",
+      "appliedRestart": "Konfigurace TLS byla použita. Server se restartuje; za několik sekund znovu otevřete {url}.",
+      "externalManaged": "TLS spravuje externí reverzní proxy (TLS_TERMINATION=external). Certifikát je nutné vydávat a obnovovat mimo PhobosWG.",
+      "origin": {
+        "self-signed": "Podepsaný svým vydavatelem",
+        "imported": "Importovaný (vložený PEM)",
+        "imported-path": "Importovaný z cesty (symbolický odkaz, automatické načtení)",
+        "none": "Žádný (HTTP)"
+      }
+    },
+    "obfuscatorPresets": {
+      "title": "Předvolby obfuskátoru",
+      "desc": "Každá předvolba provozuje vlastní naslouchání wg-obfuscator s nezávislým portem, klíčem a maskováním. Výchozí předvolba platí pro každého klienta bez výslovného přiřazení. Předvolby WireGuard používají porty UDP 51822-51861, předvolby SOCKS5 porty TCP 51862-51891 — rozsahy publikované souborem docker-compose.",
+      "add": "Přidat předvolbu",
+      "addDesc": "Zadejte pouze název. Port, klíč a další parametry dostanou rozumné výchozí hodnoty a lze je následně v předvolbě upravit.",
+      "default": "výchozí",
+      "setAsDefault": "Nastavit jako výchozí",
+      "deleteConfirm": "Smazat tuto předvolbu? Klienti, kteří ji používají, přejdou na výchozí předvolbu.",
+      "regenerateKey": "Znovu vygenerovat klíč",
+      "regeneratePort": "Vybrat volný port",
+      "nameLabel": "Název",
+      "nameDesc": "Zobrazovaný název předvolby. Používá se pouze v panelu.",
+      "modeLabel": "Protokol (mode)",
+      "modeDesc": "WireGuard: obfuskuje UDP handshake protokolu WireGuard. SOCKS5: provozuje skutečnou proxy SOCKS5 (s volitelnými přihlašovacími údaji RFC1929 pro každého klienta) tunelovanou přes obfuskované TCP spojení.",
+      "sourceLportLabel": "source-lport (vnější port UDP)",
+      "sourceLportLabelSocks5": "source-lport (vnější port TCP)",
+      "sourceLportDesc": "Veřejný port UDP, na kterém naslouchá serverový obfuskátor. Musí být v rozsahu 51822-51861 — rozsahu publikovaném souborem docker-compose, jinak jej klienti nedosáhnou.",
+      "sourceLportDescSocks5": "Veřejný port TCP, na kterém naslouchá server SOCKS5. Musí být v rozsahu 51862-51891 — rozsahu publikovaném souborem docker-compose, jinak jej klienti nedosáhnou.",
+      "targetLabel": "target",
+      "targetDesc": "Kam serverový obfuskátor předává rozbalený provoz. Ponechte prázdné, aby se použil místní koncový bod WireGuard (127.0.0.1:[port wg]). Formát: host:port.",
+      "targetPlaceholder": "127.0.0.1:[port wireguard] (výchozí)",
+      "sourceIfLabel": "source-if",
+      "sourceIfDesc": "IP rozhraní, na které se serverový obfuskátor váže. Ponechte prázdné pro AUTO: předvolby SOCKS5 naslouchají na IPv4 i IPv6, předvolby WireGuard na 0.0.0.0.",
+      "keyLabel": "Obfuskační klíč (key)",
+      "keyDesc": "Sdílený obfuskační klíč, na obou stranách shodný. Generuje se náhodně (200-254 znaků). 1-255 znaků.",
+      "maskingLabel": "Režim maskování (masking)",
+      "maskingDesc": "Režim obcházení DPI. STUN: zabalí provoz jako STUN. MEDIA: maskuje jej jako média RTP/H.264, nastavte výslovně na obou stranách. AUTO: server rozpozná automaticky, klient používá STUN. NONE: maskování vypnuto (XOR zůstává).",
+      "maskingDescSocks5": "Režim obcházení DPI. STUN: zabalí provoz jako STUN. MEDIA: maskuje jej jako média RTP/H.264, nastavte výslovně na obou stranách. TLS: maskuje jej jako záznamy HTTPS. NONE: maskování vypnuto (XOR zůstává). AUTO není pro předvolby SOCKS5 k dispozici.",
+      "obfuscateBytesLabel": "obfuscate-bytes",
+      "obfuscateBytesDesc": "Kolik úvodních bajtů se zpracuje operací XOR. 0 = celý paket. Hodnota >0 vypne výplňové bajty. Musí se shodovat na obou stranách. Pro MEDIA: 0 automaticky použije 16, minimum je 4.",
+      "dummyLabel": "Max. výplňových bajtů (max-dummy)",
+      "dummyDesc": "Maximální náhodná výplň přidaná ke každému paketu (0-1024). Výchozí 40.",
+      "dummyDisabledNote": "Nepoužívá se u MEDIA ani když je obfuscate-bytes > 0.",
+      "mediaSsrcDisabledNote": "Platí pouze pro režim maskování MEDIA.",
+      "verboseLabel": "verbose (úroveň logování)",
+      "verboseDesc": "Podrobnost logů. error/warn/info/debug/trace. V produkci se doporučuje error; debug/trace výrazně zatěžují procesor.",
+      "clientLocalPortLabel": "Místní port WireGuard na straně klienta",
+      "clientLocalPortDesc": "Místní port UDP, na který posílá klientský WireGuard (Endpoint 127.0.0.1:[port]) a zároveň source-lport klientského obfuskátoru. Výchozí 13255.",
+      "clientLocalPortSocks5Label": "Místní port SOCKS5 na straně klienta",
+      "clientLocalPortSocks5Desc": "Místní port TCP, na kterém naslouchá obfuskátor SOCKS5 na straně klienta. Nastavení proxy SOCKS5 ve vaší aplikaci nasměrujte na 127.0.0.1:[port]. Výchozí 1080.",
+      "mediaSsrcLabel": "SSRC pro RTP (media-ssrc)",
+      "mediaSsrcDesc": "Pevná hodnota SSRC, díky které lze na obou stranách spolehlivě rozpoznat rámce maskované jako MEDIA. Vyplní se automaticky při volbě MEDIA; 0 = nenastaveno.",
+      "clientCount": "Klientů: {n}"
     }
   },
   "zod": {
@@ -234,7 +360,12 @@
       "expiresAt": "Vyprší dne",
       "address4": "IPv4 adresa",
       "address6": "IPv6 adresa",
-      "serverAllowedIps": "Povolené IP adresy serveru"
+      "serverAllowedIps": "Povolené IP adresy serveru",
+      "firewallIps": "IP povolené firewallem",
+      "firewallIpsInvalid": "Neplatný záznam IP pro firewall. Podporovanou syntaxi najdete v dokumentaci.",
+      "presetId": "ID předvolby obfuskátoru",
+      "nameTooLong": "Název klienta nesmí přesáhnout 32 znaků.",
+      "nameInvalidChars": "Název klienta smí obsahovat pouze latinská písmena, číslice, pomlčku, tečku a {'@'} (bez mezer a jiných zvláštních znaků)."
     },
     "user": {
       "username": "Uživatelské jméno",
@@ -294,6 +425,26 @@
       "interval": "Interval aktualizace (dny)",
       "key": "Klíč WireGuard",
       "license": "Licenční klíč WARP+ (min. 26 znaků)"
+    },
+    "obfuscatorPreset": {
+      "id": "ID předvolby obfuskátoru",
+      "name": "Název předvolby",
+      "mode": "Protokol",
+      "extPort": "Vnější port (WireGuard/UDP 51822-51861, SOCKS5/TCP 51862-51891)",
+      "key": "Klíč obfuskátoru",
+      "masking": "Režim maskování",
+      "maskingAutoSocks5": "Maskování AUTO není pro předvolby v režimu SOCKS5 k dispozici",
+      "maskingTlsWireguard": "Maskování TLS je k dispozici pouze pro předvolby v režimu SOCKS5",
+      "sourceIf": "Naslouchající rozhraní (IP)",
+      "target": "target musí být ve tvaru host:port",
+      "obfuscateBytes": "Obfuskované bajty (0-1024)",
+      "obfuscateBytesMedia": "Pro MEDIA je minimum 4 (nebo 0 pro výchozí hodnotu 16)",
+      "verbose": "Úroveň logování",
+      "idle": "Časový limit nečinnosti",
+      "dummy": "Max. výplňových bajtů",
+      "clientWgLocalPort": "Místní port WireGuard na straně klienta",
+      "mediaSsrc": "SSRC pro RTP",
+      "clientLocalPort": "Místní port na straně klienta (1-65535)"
     }
   },
   "hooks": {
@@ -306,6 +457,7 @@
     "notSupported": "Kopírování není podporováno",
     "copied": "Zkopírováno!",
     "failed": "Kopírování selhalo",
-    "copy": "Kopírovat"
+    "copy": "Kopírovat",
+    "copyConfig": "Kliknutím zkopírujete konfiguraci do schránky"
   }
 }

@@ -7,7 +7,8 @@
         href="https://github.com/Ground-Zerro/Phobos"
         >Phobos</a
       >
-      - secure WireGuard VPN with traffic obfuscation © {{ phobosYears }} by Ground_Zerro ·
+      - secure WireGuard VPN with traffic obfuscation © {{ phobosYears }} by
+      Ground_Zerro ·
       <a
         class="hover:underline"
         target="_blank"
@@ -23,7 +24,8 @@
         href="https://github.com/wg-easy/wg-easy"
         >WireGuard Easy</a
       >
-      ({{ globalStore.information?.currentRelease }}) © 2021-{{ currentYear }} by
+      ({{ globalStore.information?.currentRelease }}) © 2021-{{ currentYear }}
+      by
       <a
         class="hover:underline"
         target="_blank"
@@ -59,7 +61,8 @@
         href="https://github.com/ClusterM/wg-obfuscator-android"
         >wg-obfuscator-android</a
       >
-      © {{ obfuscatorYears }} by ClusterM licensed under GNU General Public License v3.0 ·
+      © {{ obfuscatorYears }} by ClusterM licensed under GNU General Public
+      License v3.0 ·
       <a
         class="hover:underline"
         target="_blank"

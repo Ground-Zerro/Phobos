@@ -1,0 +1,320 @@
+/* SPDX-License-Identifier: MIT
+ *
+ * Copyright (C) 2019-2026 WireGuard LLC. All Rights Reserved.
+ */
+
+#include <windows.h>
+
+#pragma code_page(65001) // UTF-8
+
+#define STRINGIZE(x) #x
+#define EXPAND(x) STRINGIZE(x)
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST manifest.xml
+7 ICON ui/icon/phobos.ico
+8 ICON ui/icon/dot.ico
+wireguard.dll RCDATA wireguard.dll
+wintun.dll RCDATA wintun.dll
+
+#define VERSIONINFO_TEMPLATE(block_id, lang_id, codepage_id, file_desc, comments) \
+VS_VERSION_INFO VERSIONINFO \
+FILEVERSION    PHOBOS_VERSION_ARRAY \
+PRODUCTVERSION PHOBOS_VERSION_ARRAY \
+FILEOS         VOS_NT_WINDOWS32 \
+FILETYPE       VFT_APP \
+FILESUBTYPE    VFT2_UNKNOWN \
+BEGIN \
+  BLOCK "StringFileInfo" \
+  BEGIN \
+    BLOCK block_id \
+    BEGIN \
+      VALUE "CompanyName", "Phobos" \
+      VALUE "FileDescription", file_desc \
+      VALUE "FileVersion", EXPAND(PHOBOS_VERSION_STR) \
+      VALUE "InternalName", "phobos-windows" \
+      VALUE "LegalCopyright", "Phobos" \
+      VALUE "OriginalFilename", "phobos.exe" \
+      VALUE "ProductName", "Phobos" \
+      VALUE "ProductVersion", EXPAND(PHOBOS_VERSION_STR) \
+      VALUE "Comments", comments \
+    END \
+  END \
+  BLOCK "VarFileInfo" \
+  BEGIN \
+    VALUE "Translation", lang_id, codepage_id \
+  END \
+END
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040904b0", 0x409, 0x4b0,
+  "Phobos: Fast, Modern, Secure VPN Tunnel",
+  ""
+)
+
+LANGUAGE LANG_ARABIC, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040104b0", 0x401, 0x4b0,
+  "Phobos: نفق VPN سريع وحديث وآمن",
+  ""
+)
+
+LANGUAGE LANG_CATALAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040304b0", 0x403, 0x4b0,
+  "Phobos: túnel VPN ràpid, modern i segur",
+  ""
+)
+
+LANGUAGE LANG_CZECH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040504b0", 0x405, 0x4b0,
+  "Phobos: rychlý, moderní a bezpečný VPN tunel",
+  ""
+)
+
+LANGUAGE LANG_DANISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040604b0", 0x406, 0x4b0,
+  "Phobos: hurtig, moderne og sikker VPN-tunnel",
+  ""
+)
+
+LANGUAGE LANG_GERMAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040704b0", 0x407, 0x4b0,
+  "Phobos: schneller, moderner, sicherer VPN-Tunnel",
+  ""
+)
+
+LANGUAGE LANG_GREEK, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040804b0", 0x408, 0x4b0,
+  "Phobos: γρήγορη, σύγχρονη και ασφαλής σήραγγα VPN",
+  ""
+)
+
+LANGUAGE LANG_HUNGARIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040e04b0", 0x40e, 0x4b0,
+  "Phobos: gyors, modern, biztonságos VPN-alagút",
+  ""
+)
+
+LANGUAGE LANG_SPANISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040a04b0", 0x40a, 0x4b0,
+  "Phobos: túnel VPN rápido, moderno y seguro",
+  ""
+)
+
+LANGUAGE LANG_FINNISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040b04b0", 0x40b, 0x4b0,
+  "Phobos: nopea, nykyaikainen ja turvallinen VPN-tunneli",
+  ""
+)
+
+LANGUAGE LANG_FRENCH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040c04b0", 0x40c, 0x4b0,
+  "Phobos: tunnel VPN rapide, moderne, sécurisé",
+  ""
+)
+
+LANGUAGE LANG_HEBREW, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "040d04b0", 0x40d, 0x4b0,
+  "Phobos: מנהרת VPN מהירה, מודרנית ובטוחה",
+  ""
+)
+
+LANGUAGE LANG_ITALIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041004b0", 0x410, 0x4b0,
+  "Phobos: Tunnel VPN veloce, moderno e sicuro",
+  ""
+)
+
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041104b0", 0x411, 0x4b0,
+  "Phobos: 高速で、現代的で、セキュアな VPN トンネル",
+  ""
+)
+
+LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041204b0", 0x412, 0x4b0,
+  "Phobos: 빠르고 현대적이며 안전한 VPN 터널",
+  ""
+)
+
+LANGUAGE LANG_DUTCH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041304b0", 0x413, 0x4b0,
+  "Phobos: snelle, moderne, veilige VPN-tunnel",
+  ""
+)
+
+LANGUAGE LANG_NORWEGIAN, SUBLANG_NORWEGIAN_BOKMAL
+VERSIONINFO_TEMPLATE(
+  "041404b0", 0x414, 0x4b0,
+  "Phobos: rask, moderne, sikker VPN-tunnel",
+  ""
+)
+
+LANGUAGE LANG_NORWEGIAN, SUBLANG_NORWEGIAN_NYNORSK
+VERSIONINFO_TEMPLATE(
+  "081404b0", 0x814, 0x4b0,
+  "Phobos: rask, moderne, sikker VPN-tunnel",
+  ""
+)
+
+LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041504b0", 0x415, 0x4b0,
+  "Phobos: szybki, nowoczesny, bezpieczny tunel VPN",
+  ""
+)
+
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE_BRAZILIAN
+VERSIONINFO_TEMPLATE(
+  "041604b0", 0x416, 0x4b0,
+  "Phobos: túnel VPN rápido, moderno e seguro",
+  ""
+)
+
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE
+VERSIONINFO_TEMPLATE(
+  "081604b0", 0x816, 0x4b0,
+  "Phobos: túnel VPN rápido, moderno e seguro",
+  ""
+)
+
+LANGUAGE LANG_ROMANIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041804b0", 0x418, 0x4b0,
+  "Phobos: tunel VPN rapid, modern și sigur",
+  ""
+)
+
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041904b0", 0x419, 0x4b0,
+  "Phobos: быстрый, современный и безопасный VPN-туннель",
+  ""
+)
+
+LANGUAGE LANG_SERBIAN, SUBLANG_SERBIAN_CYRILLIC
+VERSIONINFO_TEMPLATE(
+  "0c1a04b0", 0xc1a, 0x4b0,
+  "Phobos: брз, модеран и безбедан VPN тунел",
+  ""
+)
+
+LANGUAGE LANG_SLOVAK, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041b04b0", 0x41b, 0x4b0,
+  "Phobos: rýchly, moderný a bezpečný VPN tunel",
+  ""
+)
+
+LANGUAGE LANG_SLOVENIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "042404b0", 0x424, 0x4b0,
+  "Phobos: hiter, sodoben, varen tunel VPN",
+  ""
+)
+
+LANGUAGE LANG_SWEDISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041d04b0", 0x41d, 0x4b0,
+  "Phobos: snabb, modern, säker VPN-tunnel",
+  ""
+)
+
+LANGUAGE LANG_TURKISH, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "041f04b0", 0x41f, 0x4b0,
+  "Phobos: hızlı, modern ve güvenli VPN tüneli",
+  ""
+)
+
+LANGUAGE LANG_INDONESIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "042104b0", 0x421, 0x4b0,
+  "Phobos: terowongan VPN cepat, modern, dan aman",
+  ""
+)
+
+LANGUAGE LANG_UKRAINIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "042204b0", 0x422, 0x4b0,
+  "Phobos: швидкий, сучасний і безпечний VPN-тунель",
+  ""
+)
+
+LANGUAGE LANG_ESTONIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "042504b0", 0x425, 0x4b0,
+  "Phobos: kiire, kaasaegne ja turvaline VPN-tunnel",
+  ""
+)
+
+LANGUAGE LANG_PERSIAN, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "042904b0", 0x429, 0x4b0,
+  "Phobos: تونل VPN سریع، مدرن و امن",
+  ""
+)
+
+LANGUAGE LANG_VIETNAMESE, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "042a04b0", 0x42a, 0x4b0,
+  "Phobos: đường hầm VPN nhanh, hiện đại, an toàn",
+  ""
+)
+
+LANGUAGE LANG_AFRIKAANS, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "043604b0", 0x436, 0x4b0,
+  "Phobos: vinnige, moderne, veilige VPN-tonnel",
+  ""
+)
+
+LANGUAGE LANG_HINDI, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "043904b0", 0x439, 0x4b0,
+  "Phobos: तेज़, आधुनिक, सुरक्षित VPN सुरंग",
+  ""
+)
+
+LANGUAGE LANG_PUNJABI, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "044604b0", 0x446, 0x4b0,
+  "Phobos: ਤੇਜ਼, ਅਜੋਕੀ ਅਤੇ ਸੁਰੱਖਿਅਤ VPN ਟਨਲ",
+  ""
+)
+
+LANGUAGE LANG_SINHALESE, SUBLANG_DEFAULT
+VERSIONINFO_TEMPLATE(
+  "045b04b0", 0x45b, 0x4b0,
+  "Phobos: වේගවත්, නවීන, ආරක්ෂිත VPN උමං මාර්ගය",
+  ""
+)
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+VERSIONINFO_TEMPLATE(
+  "040404b0", 0x404, 0x4b0,
+  "Phobos：快速、現代、安全的 VPN 隧道",
+  ""
+)
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+VERSIONINFO_TEMPLATE(
+  "080404b0", 0x804, 0x4b0,
+  "Phobos：快速、现代、安全的 VPN 隧道",
+  ""
+)

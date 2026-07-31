@@ -7,8 +7,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include "compat_net.h"
 #include "threading.h"
 #include "wg-obfuscator.h"
 #include "obfuscation.h"

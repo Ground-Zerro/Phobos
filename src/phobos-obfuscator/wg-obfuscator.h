@@ -1,12 +1,13 @@
 #ifndef _WG_OBFUSCATOR_H_
 #define _WG_OBFUSCATOR_H_
 
-#include <arpa/inet.h>
+#include "compat_net.h"
 #include <errno.h>
 #include <signal.h>
 #include <stdint.h>
 #include "uthash.h"
 #include "socks5_proto.h"
+#include "resolve.h"
 
 #ifdef __linux__
 #define USE_EPOLL
@@ -14,11 +15,11 @@
 
 #ifdef USE_EPOLL
 #include <sys/epoll.h>
-#else
+#elif !defined(_WIN32)
 #include <poll.h>
 #endif
 
-#define WG_OBFUSCATOR_VERSION "1.2"
+#define WG_OBFUSCATOR_VERSION "1.4"
 #define WG_OBFUSCATOR_GIT_REPO "https://github.com/ClusterM/wg-obfuscator"
 
 #define LL_DEFAULT      LL_INFO
@@ -125,6 +126,11 @@ typedef struct {
     uint16_t media_ts_step;
 
     const volatile sig_atomic_t *stop;
+
+    resolved_host_t resolved_forward;
+    struct sockaddr_storage resolved_listen;
+    uint8_t resolved_forward_set;
+    uint8_t resolved_listen_set;
 
     uint8_t listen_port_set;
     uint8_t forward_host_port_set;

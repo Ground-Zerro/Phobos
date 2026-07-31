@@ -1,0 +1,17 @@
+module golang.zx2c4.com/wireguard/windows
+
+go 1.20
+
+require (
+	github.com/lxn/walk latest
+	github.com/lxn/win latest
+	golang.org/x/crypto latest
+	golang.org/x/sys latest
+	golang.org/x/text master
+	gvisor.dev/gvisor v0.0.0-20250503011706-39ed1f5ac29c
+)
+
+replace (
+	github.com/lxn/walk => golang.zx2c4.com/wireguard/windows pkg/walk
+	github.com/lxn/win => golang.zx2c4.com/wireguard/windows pkg/walk-win
+)
