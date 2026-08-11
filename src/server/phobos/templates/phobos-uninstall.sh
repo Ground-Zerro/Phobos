@@ -41,32 +41,45 @@ remove_obfuscator_instance() {
   done
 }
 
+ndmc_interface_description() {
+  ndmc -c "show interface $1" 2>/dev/null \
+    | tr -d '\033' | sed -e 's/\[K//g' -e 's/\r//g' \
+    | sed -n 's/^[[:space:]]*description:[[:space:]]*//p' | head -1
+}
+
+find_keenetic_interface_by_description() {
+  local desc="$1"
+  local prefix i
+
+  for prefix in Wireguard Proxy; do
+    for i in 0 1 2 3 4 5 6 7 8 9; do
+      if [ "$(ndmc_interface_description "${prefix}${i}")" = "${desc}" ]; then
+        echo "${prefix}${i}"
+        return 0
+      fi
+    done
+  done
+
+  return 1
+}
+
 remove_wg_interface_keenetic() {
   local desc="$1"
 
-  if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
-    log "  curl/jq недоступны, пропуск удаления интерфейса Keenetic"
-    return 0
-  fi
-
-  local list
-  list=$(curl -s "http://127.0.0.1:79/rci/show/interface" 2>/dev/null || echo "")
-  if ! echo "$list" | jq -e . >/dev/null 2>&1; then
-    log "  RCI API недоступен, пропуск удаления интерфейса"
+  if ! command -v ndmc >/dev/null 2>&1; then
+    log "  ndmc недоступен, пропуск удаления интерфейса Keenetic"
     return 0
   fi
 
   local id
-  id=$(echo "$list" | jq -r --arg d "$desc" 'to_entries[] | select((.value.description? // "") == $d) | .key' 2>/dev/null | head -1)
+  id=$(find_keenetic_interface_by_description "$desc") || id=""
   if [ -z "$id" ]; then
     log "  Интерфейс Keenetic '${desc}' не найден"
     return 0
   fi
 
-  printf '{"interface":{"%s":{"no":true}}}' "$id" | curl -s -X POST \
-    -H "Content-Type: application/json" -d @- "http://127.0.0.1:79/rci/" >/dev/null 2>&1 || true
-  curl -s -X POST -H "Content-Type: application/json" \
-    -d '{"system":{"configuration":{"save":{}}}}' "http://127.0.0.1:79/rci/" >/dev/null 2>&1 || true
+  ndmc -c "no interface ${id}" >/dev/null 2>&1 || true
+  ndmc -c "system configuration save" >/dev/null 2>&1 || true
   log "  ✓ Интерфейс Keenetic ${id} (${desc}) удалён"
 }
 

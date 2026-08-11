@@ -265,11 +265,11 @@ install_redsocks_openwrt() {
   [ -x /usr/sbin/redsocks ] || command -v redsocks >/dev/null 2>&1
 }
 
-configure_wireguard_rci() {
+configure_wireguard_keenetic() {
   extract_wireguard_params || return 1
   [ -f "./router-configure-wireguard.sh" ] || return 1
   chmod +x ./router-configure-wireguard.sh
-  local _log="${PHOBOS_DIR}/.rci.log"
+  local _log="${PHOBOS_DIR}/.ndmc.log"
   if ./router-configure-wireguard.sh \
       --client-name "$CLIENT_NAME" \
       --client-private-key "$WG_PRIVATE_KEY" \
@@ -295,11 +295,11 @@ load_socks5_credentials() {
   [ -n "$SOCKS5_LOGIN" ] && [ -n "$SOCKS5_PASSWORD" ]
 }
 
-configure_socks5_rci() {
+configure_socks5_keenetic() {
   load_socks5_credentials || return 1
   [ -f "./router-configure-socks5-keenetic.sh" ] || return 1
   chmod +x ./router-configure-socks5-keenetic.sh
-  local _log="${PHOBOS_DIR}/.rci.log"
+  local _log="${PHOBOS_DIR}/.ndmc.log"
   if ./router-configure-socks5-keenetic.sh \
       --client-name "$CLIENT_NAME" \
       --upstream-host "127.0.0.1" \
@@ -410,7 +410,7 @@ show_3xui_socks5_final_info() {
 }
 
 show_keenetic_final_info() {
-  local rci_ok="$1"
+  local keenetic_ok="$1"
   msg ""
   msg "Файлы:"
   msg "${PHOBOS_DIR}/"
@@ -425,7 +425,7 @@ show_keenetic_final_info() {
   msg "  /opt/etc/init.d/${OBF_INIT_NAME} status"
   msg "  /opt/etc/init.d/${OBF_INIT_NAME} restart"
   msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
-  if [ "$rci_ok" != "1" ]; then
+  if [ "$keenetic_ok" != "1" ]; then
     msg ""
     msg "Ручная настройка WireGuard (Keenetic):"
     msg "  1. Веб-панель → Интернет → Другие подключения"
@@ -436,7 +436,7 @@ show_keenetic_final_info() {
 }
 
 show_keenetic_socks5_final_info() {
-  local rci_ok="$1"
+  local keenetic_ok="$1"
   msg ""
   msg "Файлы:"
   msg "${PHOBOS_DIR}/"
@@ -450,7 +450,7 @@ show_keenetic_socks5_final_info() {
   msg "  /opt/etc/init.d/${OBF_INIT_NAME} status"
   msg "  /opt/etc/init.d/${OBF_INIT_NAME} restart"
   msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
-  if [ "$rci_ok" != "1" ]; then
+  if [ "$keenetic_ok" != "1" ]; then
     msg ""
     msg "Ручная настройка SOCKS5 Proxy (Keenetic):"
     msg "  1. Веб-панель → Интернет → Другие подключения → Добавить подключение"
@@ -596,7 +596,7 @@ _run_3xui_socks5() {
 
 _run_keenetic() {
   PHASE_TOTAL=3
-  local rci_ok=0
+  local keenetic_ok=0
 
   phase_start 1 "Установка обфускатора"
   install_obfuscator "$ARCH"
@@ -608,9 +608,9 @@ _run_keenetic() {
     phase_fail 1 "wg-obfuscator не запущен — /opt/etc/init.d/${OBF_INIT_NAME} status"
   fi
 
-  phase_start 2 "Настройка WireGuard (RCI API)"
-  if configure_wireguard_rci; then
-    rci_ok=1
+  phase_start 2 "Настройка WireGuard (ndmc)"
+  if configure_wireguard_keenetic; then
+    keenetic_ok=1
     phase_ok 2 "интерфейс Phobos-${CLIENT_NAME} создан"
   else
     phase_fail 2 "WireGuard не настроен — потребуется ручная конфигурация"
@@ -622,12 +622,12 @@ _run_keenetic() {
   deploy_uninstall_script
   phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
 
-  show_keenetic_final_info "$rci_ok"
+  show_keenetic_final_info "$keenetic_ok"
 }
 
 _run_keenetic_socks5() {
   PHASE_TOTAL=3
-  local rci_ok=0
+  local keenetic_ok=0
 
   phase_start 1 "Установка обфускатора"
   install_obfuscator "$ARCH"
@@ -639,9 +639,9 @@ _run_keenetic_socks5() {
     phase_fail 1 "wg-obfuscator не запущен — /opt/etc/init.d/${OBF_INIT_NAME} status"
   fi
 
-  phase_start 2 "Настройка SOCKS5 Proxy (RCI API)"
-  if configure_socks5_rci; then
-    rci_ok=1
+  phase_start 2 "Настройка SOCKS5 Proxy (ndmc)"
+  if configure_socks5_keenetic; then
+    keenetic_ok=1
     phase_ok 2 "интерфейс Phobos-${CLIENT_NAME} создан"
   else
     phase_fail 2 "SOCKS5 Proxy не настроен — потребуется ручная конфигурация"
@@ -653,7 +653,7 @@ _run_keenetic_socks5() {
   deploy_uninstall_script
   phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
 
-  show_keenetic_socks5_final_info "$rci_ok"
+  show_keenetic_socks5_final_info "$keenetic_ok"
 }
 
 _run_openwrt() {

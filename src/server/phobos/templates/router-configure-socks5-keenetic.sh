@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
 
-RCI_URL="http://127.0.0.1:79/rci/"
 MAX_INTERFACE_NUM=9
+NDMC_LAST_ERROR=""
 
 check_dependencies() {
     local missing=""
 
-    for cmd in curl jq date; do
+    for cmd in ndmc date; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing="$missing $cmd"
         fi
@@ -107,6 +107,47 @@ parse_args() {
     fi
 }
 
+ndmc_strip() {
+    tr -d '\033' | sed -e 's/\[K//g' -e 's/\r//g'
+}
+
+ndmc_run() {
+    local output
+
+    if output=$(ndmc -c "$1" 2>&1); then
+        NDMC_LAST_ERROR=""
+        return 0
+    fi
+
+    NDMC_LAST_ERROR=$(printf '%s' "${output}" | ndmc_strip | tr '\n' ' ')
+    return 1
+}
+
+ndmc_batch() {
+    local command
+
+    while IFS= read -r command; do
+        [ -n "${command}" ] || continue
+
+        if ! ndmc_run "${command}"; then
+            error "ndmc отклонил команду: ${command}"
+            [ -n "${NDMC_LAST_ERROR}" ] && error "${NDMC_LAST_ERROR}"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+ndmc_interface_exists() {
+    ndmc -c "show interface $1" >/dev/null 2>&1
+}
+
+ndmc_interface_description() {
+    ndmc -c "show interface $1" 2>/dev/null | ndmc_strip \
+        | sed -n 's/^[[:space:]]*description:[[:space:]]*//p' | head -1
+}
+
 find_phobos_proxy_interface() {
     local target_desc="Phobos-${CLIENT_NAME}"
 
@@ -114,15 +155,10 @@ find_phobos_proxy_interface() {
 
     local i
     for i in 0 1 2 3 4 5 6 7 8 9; do
-        local interface_json=$(curl -s "${RCI_URL}show/rc/interface/Proxy${i}" 2>/dev/null)
-
-        if [ -n "${interface_json}" ] && echo "${interface_json}" | jq -e . >/dev/null 2>&1; then
-            local desc=$(echo "${interface_json}" | jq -r '.description // empty' 2>/dev/null)
-            if [ "${desc}" = "${target_desc}" ]; then
-                log "Найден существующий интерфейс: Proxy${i}" >&2
-                echo "Proxy${i}"
-                return 0
-            fi
+        if [ "$(ndmc_interface_description "Proxy${i}")" = "${target_desc}" ]; then
+            log "Найден существующий интерфейс: Proxy${i}" >&2
+            echo "Proxy${i}"
+            return 0
         fi
     done
 
@@ -136,9 +172,7 @@ find_free_proxy_interface() {
 
     local i
     for i in 0 1 2 3 4 5 6 7 8 9; do
-        local interface_json=$(curl -s "${RCI_URL}show/interface/Proxy${i}" 2>/dev/null)
-
-        if [ -z "${interface_json}" ] || ! echo "${interface_json}" | jq -e '.id' >/dev/null 2>&1; then
+        if ! ndmc_interface_exists "Proxy${i}"; then
             log "Найден свободный интерфейс: Proxy${i}" >&2
             echo "Proxy${i}"
             return 0
@@ -154,18 +188,13 @@ remove_proxy_interface() {
 
     log "Удаление существующего интерфейса: ${interface_name}..."
 
-    if command -v ndmc >/dev/null 2>&1; then
-        if ndmc -c "no interface ${interface_name}" >/dev/null 2>&1; then
-            log "Интерфейс ${interface_name} успешно удален ✓"
-            return 0
-        else
-            log "Предупреждение: не удалось удалить интерфейс через ndmc"
-            return 1
-        fi
-    else
-        log "Предупреждение: команда ndmc не найдена"
-        return 1
+    if ndmc_run "no interface ${interface_name}"; then
+        log "Интерфейс ${interface_name} успешно удален ✓"
+        return 0
     fi
+
+    log "Предупреждение: не удалось удалить интерфейс: ${NDMC_LAST_ERROR}"
+    return 1
 }
 
 configure_proxy_interface() {
@@ -174,33 +203,19 @@ configure_proxy_interface() {
 
     log "Настройка интерфейса ${interface_name}..."
 
-    local commands=$(cat <<EOF
-[
-  {"parse": "interface ${interface_name}"},
-  {"parse": "interface ${interface_name} description ${description}"},
-  {"parse": "interface ${interface_name} proxy protocol socks5"},
-  {"parse": "interface ${interface_name} proxy socks5-udp"},
-  {"parse": "interface ${interface_name} authentication identity ${SOCKS5_LOGIN}"},
-  {"parse": "interface ${interface_name} authentication password ${SOCKS5_PASSWORD}"},
-  {"parse": "interface ${interface_name} proxy upstream ${UPSTREAM_HOST} ${UPSTREAM_PORT}"},
-  {"parse": "interface ${interface_name} no ip name-servers"},
-  {"parse": "interface ${interface_name} no ipv6 name-servers"},
-  {"parse": "interface ${interface_name} up"},
-  {"parse": "interface ${interface_name} ip global 1"}
-]
+    ndmc_batch <<EOF || return 1
+interface ${interface_name}
+interface ${interface_name} description ${description}
+interface ${interface_name} proxy protocol socks5
+interface ${interface_name} proxy socks5-udp
+interface ${interface_name} authentication identity ${SOCKS5_LOGIN}
+interface ${interface_name} authentication password ${SOCKS5_PASSWORD}
+interface ${interface_name} proxy upstream ${UPSTREAM_HOST} ${UPSTREAM_PORT}
+interface ${interface_name} no ip name-servers
+interface ${interface_name} no ipv6 name-servers
+interface ${interface_name} up
+interface ${interface_name} ip global 1
 EOF
-)
-
-    local result=$(echo "${commands}" | curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d @- \
-        "${RCI_URL}" 2>/dev/null)
-
-    if echo "${result}" | jq -e '.[] | select(.status == "error")' >/dev/null 2>&1; then
-        local error_msg=$(echo "${result}" | jq -r '.[] | select(.status == "error") | .message // "Unknown error"' 2>/dev/null | head -1)
-        error "RCI API отклонил конфигурацию: ${error_msg}"
-        return 1
-    fi
 
     log "Интерфейс ${interface_name} создан ✓"
 
@@ -210,18 +225,13 @@ EOF
 save_configuration() {
     log "Сохранение конфигурации..."
 
-    local result=$(curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d '{"system":{"configuration":{"save":{}}}}' \
-        "${RCI_URL}" 2>/dev/null)
-
-    if echo "${result}" | grep -q '"status"[[:space:]]*:[[:space:]]*"message"'; then
+    if ndmc_run "system configuration save"; then
         log "Конфигурация сохранена ✓"
         return 0
-    else
-        error "Ошибка сохранения конфигурации"
-        return 1
     fi
+
+    error "Ошибка сохранения конфигурации: ${NDMC_LAST_ERROR}"
+    return 1
 }
 
 verify_interface_created() {
@@ -229,19 +239,7 @@ verify_interface_created() {
 
     log "Проверка создания интерфейса Proxy..."
 
-    local interfaces=$(curl -s "http://127.0.0.1:79/rci/show/interface" 2>/dev/null || echo "")
-
-    if [ -z "$interfaces" ]; then
-        error "Не удалось получить список интерфейсов через RCI API"
-        return 1
-    fi
-
-    if ! echo "$interfaces" | jq -e . >/dev/null 2>&1; then
-        error "Некорректный JSON ответ от RCI API"
-        return 1
-    fi
-
-    local found=$(echo "$interfaces" | jq -r "to_entries[] | select(.value.description == \"$interface_description\") | .key" 2>/dev/null)
+    local found=$(find_phobos_proxy_interface)
 
     if [ -n "$found" ]; then
         log "✓ Интерфейс $found (Phobos-${CLIENT_NAME}) успешно создан"
@@ -256,7 +254,7 @@ show_fallback_instructions() {
     cat <<EOF
 
 ╔════════════════════════════════════════════════════════════╗
-║  RCI API недоступен - требуется ручная настройка          ║
+║  Автоматическая настройка не удалась - настройте вручную   ║
 ╚════════════════════════════════════════════════════════════╝
 
 Локальный SOCKS5-обфускатор запущен и настроен в: ${FALLBACK_CONFIG}
@@ -279,7 +277,7 @@ main() {
         exit 1
     fi
 
-    log "=== Phobos SOCKS5 Proxy RCI Configuration ==="
+    log "=== Phobos SOCKS5 Proxy ndmc Configuration ==="
     log "Клиент: ${CLIENT_NAME}"
 
     EXISTING_INTERFACE=$(find_phobos_proxy_interface) || true
@@ -301,7 +299,7 @@ main() {
     log "Создание нового интерфейса: ${INTERFACE_NAME}"
 
     if ! configure_proxy_interface "${INTERFACE_NAME}"; then
-        error "Не удалось настроить Proxy через RCI API"
+        error "Не удалось настроить Proxy через ndmc"
         show_fallback_instructions
         exit 1
     fi

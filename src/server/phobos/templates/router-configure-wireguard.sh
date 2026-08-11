@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
 
-RCI_URL="http://127.0.0.1:79/rci/"
 MAX_INTERFACE_NUM=9
+NDMC_LAST_ERROR=""
 
 check_dependencies() {
     local missing=""
 
-    for cmd in curl jq date; do
+    for cmd in ndmc date; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing="$missing $cmd"
         fi
@@ -134,6 +134,47 @@ parse_args() {
     fi
 }
 
+ndmc_strip() {
+    tr -d '\033' | sed -e 's/\[K//g' -e 's/\r//g'
+}
+
+ndmc_run() {
+    local output
+
+    if output=$(ndmc -c "$1" 2>&1); then
+        NDMC_LAST_ERROR=""
+        return 0
+    fi
+
+    NDMC_LAST_ERROR=$(printf '%s' "${output}" | ndmc_strip | tr '\n' ' ')
+    return 1
+}
+
+ndmc_batch() {
+    local command
+
+    while IFS= read -r command; do
+        [ -n "${command}" ] || continue
+
+        if ! ndmc_run "${command}"; then
+            error "ndmc отклонил команду: ${command}"
+            [ -n "${NDMC_LAST_ERROR}" ] && error "${NDMC_LAST_ERROR}"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+ndmc_interface_exists() {
+    ndmc -c "show interface $1" >/dev/null 2>&1
+}
+
+ndmc_interface_description() {
+    ndmc -c "show interface $1" 2>/dev/null | ndmc_strip \
+        | sed -n 's/^[[:space:]]*description:[[:space:]]*//p' | head -1
+}
+
 find_phobos_interface() {
     local client_name="$1"
     local target_desc="Phobos-${client_name}"
@@ -142,15 +183,10 @@ find_phobos_interface() {
 
     local i
     for i in 0 1 2 3 4 5 6 7 8 9; do
-        local interface_json=$(curl -s "${RCI_URL}show/rc/interface/Wireguard${i}" 2>/dev/null)
-
-        if [ -n "${interface_json}" ] && echo "${interface_json}" | jq -e . >/dev/null 2>&1; then
-            local desc=$(echo "${interface_json}" | jq -r '.description // empty' 2>/dev/null)
-            if [ "${desc}" = "${target_desc}" ]; then
-                log "Найден существующий интерфейс: Wireguard${i}" >&2
-                echo "Wireguard${i}"
-                return 0
-            fi
+        if [ "$(ndmc_interface_description "Wireguard${i}")" = "${target_desc}" ]; then
+            log "Найден существующий интерфейс: Wireguard${i}" >&2
+            echo "Wireguard${i}"
+            return 0
         fi
     done
 
@@ -164,9 +200,7 @@ find_free_wireguard_interface() {
 
     local i
     for i in 0 1 2 3 4 5 6 7 8 9; do
-        local interface_json=$(curl -s "${RCI_URL}show/interface/Wireguard${i}" 2>/dev/null)
-
-        if [ -z "${interface_json}" ] || ! echo "${interface_json}" | jq -e '.id' >/dev/null 2>&1; then
+        if ! ndmc_interface_exists "Wireguard${i}"; then
             log "Найден свободный интерфейс: Wireguard${i}" >&2
             echo "Wireguard${i}"
             return 0
@@ -182,18 +216,13 @@ remove_wireguard_interface() {
 
     log "Удаление существующего интерфейса: ${interface_name}..."
 
-    if command -v ndmc >/dev/null 2>&1; then
-        if ndmc -c "no interface ${interface_name}" >/dev/null 2>&1; then
-            log "Интерфейс ${interface_name} успешно удален ✓"
-            return 0
-        else
-            log "Предупреждение: не удалось удалить интерфейс через ndmc"
-            return 1
-        fi
-    else
-        log "Предупреждение: команда ndmc не найдена"
-        return 1
+    if ndmc_run "no interface ${interface_name}"; then
+        log "Интерфейс ${interface_name} успешно удален ✓"
+        return 0
     fi
+
+    log "Предупреждение: не удалось удалить интерфейс: ${NDMC_LAST_ERROR}"
+    return 1
 }
 
 configure_wireguard_interface() {
@@ -205,83 +234,26 @@ configure_wireguard_interface() {
 
     log "Настройка интерфейса ${interface_name}..."
 
-    local config_json=$(cat <<EOF
-{
-  "interface": {
-    "${interface_name}": {
-      "description": "${description}",
-      "security-level": {
-        "public": true
-      },
-      "ip": {
-        "address": {
-          "address": "${client_ip_addr}",
-          "mask": "255.255.255.255"
-        },
-        "mtu": ${MTU},
-        "global": true,
-        "defaultgw": false,
-        "priority": 26622,
-        "tcp": {
-          "adjust-mss": {
-            "pmtu": true
-          }
-        }
-      },
-      "ipv6": {
-        "address": [
-          {"auto": false},
-          {"block": "${client_ipv6_block}"}
-        ],
-        "prefix": [
-          {"auto": false}
-        ]
-      },
-      "wireguard": {
-        "private-key": "${CLIENT_PRIVATE_KEY}",
-        "peer": [
-          {
-            "preshared-key": "${CLIENT_PRESHARED_KEY}",
-            "key": "${SERVER_PUBLIC_KEY}",
-            "comment": "Phobos VPS Server",
-            "endpoint": {
-              "address": "127.0.0.1:${ENDPOINT_PORT}"
-            },
-            "keepalive-interval": {
-              "interval": ${KEEPALIVE}
-            },
-            "allow-ips": [
-              {
-                "address": "0.0.0.0",
-                "mask": "0.0.0.0"
-              },
-              {
-                "address": "::",
-                "mask": "0"
-              }
-            ]
-          }
-        ]
-      },
-      "up": true
-    }
-  }
-}
+    ndmc_batch <<EOF || return 1
+interface ${interface_name}
+interface ${interface_name} description ${description}
+interface ${interface_name} security-level public
+interface ${interface_name} ip address ${client_ip_addr} 255.255.255.255
+interface ${interface_name} ip mtu ${MTU}
+interface ${interface_name} ip global 26622
+interface ${interface_name} ip tcp adjust-mss pmtu
+interface ${interface_name} no ipv6 address auto
+interface ${interface_name} ipv6 address ${client_ipv6_block}
+interface ${interface_name} no ipv6 prefix auto
+interface ${interface_name} wireguard private-key ${CLIENT_PRIVATE_KEY}
+interface ${interface_name} wireguard peer ${SERVER_PUBLIC_KEY}
+interface ${interface_name} wireguard peer ${SERVER_PUBLIC_KEY} preshared-key ${CLIENT_PRESHARED_KEY}
+interface ${interface_name} wireguard peer ${SERVER_PUBLIC_KEY} endpoint 127.0.0.1:${ENDPOINT_PORT}
+interface ${interface_name} wireguard peer ${SERVER_PUBLIC_KEY} keepalive-interval ${KEEPALIVE}
+interface ${interface_name} wireguard peer ${SERVER_PUBLIC_KEY} allow-ips 0.0.0.0/0
+interface ${interface_name} wireguard peer ${SERVER_PUBLIC_KEY} allow-ips ::/0
+interface ${interface_name} up
 EOF
-)
-
-    local result=$(echo "${config_json}" | curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d @- \
-        "${RCI_URL}" 2>/dev/null)
-
-    if echo "${result}" | jq -e '.status == "error"' >/dev/null 2>&1; then
-        local error_msg=$(echo "${result}" | jq -r '.message // "Unknown error"' 2>/dev/null)
-        error "RCI API отклонил конфигурацию: ${error_msg}"
-        log "JSON запрос:"
-        log "${config_json}"
-        return 1
-    fi
 
     log "Интерфейс ${interface_name} создан ✓"
 
@@ -291,18 +263,13 @@ EOF
 save_configuration() {
     log "Сохранение конфигурации..."
 
-    local result=$(curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d '{"system":{"configuration":{"save":{}}}}' \
-        "${RCI_URL}" 2>/dev/null)
-
-    if echo "${result}" | grep -q '"status"[[:space:]]*:[[:space:]]*"message"'; then
+    if ndmc_run "system configuration save"; then
         log "Конфигурация сохранена ✓"
         return 0
-    else
-        error "Ошибка сохранения конфигурации"
-        return 1
     fi
+
+    error "Ошибка сохранения конфигурации: ${NDMC_LAST_ERROR}"
+    return 1
 }
 
 verify_interface_created() {
@@ -311,19 +278,7 @@ verify_interface_created() {
 
     log "Проверка создания интерфейса WireGuard..."
 
-    local interfaces=$(curl -s "http://127.0.0.1:79/rci/show/interface" 2>/dev/null || echo "")
-
-    if [ -z "$interfaces" ]; then
-        error "Не удалось получить список интерфейсов через RCI API"
-        return 1
-    fi
-
-    if ! echo "$interfaces" | jq -e . >/dev/null 2>&1; then
-        error "Некорректный JSON ответ от RCI API"
-        return 1
-    fi
-
-    local found=$(echo "$interfaces" | jq -r "to_entries[] | select(.value.description == \"$interface_description\") | .key" 2>/dev/null)
+    local found=$(find_phobos_interface "${CLIENT_NAME}")
 
     if [ -n "$found" ]; then
         log "✓ Интерфейс $found (Phobos-${client_name}) успешно создан"
@@ -338,7 +293,7 @@ show_fallback_instructions() {
     cat <<EOF
 
 ╔════════════════════════════════════════════════════════════╗
-║  RCI API недоступен - требуется ручная настройка          ║
+║  Автоматическая настройка не удалась - настройте вручную   ║
 ╚════════════════════════════════════════════════════════════╝
 
 Конфигурация сохранена в: ${FALLBACK_CONFIG}
@@ -362,7 +317,7 @@ main() {
     fi
 
     mkdir -p /opt/etc/Phobos
-    log "=== Phobos WireGuard RCI Configuration ==="
+    log "=== Phobos WireGuard ndmc Configuration ==="
     log "Клиент: ${CLIENT_NAME}"
 
     EXISTING_INTERFACE=$(find_phobos_interface "${CLIENT_NAME}") || true
@@ -384,7 +339,7 @@ main() {
     log "Создание нового интерфейса: ${INTERFACE_NAME}"
 
     if ! configure_wireguard_interface "${INTERFACE_NAME}"; then
-        error "Не удалось настроить WireGuard через RCI API"
+        error "Не удалось настроить WireGuard через ndmc"
         show_fallback_instructions
         exit 1
     fi
