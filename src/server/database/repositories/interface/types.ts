@@ -11,7 +11,10 @@ export type InterfaceUpdateType = Omit<
   'name' | 'createdAt' | 'updatedAt' | 'privateKey' | 'publicKey'
 >;
 
-type InterfaceAdminUpdateType = Omit<InterfaceUpdateType, 'port'>;
+type InterfaceAdminUpdateType = Omit<
+  InterfaceUpdateType,
+  'port' | 'ipv4Cidr' | 'ipv6Cidr'
+>;
 
 const device = z
   .string({ message: t('zod.interface.device') })
@@ -50,8 +53,6 @@ const ServerPublicDomainSchema = z
 
 export const InterfaceUpdateSchema = schemaForType<InterfaceAdminUpdateType>()(
   z.object({
-    ipv4Cidr: cidr,
-    ipv6Cidr: cidr,
     mtu: MtuSchema,
     device: device,
     enabled: EnabledSchema,

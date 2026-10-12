@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "dae61656-1107-4729-ac83-f43d4cab3881",
+  "id": "80e1cd4a-25d2-452d-a761-c6c217fa5655",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "clients_table": {
@@ -26,6 +26,27 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "preset_id": {
+          "name": "preset_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "socks5_login": {
+          "name": "socks5_login",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "socks5_password": {
+          "name": "socks5_password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "name": {
@@ -123,6 +144,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "firewall_ips": {
+          "name": "firewall_ips",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "persistent_keepalive": {
           "name": "persistent_keepalive",
           "type": "integer",
@@ -217,6 +245,19 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
+        },
+        "clients_table_preset_id_obfuscator_presets_table_id_fk": {
+          "name": "clients_table_preset_id_obfuscator_presets_table_id_fk",
+          "tableFrom": "clients_table",
+          "tableTo": "obfuscator_presets_table",
+          "columnsFrom": [
+            "preset_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -275,6 +316,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "allow_insecure_http_login": {
+          "name": "allow_insecure_http_login",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -440,6 +489,44 @@
           "notNull": true,
           "autoincrement": false
         },
+        "firewall_enabled": {
+          "name": "firewall_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "egress_mode": {
+          "name": "egress_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'wan'"
+        },
+        "server_public_ip_v4": {
+          "name": "server_public_ip_v4",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "server_public_ip_v6": {
+          "name": "server_public_ip_v6",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "server_public_domain": {
+          "name": "server_public_domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "text",
@@ -471,8 +558,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "one_time_links_table": {
-      "name": "one_time_links_table",
+    "install_links_table": {
+      "name": "install_links_table",
       "columns": {
         "id": {
           "name": "id",
@@ -481,8 +568,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "one_time_link": {
-          "name": "one_time_link",
+        "token": {
+          "name": "token",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -513,18 +600,18 @@
         }
       },
       "indexes": {
-        "one_time_links_table_one_time_link_unique": {
-          "name": "one_time_links_table_one_time_link_unique",
+        "install_links_table_token_unique": {
+          "name": "install_links_table_token_unique",
           "columns": [
-            "one_time_link"
+            "token"
           ],
           "isUnique": true
         }
       },
       "foreignKeys": {
-        "one_time_links_table_id_clients_table_id_fk": {
-          "name": "one_time_links_table_id_clients_table_id_fk",
-          "tableFrom": "one_time_links_table",
+        "install_links_table_id_clients_table_id_fk": {
+          "name": "install_links_table_id_clients_table_id_fk",
+          "tableFrom": "install_links_table",
           "tableTo": "clients_table",
           "columnsFrom": [
             "id"
@@ -536,6 +623,168 @@
           "onUpdate": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "obfuscator_presets_table": {
+      "name": "obfuscator_presets_table",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'WIREGUARD'"
+        },
+        "ext_port": {
+          "name": "ext_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_if": {
+          "name": "source_if",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target": {
+          "name": "target",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "masking": {
+          "name": "masking",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'STUN'"
+        },
+        "obfuscate_bytes": {
+          "name": "obfuscate_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "dummy": {
+          "name": "dummy",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 40
+        },
+        "verbose": {
+          "name": "verbose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'error'"
+        },
+        "client_wg_local_port": {
+          "name": "client_wg_local_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 13255
+        },
+        "media_ssrc": {
+          "name": "media_ssrc",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "client_local_port": {
+          "name": "client_local_port",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1080
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        }
+      },
+      "indexes": {
+        "obfuscator_presets_table_name_unique": {
+          "name": "obfuscator_presets_table_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        },
+        "obfuscator_presets_table_ext_port_unique": {
+          "name": "obfuscator_presets_table_ext_port_unique",
+          "columns": [
+            "ext_port"
+          ],
+          "isUnique": true
+        },
+        "uq_default_preset": {
+          "name": "uq_default_preset",
+          "columns": [
+            "is_default"
+          ],
+          "isUnique": true,
+          "where": "\"obfuscator_presets_table\".\"is_default\" = 1"
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -682,13 +931,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "port": {
-          "name": "port",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "text",
@@ -722,6 +964,159 @@
           "onUpdate": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "warp_table": {
+      "name": "warp_table",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "license_key": {
+          "name": "license_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "private_key": {
+          "name": "private_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "peer_public_key": {
+          "name": "peer_public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'engage.cloudflareclient.com:2408'"
+        },
+        "address_v4": {
+          "name": "address_v4",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "address_v6": {
+          "name": "address_v6",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "mtu": {
+          "name": "mtu",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1280
+        },
+        "preshared_key": {
+          "name": "preshared_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "dns": {
+          "name": "dns",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "persistent_keepalive": {
+          "name": "persistent_keepalive",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 25
+        },
+        "update_interval_days": {
+          "name": "update_interval_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_update_at": {
+          "name": "last_update_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(CURRENT_TIMESTAMP)"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
