@@ -97,6 +97,18 @@ Ports:
 - WireGuard obfuscator presets: `UDP <WG_HOST>:51822-51861` (one port per preset, allocated from this range)
 - SOCKS5 presets: `TCP <WG_HOST>:51862-51891` (one port per preset, allocated from this range)
 
+## Uninstall
+
+Run one command on the server and type `YES` when asked:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/main/destroy.sh | sudo bash
+```
+
+The script permanently removes the PhobosWG container, its Docker volumes (database, WireGuard keys, certificates), networks and image, the deploy directory `/opt/phoboswg` and the deploy watchdog log. Other Docker workloads and Docker itself stay in place. There is no undo: all clients and settings are lost.
+
+Every installation starts from a clean database, so remove the previous installation this way before deploying a new version.
+
 ## How it works
 
 ```
