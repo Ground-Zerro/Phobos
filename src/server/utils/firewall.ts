@@ -1,19 +1,14 @@
-import debug from 'debug';
 import { isIPv6 } from 'is-ip';
+import { createLogger } from './logger';
 
+import { execFile } from './cmd';
 import type { ClientType } from '#db/repositories/client/types';
 import type { InterfaceType } from '#db/repositories/interface/types';
 import type { UserConfigType } from '#db/repositories/userConfig/types';
 
-const FW_DEBUG = debug('Firewall');
+const FW_DEBUG = createLogger('Firewall');
 const CHAIN_NAME = 'WG_CLIENTS';
-
-// Mutex to prevent concurrent rule rebuilds
-let rebuildInProgress = false;
-let rebuildQueued = false;
-
-// Cache iptables availability check result
-let iptablesAvailable: boolean | null = null;
+const DROP_RULE = `-A ${CHAIN_NAME} -j DROP`;
 
 type ParsedEntry = {
   ip: string;
@@ -32,35 +27,27 @@ type FirewallClient = Pick<
   | 'enabled'
 >;
 
-/**
- * Sanitize a client identifier for use in an iptables comment.
- * Strips all characters except ASCII alphanumeric, space, underscore, hyphen, and dot.
- * Combines with client ID for a safe, identifiable comment.
- * Truncates to 256 bytes (iptables comment module limit).
- */
+type FirewallState = {
+  wgInterface: InterfaceType;
+  clients: FirewallClient[];
+  userConfig: UserConfigType;
+  enableIpv6: boolean;
+};
+
+type FamilyRules = { v4: string[]; v6: string[] };
+
+const FAMILIES = [
+  { key: 'v4', iptables: 'iptables', restore: 'iptables-restore' },
+  { key: 'v6', iptables: 'ip6tables', restore: 'ip6tables-restore' },
+] as const;
+
 function sanitizeComment(clientId: number, clientName: string): string {
   const safe = clientName.replace(/[^a-zA-Z0-9 _.-]/g, '');
   const comment = `client ${clientId}: ${safe}`;
   return comment.slice(0, 256);
 }
 
-/**
- * Parse a firewall entry string into its components.
- * Supports formats:
- * - IP: "10.0.0.1" or "2001:db8::1"
- * - CIDR: "10.0.0.0/24" or "2001:db8::/32"
- * - IP:port: "10.0.0.1:443" or "[2001:db8::1]:443"
- * - IP:port/proto: "10.0.0.1:443/tcp" or "10.0.0.1:53/udp"
- * - CIDR:port: "10.0.0.0/24:443"
- * - CIDR:port/proto: "10.0.0.0/24:443/tcp" or "10.0.0.0/24:53/udp"
- *
- * Note: Protocol (/tcp or /udp) requires a port. "IP/tcp" or "CIDR/tcp" without
- * a port is invalid and will throw an error.
- *
- * @throws {Error} If protocol is specified without a port
- */
-function parseFirewallEntry(entry: string): ParsedEntry {
-  // Extract protocol suffix first: /tcp or /udp
+export function parseFirewallEntry(entry: string): ParsedEntry {
   let proto: 'tcp' | 'udp' | 'both' | undefined;
   let remaining = entry;
 
@@ -72,7 +59,6 @@ function parseFirewallEntry(entry: string): ParsedEntry {
     remaining = entry.slice(0, -4);
   }
 
-  // Handle IPv6 with port: [2001:db8::1]:443
   if (remaining.startsWith('[')) {
     const match = remaining.match(/^\[(.+)\]:(\d+)$/);
     if (match && match[1] && match[2]) {
@@ -82,7 +68,6 @@ function parseFirewallEntry(entry: string): ParsedEntry {
         proto: proto ?? 'both',
       };
     }
-    // Just bracketed IPv6 without port
     const ipMatch = remaining.match(/^\[(.+)\]$/);
     if (ipMatch && ipMatch[1]) {
       if (proto) {
@@ -100,12 +85,9 @@ function parseFirewallEntry(entry: string): ParsedEntry {
     return { ip: remaining };
   }
 
-  // Handle IPv4 with port or CIDR with port
-  // Count colons to distinguish IPv6 from IPv4:port
   const colonCount = (remaining.match(/:/g) || []).length;
 
   if (colonCount === 1) {
-    // Could be IPv4:port or CIDR:port
     const lastColon = remaining.lastIndexOf(':');
     const possiblePort = remaining.slice(lastColon + 1);
     if (/^\d+$/.test(possiblePort)) {
@@ -117,7 +99,6 @@ function parseFirewallEntry(entry: string): ParsedEntry {
     }
   }
 
-  // Plain IP or CIDR (IPv4 or IPv6)
   if (proto) {
     throw new Error(
       `Invalid firewall entry "${entry}": Protocol (/${proto}) requires a port. Use format like "${remaining}:443/${proto}"`
@@ -126,21 +107,16 @@ function parseFirewallEntry(entry: string): ParsedEntry {
   return { ip: remaining };
 }
 
-/**
- * Generate iptables rule arguments for a single firewall entry
- */
 function generateRuleArgs(
   clientIp: string,
   entry: ParsedEntry,
-  comment?: string,
-  action: 'A' | 'D' = 'A'
+  comment?: string
 ): string[] {
   const rules: string[] = [];
   const commentArg = comment ? ` -m comment --comment "${comment}"` : '';
-  const baseArgs = `-${action} ${CHAIN_NAME} -s ${clientIp} -d ${entry.ip}`;
+  const baseArgs = `-A ${CHAIN_NAME} -s ${clientIp} -d ${entry.ip}`;
 
   if (entry.port) {
-    // Port-specific rules
     if (entry.proto === 'tcp' || entry.proto === 'both') {
       rules.push(
         `${baseArgs} -p tcp --dport ${entry.port}${commentArg} -j ACCEPT`
@@ -152,212 +128,178 @@ function generateRuleArgs(
       );
     }
   } else {
-    // No port - allow all traffic to destination
     rules.push(`${baseArgs}${commentArg} -j ACCEPT`);
   }
 
   return rules;
 }
 
-export const firewall = {
-  /**
-   * Initialize the custom chain if it doesn't exist
-   */
-  async initChain(interfaceName: string): Promise<void> {
-    FW_DEBUG(
-      `Initializing firewall chain ${CHAIN_NAME} for interface ${interfaceName}`
-    );
+function collectRules(
+  clients: FirewallClient[],
+  defaultAllowedIps: string[],
+  enableIpv6: boolean
+): FamilyRules {
+  const rules: FamilyRules = { v4: [], v6: [] };
 
-    // Create chain if not exists (iptables returns error if exists, so we ignore)
-    await exec(`iptables -N ${CHAIN_NAME} 2>/dev/null || true`);
-    await exec(`ip6tables -N ${CHAIN_NAME} 2>/dev/null || true`);
+  for (const client of clients) {
+    if (!client.enabled) continue;
 
-    // Ensure chain is referenced from FORWARD (if not already)
-    // Insert at position 1 to process before generic ACCEPT rules
-    await exec(
-      `iptables -C FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || iptables -I FORWARD 1 -i ${interfaceName} -j ${CHAIN_NAME}`
-    );
-    await exec(
-      `ip6tables -C FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || ip6tables -I FORWARD 1 -i ${interfaceName} -j ${CHAIN_NAME}`
-    );
-  },
-
-  /**
-   * Flush all rules in the custom chain
-   */
-  async flushChain(): Promise<void> {
-    FW_DEBUG(`Flushing firewall chain ${CHAIN_NAME}`);
-    await exec(`iptables -F ${CHAIN_NAME} 2>/dev/null || true`);
-    await exec(`ip6tables -F ${CHAIN_NAME} 2>/dev/null || true`);
-  },
-
-  /**
-   * Apply firewall rules for a single client
-   */
-  async applyClientRules(
-    client: FirewallClient,
-    defaultAllowedIps: string[],
-    enableIpv6: boolean
-  ): Promise<void> {
-    // Determine which IPs to use for firewall rules
-    // Priority: firewallIps > allowedIps > defaultAllowedIps
     const effectiveIps =
       client.firewallIps && client.firewallIps.length > 0
         ? client.firewallIps
         : (client.allowedIps ?? defaultAllowedIps);
-
-    FW_DEBUG(
-      `Applying firewall rules for client ${client.name} (${client.id}): ${effectiveIps.join(', ')}`
-    );
-
     const comment = sanitizeComment(client.id, client.name);
 
     for (const ipEntry of effectiveIps) {
       const parsed = parseFirewallEntry(ipEntry);
-      const baseIp = parsed.ip.split('/')[0] ?? parsed.ip; // Handle CIDR by checking base IP
-      const destIsIpv6 = isIPv6(baseIp);
+      const baseIp = parsed.ip.split('/')[0] ?? parsed.ip;
 
-      if (destIsIpv6) {
-        if (enableIpv6) {
-          const rules = generateRuleArgs(client.ipv6Address, parsed, comment);
-          for (const rule of rules) {
-            await exec(`ip6tables ${rule}`);
-          }
-        }
-      } else {
-        const rules = generateRuleArgs(client.ipv4Address, parsed, comment);
-        for (const rule of rules) {
-          await exec(`iptables ${rule}`);
-        }
+      if (!isIPv6(baseIp)) {
+        rules.v4.push(...generateRuleArgs(client.ipv4Address, parsed, comment));
+      } else if (enableIpv6) {
+        rules.v6.push(...generateRuleArgs(client.ipv6Address, parsed, comment));
       }
     }
-  },
+  }
 
-  /**
-   * Full rebuild of firewall rules from database state
-   */
-  async rebuildRules(
+  rules.v4.push(DROP_RULE);
+  if (enableIpv6) {
+    rules.v6.push(DROP_RULE);
+  }
+
+  return rules;
+}
+
+function buildRestorePayload(rules: readonly string[]): string {
+  return ['*filter', `:${CHAIN_NAME} - [0:0]`, ...rules, 'COMMIT', ''].join(
+    '\n'
+  );
+}
+
+function ignoreFailure(promise: Promise<string>): Promise<void> {
+  return promise.then(
+    () => undefined,
+    () => undefined
+  );
+}
+
+class FirewallService {
+  #tail: Promise<void> = Promise.resolve();
+  #queued: { state: FirewallState } | null = null;
+  #queuedDone: Promise<void> | null = null;
+  #available: boolean | null = null;
+
+  rebuildRules(
     wgInterface: InterfaceType,
     clients: FirewallClient[],
     userConfig: UserConfigType,
     enableIpv6: boolean
   ): Promise<void> {
+    const state = { wgInterface, clients, userConfig, enableIpv6 };
+
+    if (this.#queued && this.#queuedDone) {
+      FW_DEBUG('Rebuild already queued, replacing its state');
+      this.#queued.state = state;
+      return this.#queuedDone;
+    }
+
+    const slot = { state };
+    this.#queued = slot;
+    const done = this.#tail.then(() => {
+      this.#queued = null;
+      this.#queuedDone = null;
+      return this.#apply(slot.state);
+    });
+    this.#queuedDone = done;
+    this.#tail = done.catch(() => undefined);
+    return done;
+  }
+
+  async #apply({
+    wgInterface,
+    clients,
+    userConfig,
+    enableIpv6,
+  }: FirewallState): Promise<void> {
     if (!wgInterface.firewallEnabled) {
       FW_DEBUG('Firewall filtering disabled, removing any existing rules');
-      await this.removeFiltering(wgInterface.name);
+      await this.#removeFiltering(wgInterface.name);
       return;
     }
 
-    // Handle concurrent rebuilds with queue
-    if (rebuildInProgress) {
-      FW_DEBUG('Rebuild already in progress, queuing');
-      rebuildQueued = true;
-      return;
+    const rules = collectRules(
+      clients,
+      userConfig.defaultAllowedIps,
+      enableIpv6
+    );
+
+    for (const family of FAMILIES) {
+      await execFile(family.restore, ['--noflush'], {
+        input: buildRestorePayload(rules[family.key]),
+      });
+      await this.#ensureJump(family.iptables, wgInterface.name);
     }
 
-    rebuildInProgress = true;
+    FW_DEBUG(
+      `Firewall rules applied: ${rules.v4.length} IPv4, ${rules.v6.length} IPv6`
+    );
+  }
 
+  async #ensureJump(iptables: string, interfaceName: string): Promise<void> {
+    const jump = ['FORWARD', '-i', interfaceName, '-j', CHAIN_NAME];
     try {
-      FW_DEBUG('Rebuilding firewall rules...');
-
-      // Initialize chain structure
-      await this.initChain(wgInterface.name);
-
-      // Flush existing rules
-      await this.flushChain();
-
-      // Apply rules for each enabled client
-      for (const client of clients) {
-        if (!client.enabled) continue;
-        await this.applyClientRules(
-          client,
-          userConfig.defaultAllowedIps,
-          enableIpv6
-        );
-      }
-
-      // Add final DROP for any traffic not explicitly allowed
-      await exec(`iptables -A ${CHAIN_NAME} -j DROP`);
-      if (enableIpv6) {
-        await exec(`ip6tables -A ${CHAIN_NAME} -j DROP`);
-      }
-
-      FW_DEBUG('Firewall rules rebuilt successfully');
-    } finally {
-      rebuildInProgress = false;
-
-      // If another rebuild was queued, run it now
-      if (rebuildQueued) {
-        rebuildQueued = false;
-        FW_DEBUG('Processing queued rebuild');
-        await this.rebuildRules(wgInterface, clients, userConfig, enableIpv6);
-      }
+      await execFile(iptables, ['-C', ...jump], { log: false });
+    } catch {
+      await execFile(iptables, ['-I', 'FORWARD', '1', ...jump.slice(1)]);
     }
-  },
+  }
 
-  /**
-   * Remove all firewall filtering (when feature is disabled)
-   */
-  async removeFiltering(interfaceName: string): Promise<void> {
-    FW_DEBUG(`Removing firewall filtering for interface ${interfaceName}`);
+  async #removeFiltering(interfaceName: string): Promise<void> {
+    for (const { iptables } of FAMILIES) {
+      await ignoreFailure(
+        execFile(iptables, [
+          '-D',
+          'FORWARD',
+          '-i',
+          interfaceName,
+          '-j',
+          CHAIN_NAME,
+        ])
+      );
+      await ignoreFailure(execFile(iptables, ['-F', CHAIN_NAME]));
+      await ignoreFailure(execFile(iptables, ['-X', CHAIN_NAME]));
+    }
+  }
 
-    // Remove jump rules from FORWARD chain
-    await exec(
-      `iptables -D FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || true`
-    );
-    await exec(
-      `ip6tables -D FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || true`
-    );
-
-    // Flush and delete the chain
-    await exec(`iptables -F ${CHAIN_NAME} 2>/dev/null || true`);
-    await exec(`ip6tables -F ${CHAIN_NAME} 2>/dev/null || true`);
-    await exec(`iptables -X ${CHAIN_NAME} 2>/dev/null || true`);
-    await exec(`ip6tables -X ${CHAIN_NAME} 2>/dev/null || true`);
-  },
-
-  /**
-   * Check if iptables (and optionally ip6tables) are available on the system.
-   * @param enableIpv6 - If true, also check for ip6tables. Defaults to true.
-   */
-  async isAvailable(enableIpv6: boolean = true): Promise<boolean> {
-    // Return cached result if we've already checked
-    if (iptablesAvailable !== null) {
-      return iptablesAvailable;
+  async isAvailable(): Promise<boolean> {
+    if (this.#available !== null) {
+      return this.#available;
     }
 
     try {
-      // Check for iptables (always required)
-      await exec('iptables --version');
-      FW_DEBUG('iptables is available');
-
-      // Check for ip6tables (only if IPv6 is enabled)
-      if (enableIpv6) {
-        await exec('ip6tables --version');
-        FW_DEBUG('ip6tables is available');
-      } else {
-        FW_DEBUG('IPv6 disabled, skipping ip6tables check');
+      await execFile('iptables', ['--version']);
+      if (!WG_ENV.DISABLE_IPV6) {
+        await execFile('ip6tables', ['--version']);
       }
-
-      iptablesAvailable = true;
-      return true;
+      this.#available = true;
     } catch (error) {
-      iptablesAvailable = false;
       FW_DEBUG('iptables/ip6tables is not available:', error);
-      return false;
+      this.#available = false;
     }
-  },
+    return this.#available;
+  }
 
-  /**
-   * Clear the availability cache to force a re-check
-   */
   clearAvailabilityCache(): void {
-    iptablesAvailable = null;
-  },
-};
+    this.#available = null;
+  }
+}
+
+export const firewall = new FirewallService();
 
 export const firewallTestExports = {
   parseFirewallEntry,
   generateRuleArgs,
   sanitizeComment,
+  collectRules,
+  buildRestorePayload,
 };

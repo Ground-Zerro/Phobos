@@ -1,10 +1,12 @@
 import fs from 'node:fs/promises';
-import debug from 'debug';
-
 import { warpApi } from '../phobos/warp/client';
+import { createLogger } from './logger';
+
+import { joinShell, renderIni, type IniEntries } from './template';
+import type { InterfaceType } from '#db/repositories/interface/types';
 import type { WarpManualType, WarpType } from '#db/repositories/warp/types';
 
-const WARP_DEBUG = debug('Warp');
+const WARP_DEBUG = createLogger('Warp');
 
 const WARP_INTERFACE = 'warp0';
 const WARP_TABLE = 200;
@@ -16,27 +18,32 @@ const WARP_ONLINE_FLOOR_S = 135;
 const CONNECTIVITY_TIMEOUT_S = 5;
 const CONNECTIVITY_PROBE_URL = 'http://cp.cloudflare.com/generate_204';
 
-function joinShell(parts: string[]): string {
-  return parts
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => (p.endsWith(';') ? p : `${p};`))
-    .join(' ');
+function warpAddress(warp: WarpType, enableIpv6: boolean) {
+  return (
+    `${warp.addressV4}/32` +
+    (enableIpv6 && warp.addressV6 ? `, ${warp.addressV6}/128` : '')
+  );
+}
+
+function warpPeer(warp: WarpType, enableIpv6: boolean): IniEntries {
+  return [
+    ['PublicKey', warp.peerPublicKey],
+    ['PresharedKey', warp.presharedKey || null],
+    ['Endpoint', warp.endpoint],
+    ['AllowedIPs', `0.0.0.0/0${enableIpv6 ? ', ::/0' : ''}`],
+    ['PersistentKeepalive', warp.persistentKeepalive],
+  ];
 }
 
 class WarpInterfaceService {
   buildConfig(
     warp: WarpType,
-    ipv4Cidr: string,
-    ipv6Cidr: string,
+    wgInterface: Pick<InterfaceType, 'name' | 'ipv4Cidr' | 'ipv6Cidr'>,
     enableIpv6: boolean
   ): string {
-    const address =
-      `${warp.addressV4}/32` +
-      (enableIpv6 && warp.addressV6 ? `, ${warp.addressV6}/128` : '');
-
+    const { name, ipv4Cidr, ipv6Cidr } = wgInterface;
     const postUp = joinShell([
-      `ip route replace ${ipv4Cidr} dev wg0 table ${WARP_TABLE}`,
+      `ip route replace ${ipv4Cidr} dev ${name} table ${WARP_TABLE}`,
       `ip rule del from ${ipv4Cidr} lookup ${WARP_TABLE} 2>/dev/null || true`,
       `ip rule add from ${ipv4Cidr} lookup ${WARP_TABLE}`,
       `iptables -t nat -A POSTROUTING -s ${ipv4Cidr} -o %i -j MASQUERADE`,
@@ -45,7 +52,7 @@ class WarpInterfaceService {
       `iptables -t nat -A POSTROUTING -m mark --mark ${WARP_FWMARK} -o %i -j MASQUERADE`,
       ...(enableIpv6
         ? [
-            `ip -6 route replace ${ipv6Cidr} dev wg0 table ${WARP_TABLE}`,
+            `ip -6 route replace ${ipv6Cidr} dev ${name} table ${WARP_TABLE}`,
             `ip -6 rule del from ${ipv6Cidr} lookup ${WARP_TABLE} 2>/dev/null || true`,
             `ip -6 rule add from ${ipv6Cidr} lookup ${WARP_TABLE}`,
             `ip6tables -t nat -A POSTROUTING -s ${ipv6Cidr} -o %i -j MASQUERADE`,
@@ -71,47 +78,35 @@ class WarpInterfaceService {
         : []),
     ]);
 
-    const ifaceLines = [
-      `PrivateKey = ${warp.privateKey}`,
-      `Address = ${address}`,
-      `MTU = ${warp.mtu}`,
-      `Table = ${WARP_TABLE}`,
-      `PostUp = ${postUp}`,
-      `PostDown = ${postDown}`,
-    ];
-
-    const peerLines = [
-      `PublicKey = ${warp.peerPublicKey}`,
-      ...(warp.presharedKey ? [`PresharedKey = ${warp.presharedKey}`] : []),
-      `Endpoint = ${warp.endpoint}`,
-      `AllowedIPs = 0.0.0.0/0${enableIpv6 ? ', ::/0' : ''}`,
-      `PersistentKeepalive = ${warp.persistentKeepalive}`,
-    ];
-
-    return `[Interface]\n${ifaceLines.join('\n')}\n\n[Peer]\n${peerLines.join('\n')}\n`;
+    return renderIni([
+      [
+        'Interface',
+        [
+          ['PrivateKey', warp.privateKey],
+          ['Address', warpAddress(warp, enableIpv6)],
+          ['MTU', warp.mtu],
+          ['Table', WARP_TABLE],
+          ['PostUp', postUp],
+          ['PostDown', postDown],
+        ],
+      ],
+      ['Peer', warpPeer(warp, enableIpv6)],
+    ]);
   }
 
   buildUserConfig(warp: WarpType, enableIpv6: boolean): string {
-    const address =
-      `${warp.addressV4}/32` +
-      (enableIpv6 && warp.addressV6 ? `, ${warp.addressV6}/128` : '');
-
-    const ifaceLines = [
-      `PrivateKey = ${warp.privateKey}`,
-      `Address = ${address}`,
-      `MTU = ${warp.mtu}`,
-      ...(warp.dns ? [`DNS = ${warp.dns}`] : []),
-    ];
-
-    const peerLines = [
-      `PublicKey = ${warp.peerPublicKey}`,
-      ...(warp.presharedKey ? [`PresharedKey = ${warp.presharedKey}`] : []),
-      `Endpoint = ${warp.endpoint}`,
-      `AllowedIPs = 0.0.0.0/0${enableIpv6 ? ', ::/0' : ''}`,
-      `PersistentKeepalive = ${warp.persistentKeepalive}`,
-    ];
-
-    return `[Interface]\n${ifaceLines.join('\n')}\n\n[Peer]\n${peerLines.join('\n')}\n`;
+    return renderIni([
+      [
+        'Interface',
+        [
+          ['PrivateKey', warp.privateKey],
+          ['Address', warpAddress(warp, enableIpv6)],
+          ['MTU', warp.mtu],
+          ['DNS', warp.dns || null],
+        ],
+      ],
+      ['Peer', warpPeer(warp, enableIpv6)],
+    ]);
   }
 
   async #writeConfig() {
@@ -120,12 +115,7 @@ class WarpInterfaceService {
       Database.interfaces.get(),
     ]);
 
-    const config = this.buildConfig(
-      warp,
-      wgInterface.ipv4Cidr,
-      wgInterface.ipv6Cidr,
-      !WG_ENV.DISABLE_IPV6
-    );
+    const config = this.buildConfig(warp, wgInterface, !WG_ENV.DISABLE_IPV6);
 
     await fs.writeFile(WARP_CONFIG_PATH, config, { mode: 0o600 });
   }
@@ -198,11 +188,6 @@ class WarpInterfaceService {
     return false;
   }
 
-  /**
-   * Brings warp0 up with a health check. On failure, tears it down and resets
-   * egressMode to 'wan' so clients keep WAN connectivity.
-   * @throws when the tunnel cannot be established
-   */
   async enable() {
     if (!(await Database.warp.isRegistered())) {
       throw new Error('WARP is not registered');
@@ -229,7 +214,6 @@ class WarpInterfaceService {
     WARP_DEBUG('WARP interface is down');
   }
 
-  /** Re-applies the interface only when WARP egress is currently active. */
   async reapply() {
     const wgInterface = await Database.interfaces.get();
     if (wgInterface.egressMode === 'warp' && wgInterface.enabled) {
@@ -241,7 +225,7 @@ class WarpInterfaceService {
     const privateKey = await wg.generatePrivateKey();
     const publicKey = await wg.getPublicKey(privateKey);
     const registration = await warpApi.register(privateKey, publicKey);
-    await Database.warp.setRegistration(registration);
+    await Database.warp.update(registration);
     await this.reapply();
   }
 
@@ -253,13 +237,13 @@ class WarpInterfaceService {
         WARP_DEBUG('Failed to re-apply WARP license after IP change:', err);
       });
     }
-    await Database.warp.setLastUpdateAt(new Date().toISOString());
+    await Database.warp.update({ lastUpdateAt: new Date().toISOString() });
   }
 
   async setLicense(license: string): Promise<void> {
     const warp = await Database.warp.get();
     await warpApi.setLicense(warp.deviceId, warp.accessToken, license);
-    await Database.warp.setLicenseKey(license);
+    await Database.warp.update({ licenseKey: license });
   }
 
   async remoteConfig(): Promise<unknown> {
@@ -285,8 +269,7 @@ class WarpInterfaceService {
     const enableIpv6 = !WG_ENV.DISABLE_IPV6;
     const testConfig = this.buildConfig(
       { ...warpRow, ...data },
-      wgInterface.ipv4Cidr,
-      wgInterface.ipv6Cidr,
+      wgInterface,
       enableIpv6
     );
 
@@ -332,5 +315,3 @@ class WarpInterfaceService {
 }
 
 export const WarpInterface = new WarpInterfaceService();
-
-export default WarpInterface;

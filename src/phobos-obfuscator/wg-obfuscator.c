@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
         sockaddr_set_port(&shown, (uint16_t)config.listen_port);
         log(LL_INFO, "Listening on %s", sockaddr_text(&shown, text, sizeof(text)));
     } else {
-        log(LL_INFO, "Listening on %s:%d", inet_ntoa(*(struct in_addr *)&listen_addr), config.listen_port);
+        log(LL_INFO, "Listening on %s:%d", ipv4_text(*(struct in_addr *)&listen_addr).s, config.listen_port);
     }
     if (config.resolved_forward_set) {
         char text[INET6_ADDRSTRLEN + 8];

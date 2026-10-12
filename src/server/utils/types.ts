@@ -3,14 +3,10 @@ import z from 'zod';
 import type { H3Event, EventHandlerRequest } from 'h3';
 import { isIP } from 'is-ip';
 import isCidr from 'is-cidr';
+import { parseFirewallEntry } from './firewall';
 
 export type ID = number;
 
-/**
- * return the string as is
- *
- * used for i18n ally
- */
 export const t = (v: string) => v;
 
 export const safeStringRefine = z
@@ -24,7 +20,6 @@ export const EnabledSchema = z.boolean({ message: t('zod.enabled') });
 
 export const MtuSchema = z
   .number({ message: t('zod.mtu') })
-  // min for IPv6 is 1280, but we allow lower for IPv4
   .min(1024, { message: t('zod.mtu') })
   .max(9000, { message: t('zod.mtu') });
 
@@ -44,67 +39,25 @@ export const AllowedIpsSchema = z
   .array(AddressSchema, { message: t('zod.allowedIps') })
   .min(1, { message: t('zod.allowedIps') });
 
-// Validation for firewall IP entries
+function isValidFirewallEntry(entry: string): boolean {
+  try {
+    const { ip, port } = parseFirewallEntry(entry);
+    const validTarget = isIP(ip) || isCidr(ip) !== 0;
+    return validTarget && (port === undefined || (port >= 1 && port <= 65535));
+  } catch {
+    return false;
+  }
+}
+
 const FirewallIpEntrySchema = z
   .string({ message: t('zod.client.firewallIps') })
   .min(1, { message: t('zod.client.firewallIps') })
-  .refine(
-    (entry) => {
-      // Check if protocol suffix is present
-      const hasProto = /\/(tcp|udp)$/i.test(entry);
-      const entryWithoutProto = entry.replace(/\/(tcp|udp)$/i, '');
-
-      // If protocol was specified without a port, it's invalid
-      if (hasProto) {
-        // Protocol requires port, so check for IP:port format
-        const portMatch = entryWithoutProto.match(/^(.+):(\d+)$/);
-        if (!portMatch) {
-          return false;
-        }
-        const [, ipPart, portPart] = portMatch;
-        const port = parseInt(portPart!, 10);
-        const cleanIp = ipPart!.replace(/^\[|\]$/g, '');
-        return (isIP(cleanIp) || isCidr(cleanIp)) && port >= 1 && port <= 65535;
-      }
-
-      // Check if it's just IP or CIDR first (handles IPv6 addresses)
-      if (isIP(entryWithoutProto) || isCidr(entryWithoutProto)) {
-        return true;
-      }
-
-      // Check if it's bracketed IPv6 without port: [::1]
-      const bracketedMatch = entryWithoutProto.match(/^\[(.+)\]$/);
-      if (bracketedMatch) {
-        const innerIp = bracketedMatch[1];
-        return isIP(innerIp!) || isCidr(innerIp!);
-      }
-
-      // Check if it's IP:port format (IPv4:port or [IPv6]:port)
-      const portMatch = entryWithoutProto.match(/^(.+):(\d+)$/);
-      if (portMatch) {
-        const [, ipPart, portPart] = portMatch;
-        const port = parseInt(portPart!, 10);
-
-        // Remove IPv6 brackets if present
-        const cleanIp = ipPart!.replace(/^\[|\]$/g, '');
-
-        // Validate IP and port
-        return (isIP(cleanIp) || isCidr(cleanIp)) && port >= 1 && port <= 65535;
-      }
-
-      return false;
-    },
-    {
-      message: t('zod.client.firewallIpsInvalid'),
-    }
-  );
+  .refine(isValidFirewallEntry, {
+    message: t('zod.client.firewallIpsInvalid'),
+  });
 
 export const FirewallIpsSchema = z.array(FirewallIpEntrySchema, {
   message: t('zod.client.firewallIps'),
-});
-
-export const FileSchema = z.object({
-  file: z.string({ message: t('zod.file') }),
 });
 
 export const HookSchema = z
@@ -113,10 +66,8 @@ export const HookSchema = z
 
 export const schemaForType =
   <T>() =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  <S extends z.ZodType<T, any, any>>(arg: S) => {
-    return arg;
-  };
+  <S extends z.ZodType<T, unknown>>(arg: S) =>
+    arg;
 
 export function validateZod<T>(
   schema: ZodSchema<T>,
@@ -203,9 +154,6 @@ export function validateZod<T>(
   };
 }
 
-/**
- * exhaustive check
- */
 export function assertUnreachable(_: never): never {
   throw new Error("Didn't expect to get here");
 }

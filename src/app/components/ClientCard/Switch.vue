@@ -4,7 +4,7 @@
     :title="
       client.enabled ? $t('client.disableClient') : $t('client.enableClient')
     "
-    @click="toggleClient"
+    @click="toggleClient(undefined)"
   />
 </template>
 
@@ -17,37 +17,13 @@ const enabled = ref(props.client.enabled);
 
 const clientsStore = useClientsStore();
 
-const _disableClient = useSubmit(
-  `/api/client/${props.client.id}/disable`,
+const toggleClient = useSubmit(
+  () =>
+    `/api/client/${props.client.id}/${props.client.enabled ? 'disable' : 'enable'}`,
+  { method: 'post' },
   {
-    method: 'post',
-  },
-  {
-    revert: async () => {
-      await clientsStore.refresh();
-    },
+    revert: () => clientsStore.refresh(),
     noSuccessToast: true,
   }
 );
-
-const _enableClient = useSubmit(
-  `/api/client/${props.client.id}/enable`,
-  {
-    method: 'post',
-  },
-  {
-    revert: async () => {
-      await clientsStore.refresh();
-    },
-    noSuccessToast: true,
-  }
-);
-
-async function toggleClient() {
-  if (props.client.enabled) {
-    await _disableClient(undefined);
-  } else {
-    await _enableClient(undefined);
-  }
-}
 </script>

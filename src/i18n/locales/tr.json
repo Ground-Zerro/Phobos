@@ -37,9 +37,6 @@
     "logout": "Çıkış Yap",
     "continue": "Devam Et",
     "host": "Host",
-    "port": "Port",
-    "yes": "Evet",
-    "no": "Hayır",
     "confirmPassword": "Şifreyi Onayla",
     "loading": "Yükleniyor...",
     "2fa": "2FA (İki Faktörlü Doğrulama)",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "PhobosWG kurulumuna hoş geldiniz",
     "welcomeDesc": "Dayanıklı bir WireGuard dağıtmanın en kolay yolunu buldunuz",
-    "existingSetup": "Mevcut bir kurulumunuz var mı?",
     "createAdminDesc": "Yönetim paneline giriş için bir kullanıcı adı ve güçlü bir şifre belirleyin.",
     "setupConfigDesc": "İstemci cihazların bağlanacağı Host ve Port bilgilerini girin.",
-    "setupMigrationDesc": "Eski wg-easy verilerinizi taşımak için yedek dosyasını yükleyebilirsiniz.",
-    "upload": "Yükle",
-    "migration": "Yedeği Geri Yükle:",
     "createAccount": "Hesap Oluştur",
-    "successful": "Kurulum Başarılı",
     "hostDesc": "İstemcilerin bağlanacağı public hostname/IP",
-    "portDesc": "WireGuard'ın dinleyeceği public UDP portu",
     "tls": {
-      "title": "HTTPS / TLS sertifikası",
       "desc": "Güvenli HTTPS erişimini etkinleştirmek için bir TLS sertifikası yapılandırın. HTTPS olmadan oturum açma varsayılan olarak engellenir.",
       "selfSigned": "Kendinden imzalı sertifika",
       "selfSignedDesc": "Sunucunuz için anında oluşturulur. Tarayıcı bir güvenlik uyarısı gösterecektir — Gelişmiş → Devam et yolunu izleyin.",
@@ -76,13 +66,10 @@
       "certLabel": "Sertifika (PEM fullchain)",
       "keyLabel": "Özel anahtar (PEM)",
       "generate": "Sertifika oluştur",
-      "apply": "Uygula",
       "restarting": "Sertifika uygulandı. Sunucu HTTPS ile yeniden başlıyor...",
       "redirectPrompt": "Güvenli sürümü açın:",
       "openLink": "HTTPS'yi aç",
-      "skipWarning": "TLS sertifikası olmadan web arayüzüne yalnızca HTTP üzerinden erişilebilir.",
-      "errorCert": "Sertifika doğrulaması başarısız oldu",
-      "errorKey": "Özel anahtar doğrulaması başarısız oldu"
+      "skipWarning": "TLS sertifikası olmadan web arayüzüne yalnızca HTTP üzerinden erişilebilir."
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "Giriş Yap",
-    "rememberMe": "Beni hatırla",
-    "rememberMeDesc": "Oturumu açık tut",
     "2faRequired": "2FA Doğrulaması Gerekli",
     "2faWrong": "Hatalı 2FA Kodu"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "Son Görülme: ",
     "totalDownload": "Toplam İndirme: ",
     "totalUpload": "Toplam Yükleme: ",
-    "newClient": "Yeni İstemci",
     "disableClient": "İstemciyi Devre Dışı Bırak",
     "enableClient": "İstemciyi Etkinleştir",
-    "noPrivKey": "Özel anahtar (private key) bulunamadı. Yapılandırma oluşturulamaz.",
     "showQR": "QR Kodunu Göster",
     "allowedIpsDesc": "VPN üzerinden yönlendirilecek IP'ler (global ayarı ezer)",
     "serverAllowedIpsDesc": "Sunucunun istemciye yönlendireceği IP'ler",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "Bağlantı",
       "hostDesc": "İstemcilerin bağlanacağı Host (configleri etkiler)",
-      "portDesc": "İstemcilerin bağlanacağı UDP portu. Bunu değiştirmek mevcut istemci yapılandırmalarını geçersiz kılabilir ve WireGuard Arayüz Portu ile eşleşmelidir.",
       "allowedIpsDesc": "Genel Allowed IPs (izin verilen IP'ler)",
       "dnsDesc": "Global DNS",
       "mtuDesc": "Varsayılan MTU (yeni istemciler için)",
@@ -218,10 +200,8 @@
       "device": "Arayüz",
       "deviceDesc": "Trafiğin yönlendirileceği ağ arayüzü (ethernet)",
       "mtuDesc": "WireGuard arayüz MTU'su",
-      "portDesc": "WireGuard dinleme portu",
       "changeCidr": "CIDR Değiştir",
       "restart": "Arayüzü Yeniden Başlat",
-      "restartDesc": "WireGuard arayüzünü resetler",
       "restartWarn": "Arayüzü yeniden başlatmak tüm istemci bağlantılarını koparacaktır. Emin misiniz?",
       "restartSuccess": "Arayüz yeniden başlatıldı",
       "firewall": "Trafik Filtreleme",
@@ -290,7 +270,6 @@
       "apply": "TLS yapılandırmasını uygula",
       "applied": "TLS yapılandırması uygulandı. Sunucu yeniden başlıyor.",
       "appliedRestart": "TLS yapılandırması uygulandı. Sunucu yeniden başlıyor; birkaç saniye içinde {url} adresini yeniden açın.",
-      "externalManaged": "TLS, harici bir ters vekil sunucu tarafından yönetiliyor (TLS_TERMINATION=external). Sertifikanın PhobosWG dışında verilmesi ve yenilenmesi gerekir.",
       "origin": {
         "self-signed": "Kendinden imzalı",
         "imported": "İçe aktarıldı (yapıştırılan PEM)",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "Karıştırıcı ön ayarları",
       "desc": "Her ön ayar, bağımsız bağlantı noktası, anahtar ve maskeleme ile kendi wg-obfuscator dinleyicisini çalıştırır. Varsayılan ön ayar, açık atama yapılmamış tüm istemciler için kullanılır. WireGuard ön ayarları UDP 51822-51861, SOCKS5 ön ayarları TCP 51862-51891 bağlantı noktalarını kullanır — bunlar docker-compose tarafından yayımlanan aralıklardır.",
       "add": "Ön ayar ekle",
       "addDesc": "Yalnızca bir ad girin. Bağlantı noktası, anahtar ve diğer parametreler makul varsayılan değerler alır ve sonrasında ön ayarda düzenlenebilir.",
@@ -347,7 +325,6 @@
     "generic": {
       "required": "{0} alanı zorunludur",
       "validNumber": "{0} geçerli bir sayı olmalıdır",
-      "validNumberRange": "{0} geçerli bir sayı veya aralık olmalıdır",
       "validString": "{0} geçerli bir metin olmalıdır",
       "validBoolean": "{0} geçerli bir boolean olmalıdır",
       "validArray": "{0} geçerli bir dizi olmalıdır",
@@ -370,13 +347,10 @@
     "user": {
       "username": "Kullanıcı Adı",
       "password": "Şifre",
-      "remember": "Hatırla",
       "name": "İsim",
       "email": "E-posta",
       "emailInvalid": "Geçersiz e-posta formatı",
       "passwordMatch": "Şifreler eşleşmiyor",
-      "totpEnable": "2FA Aktif",
-      "totpEnableTrue": "2FA Aktif edilmelidir",
       "totpCode": "2FA Kodu"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "Hatalı format",
-    "body": "Body geçerli bir obje olmalıdır",
     "hook": "Hook",
     "enabled": "Aktif",
     "mtu": "MTU",
-    "port": "Port",
     "persistentKeepalive": "Keepalive",
     "address": "IP Adresi",
     "dns": "DNS",
     "allowedIps": "Allowed IPs",
-    "file": "Dosya",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "IPv4 adresi",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "Karıştırılan bayt sayısı (0-1024)",
       "obfuscateBytesMedia": "MEDIA için en az 4'tür (veya varsayılan 16 için 0)",
       "verbose": "Günlük düzeyi",
-      "idle": "Boşta kalma zaman aşımı",
       "dummy": "En fazla sahte bayt",
       "clientWgLocalPort": "İstemci tarafı yerel WireGuard bağlantı noktası",
       "mediaSsrc": "RTP SSRC",
@@ -454,7 +418,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "Kopyalama desteklenmiyor",
     "copied": "Kopyalandı!",
     "failed": "Kopyalama başarısız",
     "copy": "Kopyala",

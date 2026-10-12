@@ -22,12 +22,12 @@
     </template>
     <template #actions>
       <DialogClose as-child>
-        <BaseSecondaryButton>{{ $t('dialog.cancel') }}</BaseSecondaryButton>
+        <BaseButton>{{ $t('dialog.cancel') }}</BaseButton>
       </DialogClose>
       <DialogClose as-child>
-        <BasePrimaryButton @click="copyCode">
+        <BaseButton variant="primary" @click="copyCode">
           {{ $t('copy.copy') }}
-        </BasePrimaryButton>
+        </BaseButton>
       </DialogClose>
     </template>
   </BaseDialog>
@@ -40,47 +40,15 @@ const props = defineProps<{
   hasSocks5?: boolean;
 }>();
 
-const toast = useToast();
 const { t } = useI18n();
-const copy = useCopyToClipboard();
+const { open, config, copyText } = useClientConfig(
+  () => `/api/client/${props.clientId}/config`
+);
 
-const open = ref(false);
-const config = ref<string | null>(null);
-const loading = ref(false);
-
-async function loadConfig() {
-  if (config.value || loading.value) return;
-  loading.value = true;
-  try {
-    const text = await $fetch<string>(`/api/client/${props.clientId}/config`, {
-      responseType: 'text',
-    });
-    config.value = typeof text === 'string' ? text : String(text ?? '');
-  } catch (e) {
-    console.error('failed to fetch config', e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-watch(open, (isOpen) => {
-  if (isOpen) {
-    loadConfig();
-  }
-});
-
-async function copyCode() {
-  const text = config.value;
-  if (!text) {
-    toast.showToast({ type: 'error', message: t('copy.failed') });
-    return;
-  }
-  try {
-    await copy(text);
-    toast.showToast({ type: 'success', message: t('copy.copied') });
-  } catch (e) {
-    console.error('failed to copy config', e);
-    toast.showToast({ type: 'error', message: t('copy.failed') });
-  }
+function copyCode() {
+  return copyText(config.value, {
+    success: t('copy.copied'),
+    failure: t('copy.failed'),
+  });
 }
 </script>

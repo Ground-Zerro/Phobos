@@ -1,7 +1,6 @@
 import { isIP } from 'is-ip';
 import z from 'zod';
 import { WarpManualSchema } from '#db/repositories/warp/types';
-import { maskWarp } from '#db/repositories/warp/service';
 
 function parseWgConfig(text: string): Record<string, Record<string, string>> {
   const result: Record<string, Record<string, string>> = {};
@@ -103,23 +102,8 @@ export default definePermissionEventHandler(
       persistentKeepalive: Number.isNaN(keepaliveRaw) ? 25 : keepaliveRaw,
     });
 
-    if (!(await Database.warp.isRegistered())) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'WARP is not registered.',
-      });
-    }
-
-    try {
-      await WarpInterface.importConfig(parsed);
-    } catch (e) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: (e as Error).message,
-      });
-    }
-
-    const warp = await Database.warp.get();
-    return maskWarp(warp);
+    await requireWarpRegistered();
+    await asBadRequest(() => WarpInterface.importConfig(parsed));
+    return maskedWarp();
   }
 );

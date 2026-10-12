@@ -37,9 +37,6 @@
     "logout": "Uitloggen",
     "continue": "Doorgaan",
     "host": "Host",
-    "port": "Poort",
-    "yes": "Ja",
-    "no": "Nee",
     "confirmPassword": "Wachtwoord bevestigen",
     "loading": "Laden...",
     "2fa": "Twee-factor-authenticatie uitschakelen",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "Welkom bij uw eerste installatie van PhobosWG",
     "welcomeDesc": "Je hebt de eenvoudigste manier gevonden om een veerkrachtige WireGuard te implementeren",
-    "existingSetup": "Heeft u een bestaande installatie?",
     "createAdminDesc": "Voer eerst een beheerdersgebruikersnaam en een sterk veilig wachtwoord in. Deze gegevens worden gebruikt om in te loggen op uw beheerderspaneel.",
     "setupConfigDesc": "Voer alstublieft de host- en poortinformatie in. Dit wordt gebruikt voor de clientconfiguratie bij het instellen van WireGuard op hun apparaten.",
-    "setupMigrationDesc": "Geef alstublieft het back-upbestand als u uw gegevens van uw vorige wg-easy-versie naar uw nieuwe installatie wilt overzetten.",
-    "upload": "Uploaden",
-    "migration": "Herstel de back-up:",
     "createAccount": "Account aanmaken",
-    "successful": "Installatie succesvol",
     "hostDesc": "Publieke hostnaam waar clients verbinding mee maken",
-    "portDesc": "Publieke UDP-poort waarop clients verbinding maken en waarop WireGuard luistert",
     "tls": {
-      "title": "HTTPS-/TLS-certificaat",
       "desc": "Stel een TLS-certificaat in om veilige HTTPS-toegang mogelijk te maken. Zonder HTTPS is inloggen standaard geblokkeerd.",
       "selfSigned": "Zelfondertekend certificaat",
       "selfSignedDesc": "Wordt direct voor uw host gegenereerd. De browser toont een beveiligingswaarschuwing — klik op Geavanceerd → Doorgaan.",
@@ -76,13 +66,10 @@
       "certLabel": "Certificaat (PEM fullchain)",
       "keyLabel": "Privésleutel (PEM)",
       "generate": "Certificaat genereren",
-      "apply": "Toepassen",
       "restarting": "Certificaat toegepast. De server herstart met HTTPS...",
       "redirectPrompt": "Open de beveiligde versie:",
       "openLink": "HTTPS openen",
-      "skipWarning": "Zonder TLS-certificaat is de webinterface alleen via HTTP bereikbaar.",
-      "errorCert": "Validatie van het certificaat mislukt",
-      "errorKey": "Validatie van de privésleutel mislukt"
+      "skipWarning": "Zonder TLS-certificaat is de webinterface alleen via HTTP bereikbaar."
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "Inloggen",
-    "rememberMe": "Onthoud mij",
-    "rememberMeDesc": "Ingelogd blijven na het sluiten van de browser",
     "2faRequired": "Twee-factor-authenticatie is vereist",
     "2faWrong": "Twee-factor-authenticatiecode is fout"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "Laatst gezien op ",
     "totalDownload": "Totaal gedownload: ",
     "totalUpload": "Totaal geüpload: ",
-    "newClient": "Nieuwe cliënt",
     "disableClient": "Cliënt uitschakelen",
     "enableClient": "Cliënt inschakelen",
-    "noPrivKey": "Deze cliënt heeft geen bekende privésleutel. Kan de configuratie niet aanmaken.",
     "showQR": "QR-code weergeven",
     "allowedIpsDesc": "Welke IP's via de VPN worden geleid (overschrijft algemene instellingen)",
     "serverAllowedIpsDesc": "Naar welke IP's de server het cliëntverkeer zal routeren",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "Verbinding",
       "hostDesc": "Publieke hostnaam waarmee cliënten verbinding maken (maakt configuratie ongedaan)",
-      "portDesc": "Publieke UDP-poort waarmee clients verbinding maken (maakt configuratie ongedaan; u dient waarschijnlijk ook de interfacepoort te wijzigen)",
       "allowedIpsDesc": "Toegestane IP's die cliënten zullen gebruiken (algemene configuratie)",
       "dnsDesc": "DNS-server die cliënten zullen gebruiken (algemene configuratie)",
       "mtuDesc": "MTU die cliënten zullen gebruiken (alleen voor nieuwe cliënten)",
@@ -218,10 +200,8 @@
       "device": "Apparaat",
       "deviceDesc": "Ethernet-apparaat waar het WireGuard-verkeer doorheen moet worden doorgestuurd",
       "mtuDesc": "MTU die WireGuard zal toepassen",
-      "portDesc": "UDP-poort waarop WireGuard zal luisteren (u dient waarschijnlijk ook de Config-poort te wijzigen)",
       "changeCidr": "CIDR wijzigen",
       "restart": "Interface opnieuw starten",
-      "restartDesc": "WireGuard-interface opnieuw starten",
       "restartWarn": "Weet u zeker dat u de interface wilt herstarten? Dit zal alle cliënten loskoppelen.",
       "restartSuccess": "Interface opnieuw gestart",
       "firewall": "Traffic-filtering",
@@ -290,7 +270,6 @@
       "apply": "TLS-configuratie toepassen",
       "applied": "TLS-configuratie toegepast. De server herstart.",
       "appliedRestart": "TLS-configuratie toegepast. De server herstart; open {url} over enkele seconden opnieuw.",
-      "externalManaged": "TLS wordt beheerd door een externe reverse proxy (TLS_TERMINATION=external). Het certificaat moet buiten PhobosWG worden uitgegeven en vernieuwd.",
       "origin": {
         "self-signed": "Zelfondertekend",
         "imported": "Geïmporteerd (PEM geplakt)",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "Obfuscator-presets",
       "desc": "Elke preset draait een eigen wg-obfuscator-listener met een eigen poort, sleutel en maskering. De standaardpreset geldt voor elke client zonder expliciete toewijzing. WireGuard-presets gebruiken UDP-poorten 51822-51861, SOCKS5-presets TCP-poorten 51862-51891 — de bereiken die docker-compose publiceert.",
       "add": "Preset toevoegen",
       "addDesc": "Voer alleen een naam in. Poort, sleutel en overige parameters krijgen zinvolle standaardwaarden en kunnen daarna in de preset worden aangepast.",
@@ -347,7 +325,6 @@
     "generic": {
       "required": "{0} is vereist",
       "validNumber": "{0} moet een geldig getal zijn",
-      "validNumberRange": "{0} moet een geldig getal of bereik zijn",
       "validString": "{0} moet een geldige tekenreeks zijn",
       "validBoolean": "{0} moet een geldige boolean zijn",
       "validArray": "{0} moet een geldige array zijn",
@@ -370,13 +347,10 @@
     "user": {
       "username": "Gebruikersnaam",
       "password": "Wachtwoord",
-      "remember": "Onthouden",
       "name": "Naam",
       "email": "E-mail",
       "emailInvalid": "E-mail moet een geldig e-mailadres zijn",
       "passwordMatch": "Wachtwoorden moeten overeenkomen",
-      "totpEnable": "TOTP inschakelen",
-      "totpEnableTrue": "TOTP inschakelen moet waar zijn",
       "totpCode": "TOTP-code"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "Tekenreeks is beschadigd",
-    "body": "Body moet een geldig object bevatten",
     "hook": "Hook",
     "enabled": "Ingeschakeld",
     "mtu": "MTU",
-    "port": "Poort",
     "persistentKeepalive": "Aanhoudende verbinding",
     "address": "IP-adres",
     "dns": "DNS",
     "allowedIps": "Toegestane IP's",
-    "file": "Bestand",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "IPv4-adres",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "Obfuscate-bytes (0-1024)",
       "obfuscateBytesMedia": "Voor MEDIA is het minimum 4 (of 0 voor de standaardwaarde 16)",
       "verbose": "Logniveau",
-      "idle": "Time-out bij inactiviteit",
       "dummy": "Max. dummybytes",
       "clientWgLocalPort": "Lokale WireGuard-poort aan clientzijde",
       "mediaSsrc": "RTP-SSRC",
@@ -454,7 +418,6 @@
     "postDown": "Post-Down"
   },
   "copy": {
-    "notSupported": "Kopiëren wordt niet ondersteund",
     "copied": "Gekopieerd!",
     "failed": "Kopiëren is mislukt",
     "copy": "Kopiëren",

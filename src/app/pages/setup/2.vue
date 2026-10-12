@@ -29,9 +29,9 @@
         />
       </div>
       <div class="mt-4 flex justify-center">
-        <BasePrimaryButton type="submit">
+        <BaseButton variant="primary" type="submit">
           {{ $t('setup.createAccount') }}
-        </BasePrimaryButton>
+        </BaseButton>
       </div>
     </form>
   </div>
@@ -41,9 +41,6 @@
 definePageMeta({
   layout: 'setup',
 });
-
-const setupStore = useSetupStore();
-setupStore.setStep(2);
 
 const username = ref<null | string>(null);
 const password = ref<string>('');

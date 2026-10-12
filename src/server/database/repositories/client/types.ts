@@ -5,8 +5,6 @@ import type { client } from './schema';
 
 export type ClientType = InferSelectModel<typeof client>;
 
-export type ClientNextIpType = Pick<ClientType, 'ipv4Address' | 'ipv6Address'>;
-
 export type CreateClientType = Omit<
   ClientType,
   'createdAt' | 'updatedAt' | 'id'
@@ -31,7 +29,6 @@ const name = z
   .regex(CLIENT_NAME_PATTERN, t('zod.client.nameInvalidChars'))
   .pipe(safeStringRefine);
 
-// TODO?: validate iso string
 const expiresAt = z
   .string({ message: t('zod.client.expiresAt') })
   .min(1, t('zod.client.expiresAt'))
@@ -72,8 +69,6 @@ export const ClientQuerySchema = z.object({
   filter: filter,
 });
 
-export type ClientQueryType = z.infer<typeof ClientQuerySchema>;
-
 export const ClientUpdateSchema = schemaForType<UpdateClientType>()(
   z.object({
     name: name,
@@ -96,20 +91,8 @@ export const ClientUpdateSchema = schemaForType<UpdateClientType>()(
   })
 );
 
-// TODO: investigate if coerce is bad
 const clientId = z.coerce.number({ message: t('zod.client.id') });
 
 export const ClientGetSchema = z.object({
   clientId: clientId,
 });
-
-export type ClientCreateFromExistingType = Pick<
-  ClientType,
-  | 'name'
-  | 'ipv4Address'
-  | 'ipv6Address'
-  | 'privateKey'
-  | 'preSharedKey'
-  | 'publicKey'
-  | 'enabled'
->;

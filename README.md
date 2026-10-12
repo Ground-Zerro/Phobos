@@ -27,7 +27,6 @@ name: phoboswg
 
 volumes:
   phobos_etc_wireguard:
-  phobos_sqlite_data:
   phobos_certs_data:
 
 services:
@@ -40,7 +39,6 @@ services:
       - "51831:51831/tcp"
     volumes:
       - phobos_etc_wireguard:/etc/wireguard
-      - phobos_sqlite_data:/app/server/data
       - phobos_certs_data:/app/certs
     cap_add:
       - NET_ADMIN
@@ -70,6 +68,7 @@ Script behavior:
 - opens the setup wizard: create admin account, set hostname, configure TLS.
 
 After deployment open `http://<WG_HOST>:51831/` — the wizard guides through:
+
 1. Admin account (username + password)
 2. Server host (IP address or domain)
 3. TLS certificate (self-signed / import existing / import by path / skip)
@@ -78,7 +77,7 @@ Optional parameters:
 
 ```shell
 WG_HOST=<PUBLIC_IP_OR_DOMAIN> \
-WG_EASY_IMAGE=ghcr.io/ground-zerro/phobos:latest \
+PHOBOS_IMAGE=ghcr.io/ground-zerro/phobos:latest \
 curl -fsSL https://raw.githubusercontent.com/Ground-Zerro/Phobos/main/deploy.sh | sudo bash
 ```
 
@@ -123,6 +122,7 @@ A single `wg-obfuscator` process loads `/run/wg-obfuscator.conf`, where the serv
 Presets let you serve different clients (or groups of clients) through obfuscator listeners with **independent parameters** on the same WG interface.
 
 **What's in a preset**:
+
 - `name` — free-form label shown in the admin UI;
 - `extPort` — public port the listener binds to: UDP `51822–51861` for WireGuard presets, TCP `51862–51891` for SOCKS5 presets (the ranges docker-compose publishes by default);
 - `key` — XOR key shared with this preset's clients only;
@@ -133,22 +133,26 @@ Presets let you serve different clients (or groups of clients) through obfuscato
 - `isDefault` — exactly one preset has this flag; it's used by every client that has no explicit assignment.
 
 **Why use it**:
+
 - Probe-resistant fallback: serve trusted users through `STUN` with light padding, hold a stricter `AUTO`-mode preset on a different port as backup.
 - Per-group isolation: separate the key for a public test client from your personal profile so a leaked package can't decode the other.
 - A/B different obfuscation parameters without restarting clients that don't move.
 
-**Admin UI** — *Admin Panel → Obfuscator presets*:
+**Admin UI** — _Admin Panel → Obfuscator presets_:
+
 - `Add preset` — Node picks the next free port in the range (or you supply one), generates a fresh key, applies the config and restarts the listener (single `s6-svc -r`).
 - `Set as default` — moves the default flag in a single transaction; new and unassigned clients immediately use this preset.
 - `Regenerate key` / `Regenerate port` — rotates the value and reapplies.
 - `Delete` — only allowed for non-default presets; clients pointing at it fall back to default automatically (`ON DELETE SET NULL`).
 
 **Per-client assignment**:
-- *Create client* dialog has a preset dropdown; default option is **Use default preset**.
-- *Edit client* page (`/clients/<id>`) has the same dropdown — switching it produces a new package download that targets the chosen preset's port/key.
+
+- _Create client_ dialog has a preset dropdown; default option is **Use default preset**.
+- _Edit client_ page (`/clients/<id>`) has the same dropdown — switching it produces a new package download that targets the chosen preset's port/key.
 - A non-default preset shows as a colored badge next to the client's name in the list.
 
 **Lifecycle**:
+
 - Each create/update/delete/regenerate/set-default action calls `Obfuscator.applyAll()`: it regenerates `/run/wg-obfuscator.conf` from the DB and issues `s6-svc -r /run/service/wg-obfuscator`. The single restart re-forks all listeners; existing sessions reconnect via `idle-timeout`.
 - The run script starts the binary under `setsid` so all forked child listeners share a process group; `finish` follows up with `pkill -f /usr/local/bin/wg-obfuscator` to guarantee no zombie listeners survive a stop/restart.
 

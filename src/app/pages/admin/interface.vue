@@ -110,11 +110,9 @@
 const globalStore = useGlobalStore();
 const { t } = useI18n();
 
-const { data: _data, refresh } = await useFetch(`/api/admin/interface`, {
-  method: 'get',
-});
-
-const data = toRef(_data.value);
+const { data, revert } = useEditable(
+  await useFetch(`/api/admin/interface`, { method: 'get' })
+);
 
 const warpEgress = computed({
   get: () => data.value?.egressMode === 'warp',
@@ -142,11 +140,6 @@ const _submit = useSubmit(
 
 function submit() {
   return _submit(data.value);
-}
-
-async function revert() {
-  await refresh();
-  data.value = toRef(_data.value).value;
 }
 
 const _changeCidr = useSubmit(

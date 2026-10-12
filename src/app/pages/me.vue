@@ -119,7 +119,10 @@
 </template>
 
 <script setup lang="ts">
+import type { TypedInternalResponse } from 'nitropack/types';
 import { encodeQR } from 'qr';
+
+type TotpResponse = TypedInternalResponse<'/api/me/totp', unknown, 'post'>;
 
 const authStore = useAuthStore();
 
@@ -170,7 +173,7 @@ function updatePassword() {
 
 const twofa = ref<{ key: string; qrcode: string } | null>(null);
 
-const _setup2fa = useSubmit(
+const _setup2fa = useSubmit<TotpResponse>(
   `/api/me/totp`,
   {
     method: 'post',
@@ -198,7 +201,7 @@ async function setup2fa() {
 
 const code = ref<string>('');
 
-const _enable2fa = useSubmit(
+const _enable2fa = useSubmit<TotpResponse>(
   `/api/me/totp`,
   {
     method: 'post',
@@ -223,7 +226,7 @@ async function enable2fa() {
 
 const disable2faPassword = ref('');
 
-const _disable2fa = useSubmit(
+const _disable2fa = useSubmit<TotpResponse>(
   `/api/me/totp`,
   {
     method: 'post',

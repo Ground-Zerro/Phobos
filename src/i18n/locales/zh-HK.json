@@ -36,9 +36,6 @@
     "logout": "登出",
     "continue": "繼續",
     "host": "主機",
-    "port": "連接埠",
-    "yes": "是",
-    "no": "否",
     "confirmPassword": "確認新密碼",
     "loading": "載入中...",
     "2fa": "雙重認證",
@@ -47,16 +44,10 @@
   "setup": {
     "welcome": "歡迎首次設定PhobosWG",
     "welcomeDesc": "您已找到部署高可用 WireGuard 的最簡單方法",
-    "existingSetup": "你有現存設定嗎？",
     "createAdminDesc": "請輸入管理員用戶名及一個高強度密碼。這些資料將用於登入管理員版面。",
     "setupConfigDesc": "請輸入主機及連接埠資料。這將用於客戶端設定，以便在他們的裝置上設定WireGuard。",
-    "setupMigrationDesc": "如果你想將舊版wg-easy的資料轉移到新設定，請提供備份檔案。",
-    "upload": "上傳",
-    "migration": "還原備份：",
     "createAccount": "建立帳戶",
-    "successful": "設定成功",
-    "hostDesc": "客戶端連接的公共主機名稱",
-    "portDesc": "客戶端和WireGuard使用的公共UDP連接埠"
+    "hostDesc": "客戶端連接的公共主機名稱"
   },
   "theme": {
     "dark": "深色模式",
@@ -69,8 +60,6 @@
   },
   "login": {
     "signIn": "登入",
-    "rememberMe": "保持登入",
-    "rememberMeDesc": "關閉瀏覽器後仍保持登入",
     "2faRequired": "需要雙重認證",
     "2faWrong": "雙重認證失敗"
   },
@@ -95,10 +84,8 @@
     "lastSeen": "上次活動於",
     "totalDownload": "總下載量：",
     "totalUpload": "總上傳量：",
-    "newClient": "新客戶端",
     "disableClient": "停用客戶端",
     "enableClient": "啟用客戶端",
-    "noPrivKey": "此客戶端沒有已知的密匙。無法建立配置。",
     "showQR": "顯示二維碼",
     "allowedIpsDesc": "通過VPN的IP地址（取代全局配置）",
     "serverAllowedIpsDesc": "伺服器路由到客戶端的IP地址",
@@ -149,7 +136,6 @@
     "config": {
       "connection": "連線",
       "hostDesc": "客戶端連接的公共主機名稱（使配置無效）",
-      "portDesc": "客戶端連接的公共UDP連接埠（使配置無效，你可能也想更改介面連接埠）",
       "allowedIpsDesc": "客戶端使用的IP白名單（全局配置）",
       "dnsDesc": "客戶端使用的域名系統伺服器（全局配置）",
       "mtuDesc": "客戶端使用的MTU（僅適用於新客戶端）",
@@ -160,10 +146,8 @@
       "device": "裝置",
       "deviceDesc": "WireGuard流量通過的乙太網路裝置",
       "mtuDesc": "WireGuard使用的MTU",
-      "portDesc": "WireGuard監聽的UDP連接埠 (你可能也想更改設定連接埠)",
       "changeCidr": "更改CIDR",
       "restart": "重啟介面",
-      "restartDesc": "重啟WireGuard介面",
       "restartWarn": "你確定要重新啟動介面嗎？這將中斷所有客戶端連線。",
       "restartSuccess": "介面已重啟",
       "egress": "出口",
@@ -232,13 +216,10 @@
     "user": {
       "username": "用戶名",
       "password": "密碼",
-      "remember": "保持",
       "name": "名稱",
       "email": "電郵",
       "emailInvalid": "必須是有效的電郵地址",
       "passwordMatch": "密碼必須一致",
-      "totpEnable": "TOTP啟用",
-      "totpEnableTrue": "TOTP啟用必須為正確",
       "totpCode": "TOTP驗證碼"
     },
     "userConfig": {
@@ -257,28 +238,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "字串格式不正確",
-    "body": "主體必須是有效的物件",
     "hook": "掛鉤",
     "enabled": "已啟動",
     "mtu": "MTU",
-    "port": "連接埠",
     "persistentKeepalive": "保持連線",
     "address": "IP地址",
     "dns": "域名系統",
     "allowedIps": "IP白名單",
-    "file": "文件",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "IPv4 位址",

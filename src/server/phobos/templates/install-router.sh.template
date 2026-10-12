@@ -536,71 +536,85 @@ show_linux_final_info() {
   msg "  ${PHOBOS_DIR}/phobos-uninstall.sh"
 }
 
-_run_3xui() {
-  PHASE_TOTAL=3
-
-  phase_start 1 "Установка службы обфускатора"
-  install_obfuscator "$ARCH"
-  setup_configs
-  if create_systemd_obfuscator_service; then
-    phase_ok 1 "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
-  else
-    phase_fail 1 "служба создана, но не запустилась (таймаут 10 сек)"
-  fi
-
-  phase_start 2 "Проверка ${OBF_SERVICE_NAME}"
-  if verify_obfuscator_service; then
-    phase_ok 2 "служба установлена, включена и запущена"
-  else
-    phase_fail 2 "служба не полностью активирована — systemctl status ${OBF_SERVICE_NAME}"
-  fi
-
-  phase_start 3 "Сохранение файлов"
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
-
-  show_3xui_final_info
+is_socks5() {
+  [ "$PROTOCOL" = "socks5" ]
 }
 
-_run_3xui_socks5() {
-  PHASE_TOTAL=3
+setup_protocol_configs() {
+  if is_socks5; then
+    setup_configs_socks5
+  else
+    setup_configs
+  fi
+}
 
-  load_socks5_credentials || true
+run_phase() {
+  phase_start "$1" "$2"
+  if "$3"; then
+    phase_ok "$1" "$4"
+    return 0
+  fi
+  phase_fail "$1" "$5"
+  return 1
+}
 
-  phase_start 1 "Установка службы обфускатора SOCKS5"
+phase_systemd_obfuscator() {
+  phase_start "$1" "$2"
   install_obfuscator "$ARCH"
-  setup_configs_socks5
+  setup_protocol_configs
   if create_systemd_obfuscator_service; then
-    phase_ok 1 "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
+    phase_ok "$1" "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
   else
-    phase_fail 1 "служба создана, но не запустилась (таймаут 10 сек)"
+    phase_fail "$1" "служба создана, но не запустилась (таймаут 10 сек)"
   fi
+}
 
-  phase_start 2 "Проверка ${OBF_SERVICE_NAME}"
-  if verify_obfuscator_service; then
-    phase_ok 2 "служба установлена, включена и запущена"
-  else
-    phase_fail 2 "служба не полностью активирована — systemctl status ${OBF_SERVICE_NAME}"
-  fi
-
-  phase_start 3 "Сохранение файлов"
+phase_save_files() {
+  phase_start "$1" "Сохранение файлов"
   register_client
   deploy_lib_client
   deploy_uninstall_script
-  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
+  phase_ok "$1" "файлы сохранены в ${PHOBOS_DIR}"
+}
 
-  show_3xui_socks5_final_info
+_run_3xui() {
+  PHASE_TOTAL=3
+  local title="Установка службы обфускатора"
+
+  if is_socks5; then
+    load_socks5_credentials || true
+    title="${title} SOCKS5"
+  fi
+
+  phase_systemd_obfuscator 1 "$title"
+
+  run_phase 2 "Проверка ${OBF_SERVICE_NAME}" verify_obfuscator_service \
+    "служба установлена, включена и запущена" \
+    "служба не полностью активирована — systemctl status ${OBF_SERVICE_NAME}" || true
+
+  phase_save_files 3
+
+  if is_socks5; then
+    show_3xui_socks5_final_info
+  else
+    show_3xui_final_info
+  fi
 }
 
 _run_keenetic() {
   PHASE_TOTAL=3
-  local keenetic_ok=0
+  local configured=0
+  local kind="WireGuard"
+  local configure=configure_wireguard_keenetic
+
+  if is_socks5; then
+    kind="SOCKS5 Proxy"
+    configure=configure_socks5_keenetic
+  fi
 
   phase_start 1 "Установка обфускатора"
   install_obfuscator "$ARCH"
-  setup_configs
+  setup_protocol_configs
   create_init_script
   if start_obfuscator; then
     phase_ok 1 "wg-obfuscator запущен → /opt/bin/${OBF_BINARY_NAME}"
@@ -608,69 +622,39 @@ _run_keenetic() {
     phase_fail 1 "wg-obfuscator не запущен — /opt/etc/init.d/${OBF_INIT_NAME} status"
   fi
 
-  phase_start 2 "Настройка WireGuard (ndmc)"
-  if configure_wireguard_keenetic; then
-    keenetic_ok=1
-    phase_ok 2 "интерфейс Phobos-${CLIENT_NAME} создан"
-  else
-    phase_fail 2 "WireGuard не настроен — потребуется ручная конфигурация"
+  if run_phase 2 "Настройка ${kind} (ndmc)" "$configure" \
+      "интерфейс Phobos-${CLIENT_NAME} создан" \
+      "${kind} не настроен — потребуется ручная конфигурация"; then
+    configured=1
   fi
 
-  phase_start 3 "Сохранение файлов"
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
+  phase_save_files 3
 
-  show_keenetic_final_info "$keenetic_ok"
-}
-
-_run_keenetic_socks5() {
-  PHASE_TOTAL=3
-  local keenetic_ok=0
-
-  phase_start 1 "Установка обфускатора"
-  install_obfuscator "$ARCH"
-  setup_configs_socks5
-  create_init_script
-  if start_obfuscator; then
-    phase_ok 1 "wg-obfuscator запущен → /opt/bin/${OBF_BINARY_NAME}"
+  if is_socks5; then
+    show_keenetic_socks5_final_info "$configured"
   else
-    phase_fail 1 "wg-obfuscator не запущен — /opt/etc/init.d/${OBF_INIT_NAME} status"
+    show_keenetic_final_info "$configured"
   fi
-
-  phase_start 2 "Настройка SOCKS5 Proxy (ndmc)"
-  if configure_socks5_keenetic; then
-    keenetic_ok=1
-    phase_ok 2 "интерфейс Phobos-${CLIENT_NAME} создан"
-  else
-    phase_fail 2 "SOCKS5 Proxy не настроен — потребуется ручная конфигурация"
-  fi
-
-  phase_start 3 "Сохранение файлов"
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-  phase_ok 3 "файлы сохранены в ${PHOBOS_DIR}"
-
-  show_keenetic_socks5_final_info "$keenetic_ok"
 }
 
 _run_openwrt() {
   PHASE_TOTAL=4
-  local uci_ok=0
+  local configured=0
   local init_path=""
 
-  phase_start 1 "Установка пакетов WireGuard"
-  if install_wireguard_openwrt; then
-    phase_ok 1 "kmod-wireguard + wireguard-tools"
+  if is_socks5; then
+    run_phase 1 "Установка redsocks" install_redsocks_openwrt \
+      "redsocks установлен" \
+      "не удалось установить redsocks — потребуется ручная настройка" || true
   else
-    phase_fail 1 "не удалось установить пакеты WireGuard"
+    run_phase 1 "Установка пакетов WireGuard" install_wireguard_openwrt \
+      "kmod-wireguard + wireguard-tools" \
+      "не удалось установить пакеты WireGuard" || true
   fi
 
   phase_start 2 "Установка обфускатора"
   install_obfuscator "$ARCH"
-  setup_configs
+  setup_protocol_configs
   if [ -d "/opt/etc" ]; then
     create_init_script
     init_path="/opt/etc/init.d/${OBF_INIT_NAME}"
@@ -684,66 +668,25 @@ _run_openwrt() {
     phase_fail 2 "wg-obfuscator не запущен — ${init_path} status"
   fi
 
-  phase_start 3 "Настройка WireGuard (UCI)"
-  if configure_wireguard_openwrt; then
-    uci_ok=1
-    phase_ok 3 "интерфейс ${OBF_WG_IFACE} создан"
-  else
-    phase_fail 3 "WireGuard не настроен — потребуется ручная конфигурация"
+  if is_socks5; then
+    if run_phase 3 "Настройка SOCKS5 (redsocks + nft redirect)" configure_socks5_openwrt \
+        "транспарентный SOCKS5-редирект активен" \
+        "SOCKS5 не настроен — потребуется ручная конфигурация"; then
+      configured=1
+    fi
+  elif run_phase 3 "Настройка WireGuard (UCI)" configure_wireguard_openwrt \
+      "интерфейс ${OBF_WG_IFACE} создан" \
+      "WireGuard не настроен — потребуется ручная конфигурация"; then
+    configured=1
   fi
 
-  phase_start 4 "Сохранение файлов"
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-  phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
+  phase_save_files 4
 
-  show_openwrt_final_info "$uci_ok" "$init_path"
-}
-
-_run_openwrt_socks5() {
-  PHASE_TOTAL=4
-  local proxy_ok=0
-  local init_path=""
-
-  phase_start 1 "Установка redsocks"
-  if install_redsocks_openwrt; then
-    phase_ok 1 "redsocks установлен"
+  if is_socks5; then
+    show_openwrt_socks5_final_info "$configured" "$init_path"
   else
-    phase_fail 1 "не удалось установить redsocks — потребуется ручная настройка"
+    show_openwrt_final_info "$configured" "$init_path"
   fi
-
-  phase_start 2 "Установка обфускатора"
-  install_obfuscator "$ARCH"
-  setup_configs_socks5
-  if [ -d "/opt/etc" ]; then
-    create_init_script
-    init_path="/opt/etc/init.d/${OBF_INIT_NAME}"
-  else
-    create_procd_init_script
-    init_path="/etc/init.d/${OBF_SERVICE_NAME}"
-  fi
-  if start_obfuscator; then
-    phase_ok 2 "wg-obfuscator запущен → /usr/bin/${OBF_BINARY_NAME}"
-  else
-    phase_fail 2 "wg-obfuscator не запущен — ${init_path} status"
-  fi
-
-  phase_start 3 "Настройка SOCKS5 (redsocks + nft redirect)"
-  if configure_socks5_openwrt; then
-    proxy_ok=1
-    phase_ok 3 "транспарентный SOCKS5-редирект активен"
-  else
-    phase_fail 3 "SOCKS5 не настроен — потребуется ручная конфигурация"
-  fi
-
-  phase_start 4 "Сохранение файлов"
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-  phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
-
-  show_openwrt_socks5_final_info "$proxy_ok" "$init_path"
 }
 
 _run_linux() {
@@ -757,14 +700,7 @@ _run_linux() {
     exit 1
   fi
 
-  phase_start 2 "Установка обфускатора"
-  install_obfuscator "$ARCH"
-  setup_configs
-  if create_systemd_obfuscator_service; then
-    phase_ok 2 "wg-obfuscator → /usr/local/bin/${OBF_BINARY_NAME}"
-  else
-    phase_fail 2 "служба создана, но не запустилась (таймаут 10 сек)"
-  fi
+  phase_systemd_obfuscator 2 "Установка обфускатора"
 
   phase_start 3 "Настройка WireGuard"
   if configure_wireguard_linux; then
@@ -774,11 +710,7 @@ _run_linux() {
     phase_fail 3 "WireGuard настроен с предупреждениями — systemctl status wg-quick@${OBF_WG_IFACE}"
   fi
 
-  phase_start 4 "Сохранение файлов"
-  register_client
-  deploy_lib_client
-  deploy_uninstall_script
-  phase_ok 4 "файлы сохранены в ${PHOBOS_DIR}"
+  phase_save_files 4
 
   show_linux_final_info
 }
@@ -795,8 +727,7 @@ main() {
     exit 1
   fi
 
-  if [ "$PROTOCOL" = "socks5" ] && [ "$ROUTER_PLATFORM" != "keenetic" ] && \
-     [ "$ROUTER_PLATFORM" != "openwrt" ] && [ "$IS_3XUI_MODE" != "true" ]; then
+  if is_socks5 && [ "$ROUTER_PLATFORM" = "linux" ] && [ "$IS_3XUI_MODE" != "true" ]; then
     msg "Автоматическая установка SOCKS5 для платформы ${ROUTER_PLATFORM} пока не поддерживается."
     msg "Используйте wg-socks5-obfuscator.conf и бинарник из bin/ вручную (см. README.txt)."
     exit 0
@@ -828,20 +759,10 @@ main() {
     exit 1
   fi
 
-  if [ "$ROUTER_PLATFORM" = "keenetic" ] && [ "$PROTOCOL" = "socks5" ]; then
-    _run_keenetic_socks5
-  elif [ "$ROUTER_PLATFORM" = "keenetic" ]; then
-    _run_keenetic
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ] && [ "$PROTOCOL" = "socks5" ]; then
-    _run_openwrt_socks5
-  elif [ "$ROUTER_PLATFORM" = "openwrt" ]; then
-    _run_openwrt
-  elif [ "$IS_3XUI_MODE" = "true" ] && [ "$PROTOCOL" = "socks5" ]; then
-    _run_3xui_socks5
-  elif [ "$IS_3XUI_MODE" = "true" ]; then
+  if [ "$IS_3XUI_MODE" = "true" ]; then
     _run_3xui
   else
-    _run_linux
+    "_run_${ROUTER_PLATFORM}"
   fi
 }
 

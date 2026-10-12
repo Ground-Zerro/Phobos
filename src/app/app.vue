@@ -16,7 +16,6 @@ const toast = useToast();
 const toastRef = useTemplateRef('toastRef');
 toast.setToast(toastRef);
 
-// make sure to fetch release early
 useGlobalStore();
 
 useHead({

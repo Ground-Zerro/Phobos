@@ -37,9 +37,6 @@
     "logout": "Đăng xuất",
     "continue": "Tiếp tục",
     "host": "Host",
-    "port": "Cổng",
-    "yes": "Có",
-    "no": "Chưa",
     "confirmPassword": "Xác nhận mật khẩu",
     "loading": "Đang tải...",
     "2fa": "Xác thực hai yếu tố",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "Chào mừng đến với thiết lập đầu tiên của PhobosWG",
     "welcomeDesc": "Bạn đã tìm ra cách dễ nhất để triển khai một WireGuard có khả năng phục hồi cao",
-    "existingSetup": "Bạn có hệ thống được cài đặt trước đây chưa?",
     "createAdminDesc": "Vui lòng nhập tên đăng nhập quản trị viên và mật khẩu mạnh. Thông tin này sẽ được sử dụng để đăng nhập vào bảng quản trị của bạn.",
     "setupConfigDesc": "Vui lòng cung cấp host và cổng. Những thông tin này sẽ được sử dụng để cấu hình WireGuard cho người dùng trên thiết bị của họ.",
-    "setupMigrationDesc": "Vui lòng cung cấp tệp sao lưu nếu bạn muốn chuyển dữ liệu từ phiên bản wg-easy trước sang cài đặt mới.",
-    "upload": "Tải lên",
-    "migration": "Khôi phục bản sao lưu:",
     "createAccount": "Tạo tài khoản",
-    "successful": "Thiết lập thành công",
     "hostDesc": "Tên miền công khai mà thiết bị sẽ kết nối tới",
-    "portDesc": "Cổng UDP công khai mà thiết bị sẽ kết nối và WireGuard sẽ sử dụng",
     "tls": {
-      "title": "Chứng chỉ HTTPS / TLS",
       "desc": "Thiết lập chứng chỉ TLS để bật truy cập HTTPS an toàn. Nếu không có HTTPS, việc đăng nhập bị chặn theo mặc định.",
       "selfSigned": "Chứng chỉ tự ký",
       "selfSignedDesc": "Được tạo ngay cho máy chủ của bạn. Trình duyệt sẽ hiển thị cảnh báo bảo mật — hãy bấm Nâng cao → Tiếp tục.",
@@ -76,13 +66,10 @@
       "certLabel": "Chứng chỉ (PEM fullchain)",
       "keyLabel": "Khóa riêng (PEM)",
       "generate": "Tạo chứng chỉ",
-      "apply": "Áp dụng",
       "restarting": "Đã áp dụng chứng chỉ. Máy chủ đang khởi động lại với HTTPS...",
       "redirectPrompt": "Mở phiên bản an toàn:",
       "openLink": "Mở HTTPS",
-      "skipWarning": "Không có chứng chỉ TLS thì giao diện web chỉ truy cập được qua HTTP.",
-      "errorCert": "Xác thực chứng chỉ thất bại",
-      "errorKey": "Xác thực khóa riêng thất bại"
+      "skipWarning": "Không có chứng chỉ TLS thì giao diện web chỉ truy cập được qua HTTP."
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "Đăng nhập",
-    "rememberMe": "Duy trì đăng nhập",
-    "rememberMeDesc": "Duy trì trạng thái đăng nhập sau khi đóng trình duyệt",
     "2faRequired": "Yêu cầu xác thực hai yếu tố",
     "2faWrong": "Mã xác thực hai yếu tố không đúng"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "Lần cuối trực tuyến ",
     "totalDownload": "Tổng tải về: ",
     "totalUpload": "Tổng tải lên: ",
-    "newClient": "Người dùng mới",
     "disableClient": "Vô hiệu hóa người dùng",
     "enableClient": "Kích hoạt người dùng",
-    "noPrivKey": "Người dùng này không có khóa riêng tư. Không thể tạo cấu hình.",
     "showQR": "Hiển thị mã QR",
     "allowedIpsDesc": "Các IP sẽ được định tuyến qua VPN (ghi đè cấu hình chung)",
     "serverAllowedIpsDesc": "Các IP mà máy chủ sẽ định tuyến đến người dùng",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "Kết nối",
       "hostDesc": "Tên miền công khai mà người dùng sẽ kết nối tới (làm mất hiệu lực cấu hình)",
-      "portDesc": "Cổng UDP công khai mà người dùng sẽ kết nối tới (làm mất hiệu lực cấu hình, bạn cũng cần thay đổi cổng giao diện mạng)",
       "allowedIpsDesc": "Các IP được cho phép mà người dùng sẽ sử dụng (cấu hình chung)",
       "dnsDesc": "Máy chủ DNS mà người dùng sẽ sử dụng (cấu hình chung)",
       "mtuDesc": "MTU mà người dùng sẽ sử dụng (chỉ áp dụng cho người dùng mới)",
@@ -218,10 +200,8 @@
       "device": "Card mạng",
       "deviceDesc": "Card mạng mà lưu lượng WireGuard sẽ được chuyển tiếp qua",
       "mtuDesc": "MTU mà WireGuard sẽ sử dụng",
-      "portDesc": "Cổng UDP mà WireGuard sẽ sử dụng (bạn cũng cần thay đổi cổng cấu hình)",
       "changeCidr": "Thay đổi CIDR",
       "restart": "Khởi động lại giao diện mạng",
-      "restartDesc": "Khởi động lại giao diện mạng WireGuard",
       "restartWarn": "Bạn có chắc muốn khởi động lại giao diện mạng? Điều này sẽ ngắt kết nối tất cả người dùng.",
       "restartSuccess": "Đã khởi động lại giao diện mạng",
       "firewall": "Lọc lưu lượng",
@@ -290,7 +270,6 @@
       "apply": "Áp dụng cấu hình TLS",
       "applied": "Đã áp dụng cấu hình TLS. Máy chủ đang khởi động lại.",
       "appliedRestart": "Đã áp dụng cấu hình TLS. Máy chủ đang khởi động lại; hãy mở lại {url} sau vài giây.",
-      "externalManaged": "TLS do một reverse proxy bên ngoài quản lý (TLS_TERMINATION=external). Chứng chỉ phải được cấp và gia hạn bên ngoài PhobosWG.",
       "origin": {
         "self-signed": "Tự ký",
         "imported": "Đã nhập (dán PEM)",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "Cấu hình sẵn của bộ làm rối",
       "desc": "Mỗi cấu hình sẵn chạy một trình lắng nghe wg-obfuscator riêng với cổng, khóa và cách ngụy trang độc lập. Cấu hình sẵn mặc định áp dụng cho mọi máy khách chưa được gán rõ ràng. Cấu hình sẵn WireGuard dùng cổng UDP 51822-51861, cấu hình sẵn SOCKS5 dùng cổng TCP 51862-51891 — các dải do docker-compose công bố.",
       "add": "Thêm cấu hình sẵn",
       "addDesc": "Chỉ cần nhập tên. Cổng, khóa và các tham số khác sẽ nhận giá trị mặc định hợp lý và có thể sửa sau trong cấu hình sẵn.",
@@ -347,7 +325,6 @@
     "generic": {
       "required": "{0} không được để trống",
       "validNumber": "{0} phải là số hợp lệ",
-      "validNumberRange": "{0} phải là số hoặc khoảng số hợp lệ",
       "validString": "{0} phải là chuỗi hợp lệ",
       "validBoolean": "{0} phải là giá trị boolean hợp lệ",
       "validArray": "{0} phải là mảng hợp lệ",
@@ -370,13 +347,10 @@
     "user": {
       "username": "Tên đăng nhập",
       "password": "Mật khẩu",
-      "remember": "Ghi nhớ",
       "name": "Tên",
       "email": "Email",
       "emailInvalid": "Email phải có định dạng hợp lệ",
       "passwordMatch": "Mật khẩu phải khớp nhau",
-      "totpEnable": "Bật TOTP",
-      "totpEnableTrue": "Bật TOTP phải là true",
       "totpCode": "Mã TOTP"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "Chuỗi không đúng định dạng",
-    "body": "Body phải là đối tượng hợp lệ",
     "hook": "Hook",
     "enabled": "Đã bật",
     "mtu": "MTU",
-    "port": "Cổng",
     "persistentKeepalive": "Persistent Keepalive",
     "address": "Địa chỉ IP",
     "dns": "DNS",
     "allowedIps": "Các IP được phép",
-    "file": "Tệp",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "Địa chỉ IPv4",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "Số byte được làm rối (0-1024)",
       "obfuscateBytesMedia": "Với MEDIA, giá trị tối thiểu là 4 (hoặc 0 để dùng mặc định 16)",
       "verbose": "Mức nhật ký",
-      "idle": "Thời gian chờ khi rảnh",
       "dummy": "Byte đệm giả tối đa",
       "clientWgLocalPort": "Cổng WireGuard cục bộ phía máy khách",
       "mediaSsrc": "SSRC của RTP",
@@ -454,7 +418,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "Không hỗ trợ sao chép",
     "copied": "Đã sao chép!",
     "failed": "Sao chép thất bại",
     "copy": "Sao chép",

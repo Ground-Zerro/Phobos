@@ -19,7 +19,7 @@
 #include <poll.h>
 #endif
 
-#define WG_OBFUSCATOR_VERSION "1.4"
+#define WG_OBFUSCATOR_VERSION "1.4.1"
 #define WG_OBFUSCATOR_GIT_REPO "https://github.com/ClusterM/wg-obfuscator"
 
 #define LL_DEFAULT      LL_INFO

@@ -7,9 +7,9 @@
     <div class="flex justify-end">
       <BaseDialog v-model:open="createOpen">
         <template #trigger>
-          <BasePrimaryButton>{{
+          <BaseButton variant="primary" as="span">{{
             $t('admin.obfuscatorPresets.add')
-          }}</BasePrimaryButton>
+          }}</BaseButton>
         </template>
         <template #title>
           {{ $t('admin.obfuscatorPresets.add') }}
@@ -35,23 +35,21 @@
                 :label="$t('admin.obfuscatorPresets.modeLabel')"
                 :hint="$t('admin.obfuscatorPresets.modeDesc')"
               />
-              <select
-                v-model="newPreset.mode"
-                class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-              >
-                <option value="WIREGUARD">WireGuard</option>
-                <option value="SOCKS5">SOCKS5</option>
-              </select>
+              <BaseSelect v-model="newPreset.mode" :options="modeOptions" />
             </div>
           </div>
         </template>
         <template #actions>
           <DialogClose as-child>
-            <BaseSecondaryButton>{{ $t('dialog.cancel') }}</BaseSecondaryButton>
+            <BaseButton>{{ $t('dialog.cancel') }}</BaseButton>
           </DialogClose>
-          <BasePrimaryButton :disabled="!canCreate || creating" @click="create">
+          <BaseButton
+            variant="primary"
+            :disabled="!canCreate || creating"
+            @click="create"
+          >
             {{ $t('dialog.create') }}
-          </BasePrimaryButton>
+          </BaseButton>
         </template>
       </BaseDialog>
     </div>
@@ -93,13 +91,7 @@
               :label="$t('admin.obfuscatorPresets.modeLabel')"
               :hint="$t('admin.obfuscatorPresets.modeDesc')"
             />
-            <select
-              v-model="p.mode"
-              class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-            >
-              <option value="WIREGUARD">WireGuard</option>
-              <option value="SOCKS5">SOCKS5</option>
-            </select>
+            <BaseSelect v-model="p.mode" :options="modeOptions" />
           </div>
           <div class="flex flex-col gap-1">
             <FormFieldLabel
@@ -124,9 +116,9 @@
                 type="number"
                 class="flex-1"
               />
-              <BaseSecondaryButton @click="regeneratePort(p.id)">
+              <BaseButton @click="presetAction(p.id, 'regenerate-port')">
                 {{ $t('admin.obfuscatorPresets.regeneratePort') }}
-              </BaseSecondaryButton>
+              </BaseButton>
             </div>
           </div>
           <div v-if="p.mode === 'WIREGUARD'" class="flex flex-col gap-1">
@@ -162,9 +154,9 @@
                 type="text"
                 class="flex-1 font-mono text-xs"
               />
-              <BaseSecondaryButton @click="regenerateKey(p.id)">
+              <BaseButton @click="presetAction(p.id, 'regenerate-key')">
                 {{ $t('admin.obfuscatorPresets.regenerateKey') }}
-              </BaseSecondaryButton>
+              </BaseButton>
             </div>
           </div>
           <div class="flex flex-col gap-1">
@@ -178,17 +170,11 @@
                 )
               "
             />
-            <select
+            <BaseSelect
               v-model="p.masking"
-              class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+              :options="maskingOptions[p.mode]"
               @change="onMaskingChange(p)"
-            >
-              <option value="STUN">STUN</option>
-              <option value="MEDIA">MEDIA</option>
-              <option v-if="p.mode === 'WIREGUARD'" value="AUTO">AUTO</option>
-              <option v-if="p.mode === 'SOCKS5'" value="TLS">TLS</option>
-              <option value="NONE">NONE</option>
-            </select>
+            />
           </div>
           <div v-if="p.mode === 'SOCKS5'" class="flex flex-col gap-1">
             <FormFieldLabel
@@ -214,16 +200,7 @@
               :label="$t('admin.obfuscatorPresets.verboseLabel')"
               :hint="$t('admin.obfuscatorPresets.verboseDesc')"
             />
-            <select
-              v-model="p.verbose"
-              class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-            >
-              <option value="error">error</option>
-              <option value="warn">warn</option>
-              <option value="info">info</option>
-              <option value="debug">debug</option>
-              <option value="trace">trace</option>
-            </select>
+            <BaseSelect v-model="p.verbose" :options="verbosityOptions" />
           </div>
           <template v-if="p.mode === 'WIREGUARD'">
             <div class="flex flex-col gap-1">
@@ -274,19 +251,22 @@
         </div>
 
         <div class="mt-4 flex flex-wrap items-center gap-2">
-          <BasePrimaryButton @click="save(p)">
+          <BaseButton variant="primary" @click="save(p)">
             {{ $t('form.save') }}
-          </BasePrimaryButton>
-          <BaseSecondaryButton v-if="!p.isDefault" @click="setDefault(p.id)">
+          </BaseButton>
+          <BaseButton
+            v-if="!p.isDefault"
+            @click="presetAction(p.id, 'set-default')"
+          >
             {{ $t('admin.obfuscatorPresets.setAsDefault') }}
-          </BaseSecondaryButton>
-          <BaseSecondaryButton
+          </BaseButton>
+          <BaseButton
             v-if="!p.isDefault"
             class="text-red-700 dark:text-red-400"
             @click="remove(p.id)"
           >
             {{ $t('dialog.delete') }}
-          </BaseSecondaryButton>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -297,46 +277,51 @@
 
 <script setup lang="ts">
 import {
+  OBFUSCATION_MASKINGS,
+  OBFUSCATOR_VERBOSITY,
   effectiveObfuscateBytes,
-  type ObfuscationMasking,
+  isMaskingAllowed,
+  type ObfuscationMode,
 } from '~~/shared/utils/obfuscation';
-
-type Mode = 'WIREGUARD' | 'SOCKS5';
-type Verbose = 'error' | 'warn' | 'info' | 'debug' | 'trace';
-type Preset = {
-  id: number;
-  name: string;
-  isDefault: boolean;
-  mode: Mode;
-  extPort: number;
-  sourceIf: string;
-  target: string | null;
-  key: string;
-  masking: ObfuscationMasking;
-  obfuscateBytes: number;
-  dummy: number;
-  verbose: Verbose;
-  clientWgLocalPort: number;
-  mediaSsrc: number | null;
-  clientLocalPort: number;
-  clientCount: number;
-};
 
 const { t } = useI18n();
 const toast = useToast();
 
-const { data: presets, refresh } = await useFetch<Preset[]>(
+const { data: presets, refresh } = await useFetch(
   '/api/admin/obfuscator-presets',
-  // deep: true is required so editing a preset's fields in place (e.g. the
-  // protocol select) triggers the conditional rendering below immediately,
-  // without needing a save+refresh round trip. Nuxt's compatibilityVersion 4
-  // defaults useFetch to a shallow ref otherwise.
   { method: 'get', deep: true }
 );
 
+type Preset = NonNullable<typeof presets.value>[number];
+
+const modeOptions = [
+  { value: 'WIREGUARD', label: 'WireGuard' },
+  { value: 'SOCKS5', label: 'SOCKS5' },
+] as const satisfies ReadonlyArray<{ value: ObfuscationMode; label: string }>;
+
+function textOptions<T extends string>(values: readonly T[]) {
+  return values.map((value) => ({ value, label: value }));
+}
+
+function maskingsFor(mode: ObfuscationMode) {
+  return textOptions(
+    OBFUSCATION_MASKINGS.filter((masking) => isMaskingAllowed(mode, masking))
+  );
+}
+
+const maskingOptions: Record<
+  ObfuscationMode,
+  ReturnType<typeof maskingsFor>
+> = {
+  WIREGUARD: maskingsFor('WIREGUARD'),
+  SOCKS5: maskingsFor('SOCKS5'),
+};
+
+const verbosityOptions = textOptions(OBFUSCATOR_VERBOSITY);
+
 const createOpen = ref(false);
 const creating = ref(false);
-const newPreset = ref<{ name: string; mode: Mode }>({
+const newPreset = ref<{ name: string; mode: ObfuscationMode }>({
   name: '',
   mode: 'WIREGUARD',
 });
@@ -351,40 +336,49 @@ function mediaSsrcDisabled(p: Preset): boolean {
   return p.masking !== 'MEDIA';
 }
 
-// Reliable MEDIA-frame detection in socks5 mode benefits from a fixed
-// media-ssrc (unlike WireGuard mode's per-connection UDP autodetect), so fill
-// one in immediately when switching to MEDIA rather than leaving it unset.
 function onMaskingChange(p: Preset) {
   if (p.mode === 'SOCKS5' && p.masking === 'MEDIA' && !p.mediaSsrc) {
     p.mediaSsrc = Math.floor(Math.random() * 0xfffffffe) + 1;
   }
 }
 
+async function run(request: () => Promise<unknown>) {
+  try {
+    await request();
+    await refresh();
+    toast.showToast({ type: 'success', message: t('toast.saved') });
+    return true;
+  } catch (e) {
+    toast.showToast({
+      type: 'error',
+      message: toErrorMessage(e, t('toast.unknown')),
+    });
+    return false;
+  }
+}
+
 async function create() {
   if (!canCreate.value) return;
   creating.value = true;
-  try {
-    await $fetch('/api/admin/obfuscator-presets', {
+  const created = await run(() =>
+    $fetch('/api/admin/obfuscator-presets', {
       method: 'post',
       body: {
         name: newPreset.value.name.trim(),
         mode: newPreset.value.mode,
       },
-    });
-    await refresh();
+    })
+  );
+  creating.value = false;
+  if (created) {
     createOpen.value = false;
     newPreset.value = { name: '', mode: 'WIREGUARD' };
-    toast.showToast({ type: 'success', message: t('toast.saved') });
-  } catch (e) {
-    toast.showToast({ type: 'error', message: extractMessage(e) });
-  } finally {
-    creating.value = false;
   }
 }
 
-async function save(p: Preset) {
-  try {
-    await $fetch(`/api/admin/obfuscator-presets/${p.id}`, {
+function save(p: Preset) {
+  return run(() =>
+    $fetch(`/api/admin/obfuscator-presets/${p.id}`, {
       method: 'post',
       body: {
         name: p.name,
@@ -401,66 +395,23 @@ async function save(p: Preset) {
         mediaSsrc: p.mediaSsrc,
         clientLocalPort: p.clientLocalPort,
       },
-    });
-    toast.showToast({ type: 'success', message: t('toast.saved') });
-    await refresh();
-  } catch (e) {
-    toast.showToast({ type: 'error', message: extractMessage(e) });
-  }
+    })
+  );
 }
 
-async function remove(id: number) {
+function remove(id: number) {
   if (!confirm(t('admin.obfuscatorPresets.deleteConfirm'))) return;
-  try {
-    await $fetch(`/api/admin/obfuscator-presets/${id}`, { method: 'delete' });
-    await refresh();
-    toast.showToast({ type: 'success', message: t('toast.saved') });
-  } catch (e) {
-    toast.showToast({ type: 'error', message: extractMessage(e) });
-  }
+  return run(() =>
+    $fetch(`/api/admin/obfuscator-presets/${id}`, { method: 'delete' })
+  );
 }
 
-async function setDefault(id: number) {
-  try {
-    await $fetch(`/api/admin/obfuscator-presets/${id}/set-default`, {
-      method: 'post',
-    });
-    await refresh();
-    toast.showToast({ type: 'success', message: t('toast.saved') });
-  } catch (e) {
-    toast.showToast({ type: 'error', message: extractMessage(e) });
-  }
-}
-
-async function regenerateKey(id: number) {
-  try {
-    await $fetch(`/api/admin/obfuscator-presets/${id}/regenerate-key`, {
-      method: 'post',
-    });
-    await refresh();
-    toast.showToast({ type: 'success', message: t('toast.saved') });
-  } catch (e) {
-    toast.showToast({ type: 'error', message: extractMessage(e) });
-  }
-}
-
-async function regeneratePort(id: number) {
-  try {
-    await $fetch(`/api/admin/obfuscator-presets/${id}/regenerate-port`, {
-      method: 'post',
-    });
-    await refresh();
-    toast.showToast({ type: 'success', message: t('toast.saved') });
-  } catch (e) {
-    toast.showToast({ type: 'error', message: extractMessage(e) });
-  }
-}
-
-function extractMessage(e: unknown): string {
-  if (e && typeof e === 'object' && 'data' in e) {
-    const d = (e as { data?: { message?: string } }).data;
-    if (d?.message) return d.message;
-  }
-  return t('toast.unknown');
+function presetAction(
+  id: number,
+  action: 'set-default' | 'regenerate-key' | 'regenerate-port'
+) {
+  return run(() =>
+    $fetch(`/api/admin/obfuscator-presets/${id}/${action}`, { method: 'post' })
+  );
 }
 </script>

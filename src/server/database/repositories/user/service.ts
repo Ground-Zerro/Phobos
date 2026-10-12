@@ -2,13 +2,11 @@ import { eq, sql } from 'drizzle-orm';
 import { TOTP } from 'otpauth';
 import { user } from './schema';
 import type { UserType } from './types';
+import { Repository } from '#db/repository';
 import type { DBType } from '#db/sqlite';
 
 type LoginResult =
-  | {
-      success: true;
-      user: UserType;
-    }
+  | { success: true; user: UserType }
   | {
       success: false;
       error:
@@ -19,16 +17,30 @@ type LoginResult =
         | 'UNEXPECTED_ERROR';
     };
 
+export function createTotp(username: string, secret: string) {
+  return new TOTP({
+    issuer: TOTP_ISSUER,
+    label: username,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret,
+  });
+}
+
+function isTotpValid(username: string, secret: string, code: string) {
+  return (
+    createTotp(username, secret).validate({ token: code, window: 1 }) !== null
+  );
+}
+
 function createPreparedStatement(db: DBType) {
   return {
-    findAll: db.query.user.findMany().prepare(),
     findById: db.query.user
       .findFirst({ where: eq(user.id, sql.placeholder('id')) })
       .prepare(),
     findByUsername: db.query.user
-      .findFirst({
-        where: eq(user.username, sql.placeholder('username')),
-      })
+      .findFirst({ where: eq(user.username, sql.placeholder('username')) })
       .prepare(),
     update: db
       .update(user)
@@ -49,38 +61,40 @@ function createPreparedStatement(db: DBType) {
   };
 }
 
-export class UserService {
-  #db: DBType;
-  #statements: ReturnType<typeof createPreparedStatement>;
-
+export class UserService extends Repository<
+  ReturnType<typeof createPreparedStatement>
+> {
   constructor(db: DBType) {
-    this.#db = db;
-    this.#statements = createPreparedStatement(db);
+    super(db, createPreparedStatement);
   }
 
-  async getAll() {
-    return this.#statements.findAll.execute();
+  get(id: ID) {
+    return this.statements.findById.execute({ id });
   }
 
-  async get(id: ID) {
-    return this.#statements.findById.execute({ id });
+  getByUsername(username: string) {
+    return this.statements.findByUsername.execute({ username });
   }
 
-  async getByUsername(username: string) {
-    return this.#statements.findByUsername.execute({ username });
+  async #requireWithPassword(id: ID, password: string) {
+    const row = await this.get(id);
+    if (!row) {
+      throw new Error('User not found');
+    }
+    if (!(await isPasswordValid(password, row.password))) {
+      throw new Error('Invalid password');
+    }
+    return row;
   }
 
   async create(username: string, password: string) {
     const hash = await hashPassword(password);
 
-    return this.#db.transaction(async (tx) => {
-      const oldUser = await tx.query.user
-        .findFirst({
-          where: eq(user.username, username),
-        })
+    return this.db.transaction(async (tx) => {
+      const existing = await tx.query.user
+        .findFirst({ where: eq(user.username, username) })
         .execute();
-
-      if (oldUser) {
+      if (existing) {
         throw new Error('User already exists');
       }
 
@@ -98,154 +112,77 @@ export class UserService {
     });
   }
 
-  async update(id: ID, name: string, email: string | null) {
-    return this.#statements.update.execute({ id, name, email });
+  update(id: ID, name: string, email: string | null) {
+    return this.statements.update.execute({ id, name, email });
   }
 
   async updatePassword(id: ID, currentPassword: string, newPassword: string) {
+    const row = await this.#requireWithPassword(id, currentPassword);
     const hash = await hashPassword(newPassword);
-
-    return this.#db.transaction(async (tx) => {
-      // get user again to avoid password changing while request
-      const txUser = await tx.query.user
-        .findFirst({ where: eq(user.id, id) })
-        .execute();
-
-      if (!txUser) {
-        throw new Error('User not found');
-      }
-
-      const passwordValid = await isPasswordValid(
-        currentPassword,
-        txUser.password
-      );
-
-      if (!passwordValid) {
-        throw new Error('Invalid password');
-      }
-
-      await tx
-        .update(user)
-        .set({ password: hash })
-        .where(eq(user.id, id))
-        .execute();
-    });
+    await this.db
+      .update(user)
+      .set({ password: hash })
+      .where(eq(user.id, row.id))
+      .execute();
   }
 
   updateTotpKey(id: ID, key: string | null) {
-    return this.#statements.updateKey.execute({ id, key });
+    return this.statements.updateKey.execute({ id, key });
   }
 
-  login(username: string, password: string, code: string | undefined) {
-    return this.#db.transaction(async (tx): Promise<LoginResult> => {
-      const txUser = await tx.query.user
-        .findFirst({ where: eq(user.username, username) })
-        .execute();
+  async login(
+    username: string,
+    password: string,
+    code: string | undefined
+  ): Promise<LoginResult> {
+    const row = await this.getByUsername(username);
+    if (!row || !(await isPasswordValid(password, row.password))) {
+      return { success: false, error: 'INCORRECT_CREDENTIALS' };
+    }
 
-      if (!txUser) {
-        return { success: false, error: 'INCORRECT_CREDENTIALS' };
+    if (row.totpVerified) {
+      if (!code) {
+        return { success: false, error: 'TOTP_REQUIRED' };
       }
-
-      const passwordValid = await isPasswordValid(password, txUser.password);
-
-      if (!passwordValid) {
-        return { success: false, error: 'INCORRECT_CREDENTIALS' };
+      if (!row.totpKey) {
+        return { success: false, error: 'UNEXPECTED_ERROR' };
       }
-
-      if (txUser.totpVerified) {
-        if (!code) {
-          return { success: false, error: 'TOTP_REQUIRED' };
-        } else {
-          if (!txUser.totpKey) {
-            return { success: false, error: 'UNEXPECTED_ERROR' };
-          }
-
-          const totp = new TOTP({
-            issuer: TOTP_ISSUER,
-            label: txUser.username,
-            algorithm: 'SHA1',
-            digits: 6,
-            period: 30,
-            secret: txUser.totpKey,
-          });
-
-          const valid = totp.validate({ token: code, window: 1 });
-
-          if (valid === null) {
-            return { success: false, error: 'INVALID_TOTP_CODE' };
-          }
-        }
+      if (!isTotpValid(row.username, row.totpKey, code)) {
+        return { success: false, error: 'INVALID_TOTP_CODE' };
       }
+    }
 
-      if (!txUser.enabled) {
-        return { success: false, error: 'USER_DISABLED' };
-      }
+    if (!row.enabled) {
+      return { success: false, error: 'USER_DISABLED' };
+    }
 
-      return { success: true, user: txUser };
-    });
+    return { success: true, user: row };
   }
 
-  verifyTotp(id: ID, code: string) {
-    return this.#db.transaction(async (tx) => {
-      const txUser = await tx.query.user
-        .findFirst({ where: eq(user.id, id) })
-        .execute();
-
-      if (!txUser) {
-        throw new Error('User not found');
-      }
-
-      if (!txUser.totpKey) {
-        throw new Error('TOTP key is not set');
-      }
-
-      const totp = new TOTP({
-        issuer: TOTP_ISSUER,
-        label: txUser.username,
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: txUser.totpKey,
-      });
-
-      const valid = totp.validate({ token: code, window: 1 });
-
-      if (valid === null) {
-        throw new Error('Invalid TOTP code');
-      }
-
-      await tx
-        .update(user)
-        .set({ totpVerified: true })
-        .where(eq(user.id, id))
-        .execute();
-    });
+  async verifyTotp(id: ID, code: string) {
+    const row = await this.get(id);
+    if (!row) {
+      throw new Error('User not found');
+    }
+    if (!row.totpKey) {
+      throw new Error('TOTP key is not set');
+    }
+    if (!isTotpValid(row.username, row.totpKey, code)) {
+      throw new Error('Invalid TOTP code');
+    }
+    await this.db
+      .update(user)
+      .set({ totpVerified: true })
+      .where(eq(user.id, id))
+      .execute();
   }
 
-  deleteTotpKey(id: ID, currentPassword: string) {
-    return this.#db.transaction(async (tx) => {
-      const txUser = await tx.query.user
-        .findFirst({ where: eq(user.id, id) })
-        .execute();
-
-      if (!txUser) {
-        throw new Error('User not found');
-      }
-
-      const passwordValid = await isPasswordValid(
-        currentPassword,
-        txUser.password
-      );
-
-      if (!passwordValid) {
-        throw new Error('Invalid password');
-      }
-
-      await tx
-        .update(user)
-        .set({ totpKey: null, totpVerified: false })
-        .where(eq(user.id, id))
-        .execute();
-    });
+  async deleteTotpKey(id: ID, currentPassword: string) {
+    await this.#requireWithPassword(id, currentPassword);
+    await this.db
+      .update(user)
+      .set({ totpKey: null, totpVerified: false })
+      .where(eq(user.id, id))
+      .execute();
   }
 }

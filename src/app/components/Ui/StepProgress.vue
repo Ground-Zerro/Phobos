@@ -10,14 +10,5 @@
 </template>
 
 <script setup lang="ts">
-defineProps({
-  step: {
-    type: Number,
-    required: true,
-  },
-  totalSteps: {
-    type: Number,
-    default: 5,
-  },
-});
+defineProps<{ step: number; totalSteps: number }>();
 </script>

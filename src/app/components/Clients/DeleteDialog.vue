@@ -9,12 +9,12 @@
     </template>
     <template #actions>
       <DialogClose as-child>
-        <BasePrimaryButton>{{ $t('dialog.cancel') }}</BasePrimaryButton>
+        <BaseButton variant="primary">{{ $t('dialog.cancel') }}</BaseButton>
       </DialogClose>
       <DialogClose as-child>
-        <BaseSecondaryButton @click="$emit('delete')">
+        <BaseButton @click="$emit('delete')">
           {{ $t('client.deleteClient') }}
-        </BaseSecondaryButton>
+        </BaseButton>
       </DialogClose>
     </template>
   </BaseDialog>

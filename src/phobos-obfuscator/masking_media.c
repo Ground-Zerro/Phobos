@@ -55,7 +55,6 @@ static int media_build_frame(uint8_t *header, int payload_length,
     media_state_t *state = (media_state_t *)client->masking_priv;
     int dir = direction & 1;
     if (!(state->init_mask & (1 << dir))) {
-        fast_rng_init();
         state->seq[dir] = (uint16_t)fast_rand();
         state->timestamp[dir] = fast_rand();
         if (config->media_ssrc) {

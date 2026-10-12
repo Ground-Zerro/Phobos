@@ -1,57 +1,36 @@
-import type { NitroFetchRequest, NitroFetchOptions } from 'nitropack/types';
-import { FetchError } from 'ofetch';
+import type { NitroFetchOptions, NitroFetchRequest } from 'nitropack/types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RevertFn<T = any> = (
-  success: boolean,
-  data: T | undefined
-) => Promise<void>;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SubmitOpts<T = any> = {
-  revert: RevertFn<T>;
+type SubmitOpts<T> = {
+  revert: (success: boolean, data: T | undefined) => Promise<void> | void;
   successMsg?: string;
   noSuccessToast?: boolean;
 };
 
-export function useSubmit<
-  R extends NitroFetchRequest,
-  O extends NitroFetchOptions<R> & { body?: never },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  T = any,
->(url: R, options: O, opts: SubmitOpts<T>) {
+export function useSubmit<T = unknown>(
+  url: MaybeRefOrGetter<string>,
+  options: NitroFetchOptions<NitroFetchRequest> & { body?: never },
+  opts: SubmitOpts<T>
+) {
   const toast = useToast();
+  const { t } = useI18n();
 
   return async (data: unknown) => {
     try {
-      const res = await $fetch(url, {
+      const res = (await $fetch(toValue(url), {
         ...options,
-        body: data,
-      });
+        body: data as BodyInit,
+      })) as T;
 
       if (!opts.noSuccessToast) {
-        toast.showToast({
-          type: 'success',
-          message: opts.successMsg,
-        });
+        toast.showToast({ type: 'success', message: opts.successMsg });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await opts.revert(true, res as any);
+      await opts.revert(true, res);
     } catch (e) {
-      if (e instanceof FetchError) {
-        toast.showToast({
-          type: 'error',
-          message: e.data.message,
-        });
-      } else if (e instanceof Error) {
-        toast.showToast({
-          type: 'error',
-          message: e.message,
-        });
-      } else {
-        console.error(e);
-      }
+      toast.showToast({
+        type: 'error',
+        message: toErrorMessage(e, t('toast.unknown')),
+      });
       await opts.revert(false, undefined);
     }
   };

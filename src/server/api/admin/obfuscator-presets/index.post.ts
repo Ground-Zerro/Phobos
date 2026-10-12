@@ -8,19 +8,10 @@ export default definePermissionEventHandler(
       event,
       validateZod(ObfuscatorPresetCreateSchema, event)
     );
-
-    let preset;
-    try {
-      preset = await Database.obfuscatorPresets.create(data);
-    } catch (e) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: (e as Error).message,
-      });
-    }
-
-    await Obfuscator.applyAll();
-    PhobosPackage.invalidate();
+    const preset = await asBadRequest(() =>
+      Database.obfuscatorPresets.create(data)
+    );
+    await refreshObfuscation();
     return preset;
   }
 );

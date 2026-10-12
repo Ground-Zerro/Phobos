@@ -19,11 +19,11 @@
 phobos://<base64url(conf_text)>#<urlencoded(client_name)>
 ```
 
-| Компонент | Описание | Обязательно |
-|-----------|----------|------|
-| схема `phobos://` | URI scheme; маркер для регистрации обработчика на клиентской ОС | да |
-| `<payload>` (host часть) | весь клиентский `.conf` в UTF-8, закодированный в **base64url** (RFC 4648 §5) без padding | да |
-| `#<fragment>` | имя клиента, URL-encoded; если имени нет — литерал `none` | да |
+| Компонент                | Описание                                                                                  | Обязательно |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ----------- |
+| схема `phobos://`        | URI scheme; маркер для регистрации обработчика на клиентской ОС                           | да          |
+| `<payload>` (host часть) | весь клиентский `.conf` в UTF-8, закодированный в **base64url** (RFC 4648 §5) без padding | да          |
+| `#<fragment>`            | имя клиента, URL-encoded; если имени нет — литерал `none`                                 | да          |
 
 ---
 
@@ -32,11 +32,13 @@ phobos://<base64url(conf_text)>#<urlencoded(client_name)>
 ### 2.1 Алфавит
 
 Стандартный base64 (`A–Z a–z 0–9 + / =`) **не подходит** для URI:
+
 - `/` интерпретируется парсером как разделитель пути;
 - `+` — как пробел в query-string;
 - `=` — padding, видимый, бесполезный в base64url.
 
 Используем **base64url** (RFC 4648 §5):
+
 - `+` → `-`
 - `/` → `_`
 - padding `=` опускается.
@@ -46,11 +48,14 @@ JS/Python референсные реализации:
 ```js
 // encode
 const b64url = btoa(unescape(encodeURIComponent(confText)))
-  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  .replace(/\+/g, "-")
+  .replace(/\//g, "_")
+  .replace(/=+$/, "");
 
 // decode
-const padded = b64url.replace(/-/g, '+').replace(/_/g, '/')
-  + '=='.slice((b64url.length + 3) % 4);
+const padded =
+  b64url.replace(/-/g, "+").replace(/_/g, "/") +
+  "==".slice((b64url.length + 3) % 4);
 const conf = decodeURIComponent(escape(atob(padded)));
 ```
 
@@ -71,10 +76,10 @@ conf = base64.urlsafe_b64decode(b64url + pad).decode("utf-8")
 
 Ключ `mode` в секции `[instance]` — единственный маркер протокола:
 
-| Значение | Смысл | Секции конфига |
-|----------|-------|----------------|
-| `wireguard` (или ключ отсутствует) | WireGuard-туннель, obfuscator в UDP-режиме | `[Interface]`, `[Peer]`, `[instance]` |
-| `socks5` | локальный SOCKS5-прокси, obfuscator в TCP-режиме | `[instance]`, `[socks5]` |
+| Значение                           | Смысл                                            | Секции конфига                        |
+| ---------------------------------- | ------------------------------------------------ | ------------------------------------- |
+| `wireguard` (или ключ отсутствует) | WireGuard-туннель, obfuscator в UDP-режиме       | `[Interface]`, `[Peer]`, `[instance]` |
+| `socks5`                           | локальный SOCKS5-прокси, obfuscator в TCP-режиме | `[instance]`, `[socks5]`              |
 
 `mode` и `role` — валидные ключи бинарника `wg-obfuscator` (`-M`/`--mode`, `-R`/`--role`), поэтому попадают в `[instance]` как есть. Для WireGuard `mode` можно опускать (обратная совместимость со старыми ссылками: отсутствие `mode` = `wireguard`).
 
@@ -146,12 +151,12 @@ password = Zx9Lm
 
 Набор обязательных полей выбирается по протоколу (по наличию `mode = socks5`):
 
-| Секция | WireGuard | SOCKS5 |
-|--------|-----------|--------|
-| `[Interface]` | `PrivateKey`, `Address`, `MTU`, `DNS` | — (секции нет) |
-| `[Peer]` | `PublicKey`, `PresharedKey`, `AllowedIPs`, `PersistentKeepalive`, `Endpoint` | — (секции нет) |
-| `[instance]` | `source-if`, `source-lport`, `target`, `key`, `masking`, `verbose`, `idle-timeout`, `max-dummy` | `mode`, `role`, `source-if`, `source-lport`, `target`, `key`, `masking`, `verbose` |
-| `[socks5]` | — | `login`, `password` |
+| Секция        | WireGuard                                                                                       | SOCKS5                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `[Interface]` | `PrivateKey`, `Address`, `MTU`, `DNS`                                                           | — (секции нет)                                                                     |
+| `[Peer]`      | `PublicKey`, `PresharedKey`, `AllowedIPs`, `PersistentKeepalive`, `Endpoint`                    | — (секции нет)                                                                     |
+| `[instance]`  | `source-if`, `source-lport`, `target`, `key`, `masking`, `verbose`, `idle-timeout`, `max-dummy` | `mode`, `role`, `source-if`, `source-lport`, `target`, `key`, `masking`, `verbose` |
+| `[socks5]`    | —                                                                                               | `login`, `password`                                                                |
 
 Паддинг применяется только к секциям, реально присутствующим в конфиге, — поэтому WireGuard-поля никогда не «протекают» в SOCKS5-конфиг и наоборот. Если значение обязательного поля отсутствует (например, у WireGuard-клиента не задан собственный DNS), производитель ссылки **перед base64-кодированием** дописывает в payload строку с литералом `none` для каждого недостающего обязательного поля:
 
@@ -205,8 +210,9 @@ const link = "phobos://...#Mobil-phone";
 const url = new URL(link);
 const b64url = url.hostname; // или url.host если порта нет
 // (см. ниже про подводный камень)
-const padded = b64url.replace(/-/g, '+').replace(/_/g, '/')
-  + '=='.slice((b64url.length + 3) % 4);
+const padded =
+  b64url.replace(/-/g, "+").replace(/_/g, "/") +
+  "==".slice((b64url.length + 3) % 4);
 const confText = decodeURIComponent(escape(atob(padded)));
 const name = decodeURIComponent(url.hash.slice(1));
 ```
@@ -219,13 +225,13 @@ const name = decodeURIComponent(url.hash.slice(1));
 
 В клиентских полях WireGuard встречаются буквально все типичные URI-разделители:
 
-| Символ | Где встречается |
-|--------|-----------------|
-| `=` | конец base64 ключей (PrivateKey, PublicKey, PresharedKey) |
-| `:` | IPv6 (`fdcc:ad94:bacf:61a4::cafe:4`), Endpoint, target |
-| `,` | Address (несколько адресов), AllowedIPs, DNS (несколько серверов) |
-| `/` | CIDR-маска (`/32`, `/128`, `/0`) |
-| `&` | теоретически может появиться в hook-командах (`iptables ... &`) |
+| Символ | Где встречается                                                   |
+| ------ | ----------------------------------------------------------------- |
+| `=`    | конец base64 ключей (PrivateKey, PublicKey, PresharedKey)         |
+| `:`    | IPv6 (`fdcc:ad94:bacf:61a4::cafe:4`), Endpoint, target            |
+| `,`    | Address (несколько адресов), AllowedIPs, DNS (несколько серверов) |
+| `/`    | CIDR-маска (`/32`, `/128`, `/0`)                                  |
+| `&`    | теоретически может появиться в hook-командах (`iptables ... &`)   |
 
 Любая структурированная схема `key=value&key=value` или `[Section]&Key=Value` уязвима к коллизиям — потребуется тщательное экранирование/URL-encode каждого поля. Base64 убивает проблему полностью одним приёмом.
 
@@ -268,6 +274,7 @@ const name = decodeURIComponent(url.hash.slice(1));
 ### 6.1 Парсинг URL в JS
 
 `new URL("phobos://...")` ведёт себя по-разному в зависимости от наличия `:port`:
+
 - `url.host` = `hostname:port` (если порт есть)
 - `url.hostname` = только host часть
 
@@ -300,11 +307,13 @@ function decodePhobosLink(link) {
   const b64url = url.hostname;
   const pad = "=".repeat((4 - (b64url.length % 4)) % 4);
   const conf = decodeURIComponent(
-    escape(atob(b64url.replace(/-/g, "+").replace(/_/g, "/") + pad))
+    escape(atob(b64url.replace(/-/g, "+").replace(/_/g, "/") + pad)),
   );
   const name = decodeURIComponent(url.hash.slice(1)) || "none";
   // Протокол определяется по содержимому, а не по форме ссылки:
-  const mode = /^\s*mode\s*=\s*socks5\s*$/im.test(conf) ? "socks5" : "wireguard";
+  const mode = /^\s*mode\s*=\s*socks5\s*$/im.test(conf)
+    ? "socks5"
+    : "wireguard";
   return { conf, name, mode };
 }
 ```

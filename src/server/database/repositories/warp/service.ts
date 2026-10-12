@@ -6,7 +6,11 @@ import type {
   WarpType,
   WarpUpdateType,
 } from './types';
+import { Repository } from '#db/repository';
 import type { DBType } from '#db/sqlite';
+
+const WARP_ROW_ID = 1;
+const byRow = eq(warp.id, WARP_ROW_ID);
 
 function maskSecret(value: string): string {
   if (value.length <= 8) {
@@ -35,20 +39,24 @@ export function maskWarp(row: WarpType) {
   };
 }
 
-export class WarpService {
-  #db: DBType;
+function createPreparedStatement(db: DBType) {
+  return {
+    get: db.query.warp.findFirst({ where: eq(warp.id, WARP_ROW_ID) }).prepare(),
+  };
+}
 
+export class WarpService extends Repository<
+  ReturnType<typeof createPreparedStatement>
+> {
   constructor(db: DBType) {
-    this.#db = db;
+    super(db, createPreparedStatement);
   }
 
   async get() {
-    const row = await this.#db.query.warp.findFirst({ where: eq(warp.id, 1) });
-
+    const row = await this.statements.get.execute();
     if (!row) {
       throw new Error('Warp config not found');
     }
-
     return row;
   }
 
@@ -57,59 +65,22 @@ export class WarpService {
     return row.deviceId !== '';
   }
 
-  setRegistration(data: WarpRegistrationType) {
-    return this.#db.update(warp).set(data).where(eq(warp.id, 1)).execute();
-  }
-
-  update(data: Partial<WarpUpdateType> | Partial<WarpManualType>) {
-    return this.#db.update(warp).set(data).where(eq(warp.id, 1)).execute();
-  }
-
-  setLicenseKey(licenseKey: string) {
-    return this.#db
-      .update(warp)
-      .set({ licenseKey })
-      .where(eq(warp.id, 1))
-      .execute();
-  }
-
-  setUpdateInterval(updateIntervalDays: number) {
-    return this.#db
-      .update(warp)
-      .set({ updateIntervalDays })
-      .where(eq(warp.id, 1))
-      .execute();
-  }
-
-  setLastUpdateAt(lastUpdateAt: string | null) {
-    return this.#db
-      .update(warp)
-      .set({ lastUpdateAt })
-      .where(eq(warp.id, 1))
-      .execute();
+  update(
+    data:
+      | WarpRegistrationType
+      | Partial<WarpUpdateType>
+      | Partial<WarpManualType>
+      | Partial<
+          Pick<WarpType, 'licenseKey' | 'updateIntervalDays' | 'lastUpdateAt'>
+        >
+  ) {
+    return this.db.update(warp).set(data).where(byRow).execute();
   }
 
   clear() {
-    return this.#db
-      .update(warp)
-      .set({
-        accessToken: '',
-        deviceId: '',
-        licenseKey: '',
-        privateKey: '',
-        clientId: '',
-        peerPublicKey: '',
-        endpoint: 'engage.cloudflareclient.com:2408',
-        addressV4: '',
-        addressV6: '',
-        mtu: 1280,
-        presharedKey: '',
-        dns: '',
-        persistentKeepalive: 25,
-        updateIntervalDays: 0,
-        lastUpdateAt: null,
-      })
-      .where(eq(warp.id, 1))
-      .execute();
+    return this.db.transaction(async (tx) => {
+      await tx.delete(warp).where(byRow).execute();
+      await tx.insert(warp).values({ id: WARP_ROW_ID }).execute();
+    });
   }
 }

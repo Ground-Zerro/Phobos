@@ -1144,6 +1144,14 @@ static void accept_new(socks5_worker_t *w, socks5_listen_t *route) {
     }
 }
 
+static int hangup_is_terminal(const socks5_conn_t *c, uint8_t kind, uint32_t events) {
+    if (events & EPOLLERR) return 1;
+    if (!(events & EPOLLHUP)) return 0;
+    if (kind == TAG_UDP || c->phase != S5_PHASE_RELAY) return 1;
+    if (kind == TAG_UP) return c->up_rd_closed && c->to_down_off >= c->to_down_len;
+    return c->down_rd_closed && c->to_up_off >= c->to_up_len;
+}
+
 static void handle_event(socks5_worker_t *w, sock_tag_t *tag, uint32_t events, long now) {
     socks5_conn_t *c = tag->conn;
     const obfuscator_config_t *cfg = w->ctx->config;
@@ -1187,6 +1195,7 @@ static void handle_event(socks5_worker_t *w, sock_tag_t *tag, uint32_t events, l
     }
 
     if (rc < 0) { conn_close(w, c); return; }
+    if (hangup_is_terminal(c, tag->kind, events)) { conn_close(w, c); return; }
     c->last_activity = now;
     if (c->phase != S5_PHASE_UDP && conn_finished(c)) { conn_close(w, c); return; }
     refresh_epoll(w, c);

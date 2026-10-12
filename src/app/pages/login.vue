@@ -5,7 +5,6 @@
       class="mx-auto mt-10 flex w-64 flex-col gap-5 overflow-hidden rounded-md bg-white p-5 text-gray-700 shadow dark:bg-neutral-700 dark:text-neutral-200"
       @submit.prevent="submit"
     >
-      <!-- Avatar -->
       <div
         class="mx-auto mb-5 mt-5 h-20 w-20 overflow-hidden rounded-full bg-red-800 dark:bg-red-800"
       >
@@ -58,6 +57,10 @@
 </template>
 
 <script setup lang="ts">
+import type { TypedInternalResponse } from 'nitropack/types';
+
+type SessionResponse = TypedInternalResponse<'/api/session', unknown, 'post'>;
+
 const toast = useToast();
 const { t } = useI18n();
 
@@ -67,7 +70,7 @@ const password = ref<string>('');
 const totpRequired = ref(false);
 const totp = ref<string>('');
 
-const _submit = useSubmit(
+const _submit = useSubmit<SessionResponse>(
   '/api/session',
   {
     method: 'post',
@@ -112,7 +115,6 @@ async function submit() {
   return _submit({
     username: username.value,
     password: password.value,
-    remember: true,
     totpCode: totpRequired.value ? totp.value : undefined,
   });
 }

@@ -122,18 +122,16 @@
       </FormGroup>
     </FormElement>
 
-    <WarpImportDialog v-model:open="importOpen" @success="revert" />
+    <WarpImportDialog v-model:open="importOpen" @success="resetForm" />
   </main>
 </template>
 
 <script setup lang="ts">
 const { t } = useI18n();
 
-const { data: _data, refresh } = await useFetch(`/api/admin/warp`, {
-  method: 'get',
-});
-
-const data = toRef(_data.value);
+const { data, revert } = useEditable(
+  await useFetch(`/api/admin/warp`, { method: 'get' })
+);
 
 const toast = useToast();
 
@@ -144,16 +142,10 @@ const checking = ref(false);
 
 const egressActive = computed(() => data.value?.egressMode === 'warp');
 
-async function revert() {
-  await refresh();
-  data.value = toRef(_data.value).value;
+async function resetForm() {
+  await revert();
   license.value = '';
   interval.value = data.value?.updateIntervalDays ?? 0;
-}
-
-async function syncStatus() {
-  await refresh();
-  data.value = toRef(_data.value).value;
 }
 
 async function checkNow() {
@@ -168,11 +160,11 @@ async function checkNow() {
         ? { type: 'success', message: t('admin.warp.checkOnline') }
         : { type: 'error', message: t('admin.warp.checkOffline') }
     );
-    await syncStatus();
+    await revert();
   } catch (e) {
     toast.showToast({
       type: 'error',
-      message: e instanceof Error ? e.message : t('admin.warp.checkOffline'),
+      message: toErrorMessage(e, t('admin.warp.checkOffline')),
     });
   } finally {
     checking.value = false;
@@ -184,7 +176,7 @@ const statusPoll = ref<NodeJS.Timeout | null>(null);
 onMounted(() => {
   statusPoll.value = setInterval(() => {
     if (data.value?.registered) {
-      syncStatus().catch(console.error);
+      revert().catch(console.error);
     }
   }, 5000);
 });
@@ -199,31 +191,31 @@ onUnmounted(() => {
 const _register = useSubmit(
   `/api/admin/warp/register`,
   { method: 'post' },
-  { revert, successMsg: t('admin.warp.registerSuccess') }
+  { revert: resetForm, successMsg: t('admin.warp.registerSuccess') }
 );
 
 const _applyLicense = useSubmit(
   `/api/admin/warp/license`,
   { method: 'post' },
-  { revert, successMsg: t('admin.warp.licenseSuccess') }
+  { revert: resetForm, successMsg: t('admin.warp.licenseSuccess') }
 );
 
 const _saveInterval = useSubmit(
   `/api/admin/warp/interval`,
   { method: 'post' },
-  { revert }
+  { revert: resetForm }
 );
 
 const _changeIp = useSubmit(
   `/api/admin/warp/change-ip`,
   { method: 'post' },
-  { revert, successMsg: t('admin.warp.changeIpSuccess') }
+  { revert: resetForm, successMsg: t('admin.warp.changeIpSuccess') }
 );
 
 const _remove = useSubmit(
   `/api/admin/warp`,
   { method: 'delete' },
-  { revert, successMsg: t('admin.warp.deleteSuccess') }
+  { revert: resetForm, successMsg: t('admin.warp.deleteSuccess') }
 );
 
 function register() {

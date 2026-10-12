@@ -1,11 +1,10 @@
-import { sql } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { timestamps } from '../../timestamps';
 
 import { wgInterface } from '../../schema';
 
-// default* means clients store it themselves
 export const userConfig = sqliteTable('user_configs_table', {
-  /** same as `wgInterface.name` */
   id: text()
     .primaryKey()
     .references(() => wgInterface.name, {
@@ -19,11 +18,5 @@ export const userConfig = sqliteTable('user_configs_table', {
     .$type<string[]>()
     .notNull(),
   host: text().notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });

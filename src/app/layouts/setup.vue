@@ -19,10 +19,7 @@
           <slot />
 
           <div class="mt-12 flex">
-            <UiStepProgress
-              :step="setupStore.step"
-              :total-steps="setupStore.totalSteps"
-            />
+            <UiStepProgress :step="step" :total-steps="SETUP_TOTAL_STEPS" />
           </div>
         </PanelBody>
       </Panel>
@@ -32,5 +29,10 @@
 </template>
 
 <script lang="ts" setup>
-const setupStore = useSetupStore();
+const SETUP_TOTAL_STEPS = 4;
+
+const route = useRoute();
+const step = computed(() =>
+  Number(route.path.match(/\/setup\/(\d)/)?.[1] ?? 1)
+);
 </script>

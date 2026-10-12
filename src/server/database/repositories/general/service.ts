@@ -1,52 +1,12 @@
 import { sql } from 'drizzle-orm';
 import { general } from './schema';
 import type { GeneralUpdateType } from './types';
+import { Repository } from '#db/repository';
 import type { DBType } from '#db/sqlite';
 
 function createPreparedStatement(db: DBType) {
   return {
-    getSetupStep: db.query.general
-      .findFirst({
-        columns: {
-          setupStep: true,
-        },
-      })
-      .prepare(),
-    getAllowInsecureHttpLogin: db.query.general
-      .findFirst({
-        columns: {
-          allowInsecureHttpLogin: true,
-        },
-      })
-      .prepare(),
-    getSessionConfig: db.query.general
-      .findFirst({
-        columns: {
-          sessionPassword: true,
-          sessionTimeout: true,
-          allowInsecureHttpLogin: true,
-        },
-      })
-      .prepare(),
-    getMetricsConfig: db.query.general
-      .findFirst({
-        columns: {
-          metricsPrometheus: true,
-          metricsJson: true,
-          metricsPassword: true,
-        },
-      })
-      .prepare(),
-    getConfig: db.query.general
-      .findFirst({
-        columns: {
-          sessionTimeout: true,
-          metricsPrometheus: true,
-          metricsJson: true,
-          metricsPassword: true,
-        },
-      })
-      .prepare(),
+    get: db.query.general.findFirst().prepare(),
     updateSetupStep: db
       .update(general)
       .set({
@@ -56,99 +16,72 @@ function createPreparedStatement(db: DBType) {
   };
 }
 
-export class GeneralService {
-  #db: DBType;
-  #statements: ReturnType<typeof createPreparedStatement>;
-
+export class GeneralService extends Repository<
+  ReturnType<typeof createPreparedStatement>
+> {
   constructor(db: DBType) {
-    this.#db = db;
-    this.#statements = createPreparedStatement(db);
+    super(db, createPreparedStatement);
   }
 
-  /**
-   * @throws
-   */
-  async getSetupStep() {
-    const result = await this.#statements.getSetupStep.execute();
-
-    if (!result) {
+  async #get() {
+    const row = await this.statements.get.execute();
+    if (!row) {
       throw new Error('General Config not found');
     }
+    return row;
+  }
 
-    return { step: result.setupStep, done: result.setupStep === 0 };
+  async getSetupStep() {
+    const { setupStep } = await this.#get();
+    return { step: setupStep, done: setupStep === 0 };
   }
 
   setSetupStep(step: number) {
-    return this.#statements.updateSetupStep.execute({ setupStep: step });
+    return this.statements.updateSetupStep.execute({ setupStep: step });
   }
 
-  /**
-   * @throws
-   */
   async getSessionConfig() {
-    const result = await this.#statements.getSessionConfig.execute();
-
-    if (!result) {
-      throw new Error('General Config not found');
-    }
-
+    const row = await this.#get();
     return {
-      sessionPassword: result.sessionPassword,
-      sessionTimeout: result.sessionTimeout,
-      allowInsecureHttpLogin: result.allowInsecureHttpLogin,
+      sessionPassword: row.sessionPassword,
+      sessionTimeout: row.sessionTimeout,
+      allowInsecureHttpLogin: row.allowInsecureHttpLogin,
     };
   }
 
-  /** For /api/information etc. — avoids loading session secrets. */
-  async getAllowInsecureHttpLogin() {
-    const row = await this.#statements.getAllowInsecureHttpLogin.execute();
-    return row?.allowInsecureHttpLogin ?? false;
-  }
-
   setAllowInsecureHttpLogin(allowed: boolean) {
-    return this.#db
+    return this.db
       .update(general)
       .set({ allowInsecureHttpLogin: allowed })
       .execute();
   }
 
-  /**
-   * @throws
-   */
   async getMetricsConfig() {
-    const result = await this.#statements.getMetricsConfig.execute();
-
-    if (!result) {
-      throw new Error('General Config not found');
-    }
-
+    const row = await this.#get();
     return {
-      prometheus: result.metricsPrometheus,
-      json: result.metricsJson,
-      password: result.metricsPassword,
+      prometheus: row.metricsPrometheus,
+      json: row.metricsJson,
+      password: row.metricsPassword,
+    };
+  }
+
+  async getConfig() {
+    const row = await this.#get();
+    return {
+      sessionTimeout: row.sessionTimeout,
+      metricsPrometheus: row.metricsPrometheus,
+      metricsJson: row.metricsJson,
+      metricsPasswordSet: row.metricsPassword != null,
     };
   }
 
   async update(data: GeneralUpdateType) {
-    if (data.metricsPassword) {
-      data.metricsPassword = await hashPassword(data.metricsPassword);
-    }
-
-    return this.#db.update(general).set(data).execute();
-  }
-
-  async getConfig() {
-    const result = await this.#statements.getConfig.execute();
-
-    if (!result) {
-      throw new Error('General Config not found');
-    }
-
-    return {
-      sessionTimeout: result.sessionTimeout,
-      metricsPrometheus: result.metricsPrometheus,
-      metricsJson: result.metricsJson,
-      metricsPasswordSet: result.metricsPassword != null,
-    };
+    const metricsPassword = data.metricsPassword
+      ? await hashPassword(data.metricsPassword)
+      : undefined;
+    return this.db
+      .update(general)
+      .set({ ...data, metricsPassword })
+      .execute();
   }
 }

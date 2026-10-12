@@ -33,11 +33,9 @@
 </template>
 
 <script setup lang="ts">
-const { data: _data, refresh } = await useFetch(`/api/admin/hooks`, {
-  method: 'get',
-});
-
-const data = toRef(_data.value);
+const { data, revert } = useEditable(
+  await useFetch(`/api/admin/hooks`, { method: 'get' })
+);
 
 const _submit = useSubmit(
   `/api/admin/hooks`,
@@ -49,10 +47,5 @@ const _submit = useSubmit(
 
 async function submit() {
   return _submit(data.value);
-}
-
-async function revert() {
-  await refresh();
-  data.value = toRef(_data.value).value;
 }
 </script>

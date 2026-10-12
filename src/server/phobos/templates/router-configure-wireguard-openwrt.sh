@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+. "$(dirname "$0")/lib-client.sh"
+
 CLIENT_NAME=""
 CLIENT_PRIVATE_KEY=""
 CLIENT_IP=""
@@ -13,15 +15,6 @@ MTU=1420
 FALLBACK_CONFIG=""
 INTERFACE_NAME="phobos_wg"
 ZONE_NAME="phobos_wg"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-}
-
-error() {
-    echo "[ERROR] $*" >&2
-    log "ERROR: $*"
-}
 
 usage() {
     cat <<EOF

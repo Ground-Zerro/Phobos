@@ -1,7 +1,7 @@
 #!/command/with-contenv sh
 cd /app
-export DEBUG=Server,WireGuard,Database,CMD,Obfuscator,PhobosPackage
-if [ "${TLS_TERMINATION:-internal}" != "external" ] && [ -f /app/certs/active/fullchain.pem ] && [ -f /app/certs/active/privkey.pem ]; then
+export DEBUG=Server,WireGuard,Database,CMD,Obfuscator,PhobosPackage,Firewall,Warp
+if [ -f /app/certs/active/fullchain.pem ] && [ -f /app/certs/active/privkey.pem ]; then
   export NITRO_SSL_CERT=$(cat /app/certs/active/fullchain.pem)
   export NITRO_SSL_KEY=$(cat /app/certs/active/privkey.pem)
 fi

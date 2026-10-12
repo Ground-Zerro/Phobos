@@ -15,7 +15,6 @@ export default defineNuxtConfig({
     'radix-vue/nuxt',
     '@vueuse/nuxt',
     '@nuxt/eslint',
-    '@nuxt/test-utils/module',
   ],
   colorMode: {
     preference: 'system',
@@ -122,9 +121,6 @@ export default defineNuxtConfig({
     },
     alias: {
       '#db': fileURLToPath(new URL('./server/database/', import.meta.url)),
-    },
-    externals: {
-      traceInclude: [fileURLToPath(new URL('./cli/index.ts', import.meta.url))],
     },
   },
   alias: {

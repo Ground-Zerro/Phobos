@@ -8,134 +8,148 @@ type WGClientReturn = TypedInternalResponse<
   'get'
 >[number];
 
-export type LocalClient = WGClientReturn & {
-  avatar?: string;
-  transferMax?: number;
-} & Omit<ClientPersist, 'transferRxPrevious' | 'transferTxPrevious'>;
+type TransferSeries = { name: string; data: number[] }[];
 
-export type ClientPersist = {
+type ClientRuntime = {
   transferRxHistory: number[];
   transferRxPrevious: number;
   transferRxCurrent: number;
-  transferRxSeries: { name: string; data: number[] }[];
-  hoverRx?: unknown;
+  transferRxSeries: TransferSeries;
   transferTxHistory: number[];
   transferTxPrevious: number;
   transferTxCurrent: number;
-  transferTxSeries: { name: string; data: number[] }[];
-  hoverTx?: unknown;
+  transferTxSeries: TransferSeries;
 };
+
+export type LocalClient = WGClientReturn & {
+  avatar?: string;
+} & Pick<
+    ClientRuntime,
+    | 'transferRxCurrent'
+    | 'transferRxSeries'
+    | 'transferTxCurrent'
+    | 'transferTxSeries'
+  >;
+
+const HISTORY_LENGTH = 50;
+
+function gravatarUrl(name: string): string | undefined {
+  if (!name.includes('@') || !name.includes('.')) {
+    return undefined;
+  }
+  return `https://gravatar.com/avatar/${sha256(name.toLowerCase().trim())}.jpg`;
+}
+
+function createRuntime(client: WGClientReturn): ClientRuntime {
+  return {
+    transferRxHistory: Array(HISTORY_LENGTH).fill(0),
+    transferRxPrevious: client.transferRx ?? 0,
+    transferRxCurrent: 0,
+    transferRxSeries: [],
+    transferTxHistory: Array(HISTORY_LENGTH).fill(0),
+    transferTxPrevious: client.transferTx ?? 0,
+    transferTxCurrent: 0,
+    transferTxSeries: [],
+  };
+}
+
+function advance(
+  runtime: ClientRuntime,
+  client: WGClientReturn,
+  updateCharts: boolean
+) {
+  const rx = client.transferRx ?? 0;
+  const tx = client.transferTx ?? 0;
+  runtime.transferRxCurrent = rx - runtime.transferRxPrevious;
+  runtime.transferRxPrevious = rx;
+  runtime.transferTxCurrent = tx - runtime.transferTxPrevious;
+  runtime.transferTxPrevious = tx;
+
+  if (!updateCharts) {
+    return;
+  }
+
+  runtime.transferRxHistory.push(runtime.transferRxCurrent);
+  runtime.transferRxHistory.shift();
+  runtime.transferTxHistory.push(runtime.transferTxCurrent);
+  runtime.transferTxHistory.shift();
+  runtime.transferRxSeries = [{ name: 'Rx', data: runtime.transferRxHistory }];
+  runtime.transferTxSeries = [{ name: 'Tx', data: runtime.transferTxHistory }];
+}
 
 export const useClientsStore = defineStore('Clients', () => {
   const globalStore = useGlobalStore();
   const clients = ref<null | LocalClient[]>(null);
-  const clientsPersist = ref<Record<string, ClientPersist>>({});
+  const runtimes = new Map<number, ClientRuntime>();
+  const avatars = new Map<string, string | undefined>();
 
   const searchParams = ref({
     filter: undefined as string | undefined,
   });
 
-  const { data: _clients, refresh: _refresh } = useFetch('/api/client', {
+  const { data: fetchedClients, refresh: refetch } = useFetch('/api/client', {
     method: 'get',
     params: searchParams,
   });
 
-  // TODO: rewrite
+  function avatarFor(name: string) {
+    if (!avatars.has(name)) {
+      avatars.set(name, gravatarUrl(name));
+    }
+    return avatars.get(name);
+  }
+
+  function prune(present: ReadonlySet<number>) {
+    for (const id of runtimes.keys()) {
+      if (!present.has(id)) {
+        runtimes.delete(id);
+      }
+    }
+  }
+
+  function sorted(list: LocalClient[]) {
+    return sortByProperty(list, 'name', globalStore.sortClient);
+  }
+
   async function refresh({ updateCharts = false } = {}) {
-    await _refresh();
-    let transformedClients = _clients.value?.map((client) => {
-      let avatar = undefined;
-      if (client.name.includes('@') && client.name.includes('.')) {
-        avatar = `https://gravatar.com/avatar/${sha256(client.name.toLowerCase().trim())}.jpg`;
+    await refetch();
+    const fetched = fetchedClients.value;
+    if (!fetched) {
+      clients.value = null;
+      return;
+    }
+
+    const present = new Set<number>();
+    const transformed = fetched.map((client): LocalClient => {
+      present.add(client.id);
+      let runtime = runtimes.get(client.id);
+      if (!runtime) {
+        runtime = createRuntime(client);
+        runtimes.set(client.id, runtime);
       }
-
-      if (!clientsPersist.value[client.id]) {
-        clientsPersist.value[client.id] = {
-          transferRxHistory: Array(50).fill(0),
-          transferRxPrevious: client.transferRx ?? 0,
-          transferTxHistory: Array(50).fill(0),
-          transferTxPrevious: client.transferTx ?? 0,
-          transferRxCurrent: 0,
-          transferTxCurrent: 0,
-          transferRxSeries: [],
-          transferTxSeries: [],
-        };
-      }
-
-      // We know that this can't be undefined
-      const clientPersist = clientsPersist.value[client.id]!;
-
-      // Debug
-      /* client.transferRx =
-        clientPersist.transferRxPrevious + Math.random() * 1000;
-      client.transferTx =
-        clientPersist.transferTxPrevious + Math.random() * 1000;
-      client.latestHandshakeAt = new Date().toISOString(); */
-
-      clientPersist.transferRxCurrent =
-        (client.transferRx ?? 0) - clientPersist.transferRxPrevious;
-
-      clientPersist.transferRxPrevious = client.transferRx ?? 0;
-
-      clientPersist.transferTxCurrent =
-        (client.transferTx ?? 0) - clientPersist.transferTxPrevious;
-
-      clientPersist.transferTxPrevious = client.transferTx ?? 0;
-
-      let transferMax = undefined;
-
-      if (updateCharts) {
-        clientPersist.transferRxHistory.push(clientPersist.transferRxCurrent);
-        clientPersist.transferRxHistory.shift();
-
-        clientPersist.transferTxHistory.push(clientPersist.transferTxCurrent);
-        clientPersist.transferTxHistory.shift();
-
-        clientPersist.transferTxSeries = [
-          {
-            name: 'Tx',
-            data: clientPersist.transferTxHistory,
-          },
-        ];
-
-        clientPersist.transferRxSeries = [
-          {
-            name: 'Rx',
-            data: clientPersist.transferRxHistory,
-          },
-        ];
-
-        transferMax = Math.max(
-          ...clientPersist.transferTxHistory,
-          ...clientPersist.transferRxHistory
-        );
-      }
+      advance(runtime, client, updateCharts);
 
       return {
         ...client,
-        avatar,
-        transferTxHistory: clientPersist.transferTxHistory,
-        transferRxHistory: clientPersist.transferRxHistory,
-        transferMax,
-        transferTxSeries: clientPersist.transferTxSeries,
-        transferRxSeries: clientPersist.transferRxSeries,
-        transferTxCurrent: clientPersist.transferTxCurrent,
-        transferRxCurrent: clientPersist.transferRxCurrent,
-        hoverTx: clientPersist.hoverTx,
-        hoverRx: clientPersist.hoverRx,
+        avatar: avatarFor(client.name),
+        transferRxCurrent: runtime.transferRxCurrent,
+        transferRxSeries: runtime.transferRxSeries,
+        transferTxCurrent: runtime.transferTxCurrent,
+        transferTxSeries: runtime.transferTxSeries,
       };
     });
 
-    // TODO: move sort to backend
-    if (transformedClients !== undefined) {
-      transformedClients = sortByProperty(
-        transformedClients,
-        'name',
-        globalStore.sortClient
-      );
+    if (!searchParams.value.filter) {
+      prune(present);
     }
 
-    clients.value = transformedClients ?? null;
+    clients.value = sorted(transformed);
+  }
+
+  function resort() {
+    if (clients.value) {
+      clients.value = sorted([...clients.value]);
+    }
   }
 
   function setSearchQuery(filter: string) {
@@ -143,5 +157,5 @@ export const useClientsStore = defineStore('Clients', () => {
     searchParams.value.filter = filter || undefined;
   }
 
-  return { clients, clientsPersist, refresh, _clients, setSearchQuery };
+  return { clients, refresh, resort, setSearchQuery };
 });

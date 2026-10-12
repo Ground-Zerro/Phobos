@@ -37,9 +37,6 @@
     "logout": "Logg ut",
     "continue": "Fortsett",
     "host": "Vert",
-    "port": "Port",
-    "yes": "Ja",
-    "no": "Nei",
     "confirmPassword": "Bekreft passord",
     "loading": "Laster...",
     "2fa": "Tofaktorautentisering",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "Velkommen til ditt oppsett av PhobosWG",
     "welcomeDesc": "Du har funnet den enkleste måten å distribuere en robust WireGuard på",
-    "existingSetup": "Har du et eksisterende oppsett?",
     "createAdminDesc": "Skriv først inn et adminbrukernavn og et sterkt, sikkert passord. Denne informasjonen brukes til å logge inn i administrasjonspanelet.",
     "setupConfigDesc": "Skriv inn vert- og portinformasjon. Dette brukes til klientkonfigurasjonen når du setter opp WireGuard på enhetene deres.",
-    "setupMigrationDesc": "Oppgi sikkerhetskopifilen hvis du vil migrere dataene dine fra forrige wg-easy-versjon til det nye oppsettet.",
-    "upload": "Last opp",
-    "migration": "Gjenopprett sikkerhetskopien:",
     "createAccount": "Opprett konto",
-    "successful": "Oppsett vellykket",
     "hostDesc": "Offentlig vertsnavn klienter vil koble seg til",
-    "portDesc": "Offentlig UDP-port klienter vil koble til og WireGuard vil lytte på",
     "tls": {
-      "title": "HTTPS-/TLS-sertifikat",
       "desc": "Sett opp et TLS-sertifikat for å aktivere sikker HTTPS-tilgang. Uten HTTPS er innlogging blokkert som standard.",
       "selfSigned": "Selvsignert sertifikat",
       "selfSignedDesc": "Genereres umiddelbart for verten din. Nettleseren viser en sikkerhetsadvarsel — klikk Avansert → Fortsett.",
@@ -76,13 +66,10 @@
       "certLabel": "Sertifikat (PEM fullchain)",
       "keyLabel": "Privat nøkkel (PEM)",
       "generate": "Generer sertifikat",
-      "apply": "Bruk",
       "restarting": "Sertifikatet er tatt i bruk. Serveren starter på nytt med HTTPS ...",
       "redirectPrompt": "Åpne den sikre versjonen:",
       "openLink": "Åpne HTTPS",
-      "skipWarning": "Uten TLS-sertifikat er nettgrensesnittet bare tilgjengelig over HTTP.",
-      "errorCert": "Validering av sertifikatet mislyktes",
-      "errorKey": "Validering av den private nøkkelen mislyktes"
+      "skipWarning": "Uten TLS-sertifikat er nettgrensesnittet bare tilgjengelig over HTTP."
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "Logg inn",
-    "rememberMe": "Husk meg",
-    "rememberMeDesc": "Hold deg innlogget etter at nettleseren lukkes",
     "2faRequired": "Tofaktorautentisering er påkrevd",
     "2faWrong": "Tofaktorautentisering er feil"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "Sist sett ",
     "totalDownload": "Totalt nedlastet: ",
     "totalUpload": "Totalt opplastet: ",
-    "newClient": "Ny klient",
     "disableClient": "Deaktiver klient",
     "enableClient": "Aktiver klient",
-    "noPrivKey": "Denne klienten har ingen kjent privat nøkkel. Kan ikke opprette konfigurasjon.",
     "showQR": "Vis QR-kode",
     "allowedIpsDesc": "Hvilke IP-er som rutes gjennom VPN (overstyrer global konfig)",
     "serverAllowedIpsDesc": "Hvilke IP-er serveren ruter til klienten",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "Tilkobling",
       "hostDesc": "Offentlig vertsnavn klienter vil koble til (ugyldiggjør konfig)",
-      "portDesc": "Offentlig UDP-port klienter vil koble til (ugyldiggjør konfig, du vil sannsynligvis også endre Grensesnitt-port)",
       "allowedIpsDesc": "Tillatte IP-er klienter vil bruke (global konfig)",
       "dnsDesc": "DNS-server klienter vil bruke (global konfig)",
       "mtuDesc": "MTU klienter vil bruke (kun for nye klienter)",
@@ -218,10 +200,8 @@
       "device": "Enhet",
       "deviceDesc": "Ethernet-enhet som WireGuard-trafikken skal videresendes gjennom",
       "mtuDesc": "MTU WireGuard vil bruke",
-      "portDesc": "UDP-port WireGuard vil lytte på (du vil sannsynligvis også endre Konfig-port)",
       "changeCidr": "Endre CIDR",
       "restart": "Start grensesnitt på nytt",
-      "restartDesc": "Start WireGuard-grensesnittet på nytt",
       "restartWarn": "Er du sikker på at du vil starte grensesnittet på nytt? Dette vil koble fra alle klienter.",
       "restartSuccess": "Grensesnitt startet på nytt",
       "egress": "Utgangspunkt",
@@ -290,7 +270,6 @@
       "apply": "Bruk TLS-konfigurasjonen",
       "applied": "TLS-konfigurasjonen er tatt i bruk. Serveren starter på nytt.",
       "appliedRestart": "TLS-konfigurasjonen er tatt i bruk. Serveren starter på nytt; åpne {url} igjen om noen sekunder.",
-      "externalManaged": "TLS håndteres av en ekstern omvendt proxy (TLS_TERMINATION=external). Sertifikatet må utstedes og fornyes utenfor PhobosWG.",
       "origin": {
         "self-signed": "Selvsignert",
         "imported": "Importert (innlimt PEM)",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "Obfuskator-forhåndsinnstillinger",
       "desc": "Hver forhåndsinnstilling kjører sin egen wg-obfuscator-lytter med egen port, nøkkel og maskering. Standardforhåndsinnstillingen gjelder alle klienter uten eksplisitt tildeling. WireGuard-forhåndsinnstillinger bruker UDP-portene 51822-51861, SOCKS5-forhåndsinnstillinger TCP-portene 51862-51891 — områdene som docker-compose publiserer.",
       "add": "Legg til forhåndsinnstilling",
       "addDesc": "Skriv inn bare et navn. Port, nøkkel og øvrige parametere får fornuftige standardverdier og kan redigeres i forhåndsinnstillingen etterpå.",
@@ -351,8 +329,7 @@
       "validBoolean": "{0} må være en gyldig boolsk verdi",
       "validArray": "{0} må være en gyldig liste",
       "stringMin": "{0} må være minst {1} tegn",
-      "numberMin": "{0} må være minst {1}",
-      "validNumberRange": "{0} må være et gyldig tall eller tallområde"
+      "numberMin": "{0} må være minst {1}"
     },
     "client": {
       "id": "Klient-ID",
@@ -370,13 +347,10 @@
     "user": {
       "username": "Brukernavn",
       "password": "Passord",
-      "remember": "Husk",
       "name": "Navn",
       "email": "E-post",
       "emailInvalid": "E-post må være en gyldig e-postadresse",
       "passwordMatch": "Passord må være like",
-      "totpEnable": "TOTP aktivert",
-      "totpEnableTrue": "TOTP aktivert må være sant",
       "totpCode": "TOTP-kode"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "Strengen er ugyldig",
-    "body": "Innholdet må være et gyldig objekt",
     "hook": "Hook",
     "enabled": "Aktivert",
     "mtu": "MTU",
-    "port": "Port",
     "persistentKeepalive": "Vedvarende keepalive",
     "address": "IP-adresse",
     "dns": "DNS",
     "allowedIps": "Tillatte IP-er",
-    "file": "Fil",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "IPv4-adresse",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "Obfuskerte byte (0-1024)",
       "obfuscateBytesMedia": "For MEDIA er minimum 4 (eller 0 for standardverdien 16)",
       "verbose": "Loggnivå",
-      "idle": "Tidsavbrudd ved inaktivitet",
       "dummy": "Maks. fyllbyte",
       "clientWgLocalPort": "Lokal WireGuard-port på klientsiden",
       "mediaSsrc": "RTP-SSRC",
@@ -454,7 +418,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "Kopiering støttes ikke",
     "copied": "Kopiert!",
     "failed": "Kopiering mislyktes",
     "copy": "Kopier",

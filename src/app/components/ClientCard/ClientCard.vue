@@ -1,5 +1,5 @@
 <template>
-  <ClientCardCharts :client="client" />
+  <ClientCardCharts v-if="globalStore.uiShowCharts" :client="client" />
   <div
     class="relative flex flex-col justify-between gap-3 px-3 py-3 sm:flex-row md:py-5"
   >
@@ -66,6 +66,8 @@
 const props = defineProps<{
   client: LocalClient;
 }>();
+
+const globalStore = useGlobalStore();
 
 const isSocks5 = computed(() => props.client.preset.mode === 'SOCKS5');
 </script>

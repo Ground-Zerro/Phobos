@@ -1,5 +1,7 @@
-import { sql, relations } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { timestamps } from '../../timestamps';
 
 import { client } from '../../schema';
 
@@ -13,13 +15,7 @@ export const user = sqliteTable('users_table', {
   totpKey: text('totp_key'),
   totpVerified: int('totp_verified', { mode: 'boolean' }).notNull(),
   enabled: int({ mode: 'boolean' }).notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });
 
 export const usersRelations = relations(user, ({ many }) => ({

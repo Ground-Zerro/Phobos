@@ -1,20 +1,6 @@
-import { ClientGetSchema } from '#db/repositories/client/types';
-
-export default definePermissionEventHandler(
-  'clients',
-  'update',
-  async ({ event, checkPermissions }) => {
-    const { clientId } = await getValidatedRouterParams(
-      event,
-      validateZod(ClientGetSchema, event)
-    );
-
-    const client = await Database.clients.get(clientId);
-    checkPermissions(client);
-
-    await Database.clients.toggle(clientId, true);
-    await WireGuard.saveConfig();
-    await Obfuscator.applyAll();
-    return { success: true };
-  }
-);
+export default defineClientHandler('update', async ({ client }) => {
+  await Database.clients.toggle(client.id, true);
+  await WireGuard.saveConfig();
+  await Obfuscator.applyAll();
+  return { success: true };
+});

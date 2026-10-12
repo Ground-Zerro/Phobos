@@ -15,22 +15,22 @@
       </div>
     </template>
     <template #actions>
-      <BaseSecondaryButton
+      <BaseButton
         class="flex items-center gap-2"
         :title="$t('client.copyLink')"
         @click="copyLink"
       >
         <IconsLink class="size-5" /> {{ $t('client.linkShort') }}
-      </BaseSecondaryButton>
-      <BaseSecondaryButton
+      </BaseButton>
+      <BaseButton
         class="flex items-center gap-2"
         :title="$t('client.downloadPng')"
         @click="downloadPng"
       >
         <IconsDownload class="size-5" /> PNG
-      </BaseSecondaryButton>
+      </BaseButton>
       <DialogClose as-child>
-        <BaseSecondaryButton>{{ $t('dialog.cancel') }}</BaseSecondaryButton>
+        <BaseButton>{{ $t('dialog.cancel') }}</BaseButton>
       </DialogClose>
     </template>
   </BaseDialog>
@@ -46,49 +46,20 @@ const props = defineProps<{
 const toast = useToast();
 const { t } = useI18n();
 const img = useTemplateRef('img');
-const copy = useCopyToClipboard();
+const { open, config, copyText } = useClientConfig(() => props.configUrl);
 
-const open = ref(false);
-const configText = ref<string | null>(null);
-const configLoading = ref(false);
-
-async function loadConfig() {
-  if (configText.value || configLoading.value) return;
-  configLoading.value = true;
-  try {
-    const text = await $fetch<string>(props.configUrl, {
-      responseType: 'text',
-    });
-    configText.value = typeof text === 'string' ? text : String(text ?? '');
-  } catch (e) {
-    console.error('failed to fetch config', e);
-  } finally {
-    configLoading.value = false;
-  }
+function copyConfig() {
+  return copyText(config.value, {
+    success: t('copy.copied'),
+    failure: t('copy.failed'),
+  });
 }
 
-watch(open, (isOpen) => {
-  if (isOpen) {
-    loadConfig();
-  }
-});
-
-async function copyConfig() {
-  const text = configText.value;
-  if (!text) {
-    if (!configLoading.value) {
-      loadConfig();
-    }
-    toast.showToast({ type: 'error', message: t('copy.failed') });
-    return;
-  }
-  try {
-    await copy(text);
-    toast.showToast({ type: 'success', message: t('copy.copied') });
-  } catch (e) {
-    console.error('failed to copy config', e);
-    toast.showToast({ type: 'error', message: t('copy.failed') });
-  }
+function copyLink() {
+  return copyText(
+    config.value && buildPhobosLink(config.value, props.clientName ?? null),
+    { success: t('client.linkCopied'), failure: t('client.linkFailed') }
+  );
 }
 
 async function svgToPng() {
@@ -116,23 +87,6 @@ async function svgToPng() {
       return res(blob);
     }, 'image/png');
   });
-}
-
-async function copyLink() {
-  const config = configText.value;
-  if (!config) {
-    if (!configLoading.value) loadConfig();
-    toast.showToast({ type: 'error', message: t('client.linkFailed') });
-    return;
-  }
-  try {
-    const link = buildPhobosLink(config, props.clientName ?? null);
-    await copy(link);
-    toast.showToast({ type: 'success', message: t('client.linkCopied') });
-  } catch (e) {
-    console.error('failed to copy phobos link', e);
-    toast.showToast({ type: 'error', message: t('client.linkFailed') });
-  }
 }
 
 async function downloadPng() {

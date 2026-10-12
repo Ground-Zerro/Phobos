@@ -1,25 +1,10 @@
 export default defineMetricsHandler('json', async () => {
-  return getMetricsJSON();
-});
-
-async function getMetricsJSON() {
   const clients = await WireGuard.getAllClients();
-  let wireguardPeerCount = 0;
-  let wireguardEnabledPeersCount = 0;
-  let wireguardConnectedPeersCount = 0;
-  for (const client of clients) {
-    wireguardPeerCount++;
-    if (client.enabled === true) {
-      wireguardEnabledPeersCount++;
-    }
-    if (isPeerConnected(client)) {
-      wireguardConnectedPeersCount++;
-    }
-  }
+  const peers = countPeers(clients);
   return {
-    wireguard_configured_peers: wireguardPeerCount,
-    wireguard_enabled_peers: wireguardEnabledPeersCount,
-    wireguard_connected_peers: wireguardConnectedPeersCount,
+    wireguard_configured_peers: peers.configured,
+    wireguard_enabled_peers: peers.enabled,
+    wireguard_connected_peers: peers.connected,
     clients: clients.map((client) => ({
       name: client.name,
       enabled: client.enabled,
@@ -32,4 +17,4 @@ async function getMetricsJSON() {
       transferTx: client.transferTx,
     })),
   };
-}
+});

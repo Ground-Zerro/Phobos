@@ -4,9 +4,9 @@
       {{ $t('setup.welcomeDesc') }}
     </p>
     <NuxtLink to="/setup/2" class="mt-8">
-      <BasePrimaryButton as="span">
+      <BaseButton variant="primary" as="span">
         {{ $t('general.continue') }}
-      </BasePrimaryButton>
+      </BaseButton>
     </NuxtLink>
   </div>
 </template>
@@ -15,7 +15,4 @@
 definePageMeta({
   layout: 'setup',
 });
-
-const setupStore = useSetupStore();
-setupStore.setStep(1);
 </script>

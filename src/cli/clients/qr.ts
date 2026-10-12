@@ -2,7 +2,8 @@ import { defineCommand } from 'citty';
 import { consola } from 'consola';
 import { eq } from 'drizzle-orm';
 
-import { wg } from '../../server/utils/wgHelper';
+import { buildClientFullConfig } from '../../server/utils/clientConfig';
+import { resolvePreset } from '../../server/database/repositories/obfuscatorPreset/resolve';
 import { encodeQRCodeTerm } from '../../server/utils/qr';
 import { db, schema } from '../db';
 
@@ -19,12 +20,11 @@ export default defineCommand({
     ipv6: {
       required: false,
       type: 'boolean',
-      default: true,
+      default: process.env.DISABLE_IPV6 !== 'true',
     },
   },
   async run(ctx) {
     const clientId = Number(ctx.args.id);
-    const enableIpv6 = ctx.args.ipv6;
 
     if (Number.isNaN(clientId)) {
       consola.error('Invalid client ID');
@@ -34,7 +34,7 @@ export default defineCommand({
     consola.info('Generating QR code for client...');
 
     const wgInterface = await db.query.wgInterface.findFirst({
-      where: eq(schema.wgInterface.name, 'wg0'),
+      where: eq(schema.wgInterface.name, schema.WG_INTERFACE_NAME),
     });
     if (!wgInterface) {
       consola.error('WireGuard interface not found');
@@ -42,7 +42,7 @@ export default defineCommand({
     }
 
     const userConfig = await db.query.userConfig.findFirst({
-      where: eq(schema.userConfig.id, 'wg0'),
+      where: eq(schema.userConfig.id, schema.WG_INTERFACE_NAME),
     });
     if (!userConfig) {
       consola.error('User config not found');
@@ -57,15 +57,32 @@ export default defineCommand({
       return;
     }
 
-    const clientConfig = wg.generateClientConfig(
-      wgInterface,
+    const preset = await resolvePreset(db, client.presetId);
+    if (!preset) {
+      consola.error('No default obfuscator preset configured');
+      return;
+    }
+
+    const socks5Credentials =
+      client.socks5Login && client.socks5Password
+        ? { login: client.socks5Login, password: client.socks5Password }
+        : null;
+    if (preset.mode === 'SOCKS5' && !socks5Credentials) {
+      consola.error(
+        'SOCKS5 credentials are not generated yet; open the client in the web UI first'
+      );
+      return;
+    }
+
+    const config = buildClientFullConfig({
+      iface: wgInterface,
       userConfig,
       client,
-      {
-        enableIpv6,
-      }
-    );
+      preset,
+      enableIpv6: ctx.args.ipv6,
+      socks5Credentials,
+    });
 
-    consola.log(encodeQRCodeTerm(clientConfig));
+    consola.log(encodeQRCodeTerm(config));
   },
 });

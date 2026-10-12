@@ -1,96 +1,54 @@
 import { eq, sql, or, like, and, isNotNull } from 'drizzle-orm';
 import { containsCidr, parseCidr } from 'cidr-tools';
 import { client } from './schema';
-import type {
-  ClientCreateFromExistingType,
-  ClientCreateType,
-  ClientType,
-  UpdateClientType,
-} from './types';
-import type { DBType } from '#db/sqlite';
-import { wgInterface, userConfig, obfuscatorPreset } from '#db/schema';
+import type { ClientCreateType, ClientType, UpdateClientType } from './types';
+import { Repository } from '#db/repository';
+import type { DBExecutor, DBType } from '#db/sqlite';
+import { WG_INTERFACE_NAME, userConfig, wgInterface } from '#db/schema';
+import { resolvePreset } from '#db/repositories/obfuscatorPreset/resolve';
+
+const PUBLIC_CLIENT_SHAPE = {
+  with: {
+    installLink: true,
+    preset: {
+      columns: { id: true, name: true, isDefault: true, mode: true },
+    },
+  },
+  columns: {
+    privateKey: false,
+    preSharedKey: false,
+  },
+} as const;
+
+const nameFilter = or(
+  like(client.name, sql.placeholder('filter')),
+  like(client.ipv4Address, sql.placeholder('filter')),
+  like(client.ipv6Address, sql.placeholder('filter'))
+);
 
 function createPreparedStatement(db: DBType) {
   return {
     findAll: db.query.client
-      .findMany({
-        with: {
-          installLink: true,
-        },
-      })
+      .findMany({ with: { installLink: true } })
       .prepare(),
-    findAllPublic: db.query.client
-      .findMany({
-        with: {
-          installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true, mode: true },
-          },
-        },
-        columns: {
-          privateKey: false,
-          preSharedKey: false,
-        },
-      })
-      .prepare(),
-    findById: db.query.client
-      .findFirst({ where: eq(client.id, sql.placeholder('id')) })
+    findAllPublic: db.query.client.findMany(PUBLIC_CLIENT_SHAPE).prepare(),
+    findAllPublicFiltered: db.query.client
+      .findMany({ ...PUBLIC_CLIENT_SHAPE, where: nameFilter })
       .prepare(),
     findByUserId: db.query.client
       .findMany({
+        ...PUBLIC_CLIENT_SHAPE,
         where: eq(client.userId, sql.placeholder('userId')),
-        with: {
-          installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true, mode: true },
-          },
-        },
-        columns: {
-          privateKey: false,
-          preSharedKey: false,
-        },
-      })
-      .prepare(),
-    findAllPublicFiltered: db.query.client
-      .findMany({
-        where: or(
-          like(client.name, sql.placeholder('filter')),
-          like(client.ipv4Address, sql.placeholder('filter')),
-          like(client.ipv6Address, sql.placeholder('filter'))
-        ),
-        with: {
-          installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true, mode: true },
-          },
-        },
-        columns: {
-          privateKey: false,
-          preSharedKey: false,
-        },
       })
       .prepare(),
     findByUserIdFiltered: db.query.client
       .findMany({
-        where: and(
-          eq(client.userId, sql.placeholder('userId')),
-          or(
-            like(client.name, sql.placeholder('filter')),
-            like(client.ipv4Address, sql.placeholder('filter')),
-            like(client.ipv6Address, sql.placeholder('filter'))
-          )
-        ),
-        with: {
-          installLink: true,
-          preset: {
-            columns: { id: true, name: true, isDefault: true, mode: true },
-          },
-        },
-        columns: {
-          privateKey: false,
-          preSharedKey: false,
-        },
+        ...PUBLIC_CLIENT_SHAPE,
+        where: and(eq(client.userId, sql.placeholder('userId')), nameFilter),
       })
+      .prepare(),
+    findById: db.query.client
+      .findFirst({ where: eq(client.id, sql.placeholder('id')) })
       .prepare(),
     toggle: db
       .update(client)
@@ -104,131 +62,126 @@ function createPreparedStatement(db: DBType) {
   };
 }
 
-export class ClientService {
-  #db: DBType;
-  #statements: ReturnType<typeof createPreparedStatement>;
+function withDates<T extends { createdAt: string; updatedAt: string }>(
+  rows: T[]
+) {
+  return rows.map((row) => ({
+    ...row,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  }));
+}
 
+function filterPattern(filter: string) {
+  return `%${filter}%`;
+}
+
+async function assertNameUnique(
+  executor: DBExecutor,
+  name: string,
+  excludeId?: ID
+) {
+  const normalized = normalizeClientName(name);
+  const rows = await executor.query.client
+    .findMany({ columns: { id: true, name: true } })
+    .execute();
+  const duplicate = rows.find(
+    (c) => c.id !== excludeId && normalizeClientName(c.name) === normalized
+  );
+  if (duplicate) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `A client named "${duplicate.name}" already exists. Client names must be unique (case-insensitive).`,
+    });
+  }
+}
+
+async function requirePreset(
+  executor: DBExecutor,
+  presetId: number | null | undefined
+) {
+  const preset = await resolvePreset(executor, presetId ?? null);
+  if (presetId != null && preset?.id !== presetId) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Obfuscator preset ${presetId} not found`,
+    });
+  }
+  return preset;
+}
+
+async function loadInterface(executor: DBExecutor) {
+  const iface = await executor.query.wgInterface
+    .findFirst({ where: eq(wgInterface.name, WG_INTERFACE_NAME) })
+    .execute();
+  if (!iface) {
+    throw new Error('WireGuard interface not found');
+  }
+  return iface;
+}
+
+export class ClientService extends Repository<
+  ReturnType<typeof createPreparedStatement>
+> {
   constructor(db: DBType) {
-    this.#db = db;
-    this.#statements = createPreparedStatement(db);
+    super(db, createPreparedStatement);
+  }
+
+  getAll() {
+    return this.statements.findAll.execute();
+  }
+
+  async getAllPublic() {
+    return withDates(await this.statements.findAllPublic.execute());
+  }
+
+  async getAllPublicFiltered(filter: string) {
+    return withDates(
+      await this.statements.findAllPublicFiltered.execute({
+        filter: filterPattern(filter),
+      })
+    );
   }
 
   async getForUser(userId: ID) {
-    const result = await this.#statements.findByUserId.execute({ userId });
-    return result.map((row) => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    }));
+    return withDates(await this.statements.findByUserId.execute({ userId }));
   }
 
-  /**
-   * Never return values directly from this function. Use {@link getAllPublic} instead.
-   */
-  async getAll() {
-    const result = await this.#statements.findAll.execute();
-    return result.map((row) => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    }));
-  }
-
-  /**
-   * Returns all clients without sensitive data
-   */
-  async getAllPublic() {
-    const result = await this.#statements.findAllPublic.execute();
-    return result.map((row) => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    }));
-  }
-
-  /**
-   * Get clients based on user ID and filter conditions
-   */
   async getForUserFiltered(userId: ID, filter: string) {
-    const filterPattern = `%${filter.toLowerCase()}%`;
-
-    const result = await this.#statements.findByUserIdFiltered.execute({
-      userId,
-      filter: filterPattern,
-    });
-
-    return result.map((row) => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    }));
-  }
-
-  /**
-   * Get all clients based on filter conditions without sensitive data
-   */
-  async getAllPublicFiltered(filter: string) {
-    const filterPattern = `%${filter.toLowerCase()}%`;
-
-    const result = await this.#statements.findAllPublicFiltered.execute({
-      filter: filterPattern,
-    });
-
-    return result.map((row) => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    }));
+    return withDates(
+      await this.statements.findByUserIdFiltered.execute({
+        userId,
+        filter: filterPattern(filter),
+      })
+    );
   }
 
   get(id: ID) {
-    return this.#statements.findById.execute({ id });
+    return this.statements.findById.execute({ id });
   }
 
-  /**
-   * Lightweight lookup of every client with SOCKS5 credentials (i.e. whose
-   * preset was in SOCKS5 mode when credentials were generated), used to
-   * build the RFC1929 user list for the corresponding server process.
-   */
-  async getSocks5PresetMembers(): Promise<
-    {
-      id: number;
-      presetId: number;
-      socks5Login: string;
-      socks5Password: string;
-    }[]
-  > {
-    const defaultPreset = await this.#db.query.obfuscatorPreset
-      .findFirst({
-        where: eq(obfuscatorPreset.isDefault, true),
-        columns: { id: true },
-      })
-      .execute();
-
-    const rows = await this.#db.query.client
-      .findMany({
-        where: and(isNotNull(client.socks5Login), eq(client.enabled, true)),
-        columns: {
-          id: true,
-          presetId: true,
-          socks5Login: true,
-          socks5Password: true,
-        },
-      })
-      .execute();
+  async getSocks5PresetMembers() {
+    const [defaultPreset, rows] = await Promise.all([
+      resolvePreset(this.db, null),
+      this.db.query.client
+        .findMany({
+          where: and(isNotNull(client.socks5Login), eq(client.enabled, true)),
+          columns: {
+            presetId: true,
+            socks5Login: true,
+            socks5Password: true,
+          },
+        })
+        .execute(),
+    ]);
 
     return rows.flatMap((r) => {
-      const presetId = r.presetId ?? defaultPreset?.id ?? null;
-      if (
-        presetId == null ||
-        r.socks5Login == null ||
-        r.socks5Password == null
-      ) {
+      const presetId = r.presetId ?? defaultPreset?.id;
+      if (presetId === undefined || !r.socks5Login || !r.socks5Password) {
         return [];
       }
       return [
         {
-          id: r.id,
           presetId,
           socks5Login: r.socks5Login,
           socks5Password: r.socks5Password,
@@ -237,81 +190,56 @@ export class ClientService {
     });
   }
 
-  async create({ name, expiresAt, presetId }: ClientCreateType) {
+  async create(userId: ID, { name, expiresAt, presetId }: ClientCreateType) {
     const privateKey = await wg.generatePrivateKey();
     const publicKey = await wg.getPublicKey(privateKey);
     const preSharedKey = await wg.generatePreSharedKey();
 
-    return this.#db.transaction(async (tx) => {
-      const clients = await tx.query.client.findMany().execute();
+    return this.db.transaction(async (tx) => {
+      await assertNameUnique(tx, name);
+      const iface = await loadInterface(tx);
 
-      const normalized = normalizeClientName(name);
-      const duplicate = clients.find(
-        (c) => normalizeClientName(c.name) === normalized
-      );
-      if (duplicate) {
-        throw createError({
-          statusCode: 409,
-          statusMessage: `A client named "${duplicate.name}" already exists. Client names must be unique (case-insensitive).`,
-        });
-      }
-
-      const clientInterface = await tx.query.wgInterface
-        .findFirst({
-          where: eq(wgInterface.name, 'wg0'),
-        })
+      const config = await tx.query.userConfig
+        .findFirst({ where: eq(userConfig.id, iface.name) })
         .execute();
-
-      if (!clientInterface) {
-        throw new Error('WireGuard interface not found');
-      }
-
-      const clientConfig = await tx.query.userConfig
-        .findFirst({
-          where: eq(userConfig.id, clientInterface.name),
-        })
-        .execute();
-
-      if (!clientConfig) {
+      if (!config) {
         throw new Error('WireGuard interface configuration not found');
       }
 
-      const ipv4Cidr = parseCidr(clientInterface.ipv4Cidr);
-      const ipv4Address = nextIP(4, ipv4Cidr, clients);
-      const ipv6Cidr = parseCidr(clientInterface.ipv6Cidr);
-      const ipv6Address = nextIP(6, ipv6Cidr, clients);
+      const addresses = await tx.query.client
+        .findMany({ columns: { ipv4Address: true, ipv6Address: true } })
+        .execute();
+      const ipv4Address = nextIP(
+        4,
+        parseCidr(iface.ipv4Cidr),
+        new Set(addresses.map((a) => a.ipv4Address))
+      );
+      const ipv6Address = nextIP(
+        6,
+        parseCidr(iface.ipv6Cidr),
+        new Set(addresses.map((a) => a.ipv6Address))
+      );
 
-      const preset =
-        presetId != null
-          ? await tx.query.obfuscatorPreset
-              .findFirst({ where: eq(obfuscatorPreset.id, presetId) })
-              .execute()
-          : await tx.query.obfuscatorPreset
-              .findFirst({ where: eq(obfuscatorPreset.isDefault, true) })
-              .execute();
-      const socks5Login =
-        preset?.mode === 'SOCKS5' ? generateSocks5Credential() : null;
-      const socks5Password =
-        preset?.mode === 'SOCKS5' ? generateSocks5Credential() : null;
+      const preset = await requirePreset(tx, presetId);
+      const isSocks5 = preset?.mode === 'SOCKS5';
 
-      return await tx
+      return tx
         .insert(client)
         .values({
           name,
-          // TODO: properly assign user id
-          userId: 1,
-          interfaceId: 'wg0',
+          userId,
+          interfaceId: iface.name,
           presetId: presetId ?? null,
-          socks5Login,
-          socks5Password,
+          socks5Login: isSocks5 ? generateSocks5Credential() : null,
+          socks5Password: isSocks5 ? generateSocks5Credential() : null,
           expiresAt,
           privateKey,
           publicKey,
           preSharedKey,
           ipv4Address,
           ipv6Address,
-          mtu: clientConfig.defaultMtu,
-          persistentKeepalive: clientConfig.defaultPersistentKeepalive,
+          mtu: config.defaultMtu,
+          persistentKeepalive: config.defaultPersistentKeepalive,
           serverAllowedIps: [],
           enabled: true,
         })
@@ -321,15 +249,7 @@ export class ClientService {
   }
 
   toggle(id: ID, enabled: boolean) {
-    return this.#statements.toggle.execute({ id, enabled });
-  }
-
-  async setSocks5Credentials(id: ID, login: string, password: string) {
-    await this.#db
-      .update(client)
-      .set({ socks5Login: login, socks5Password: password })
-      .where(eq(client.id, id))
-      .execute();
+    return this.statements.toggle.execute({ id, enabled });
   }
 
   async ensureSocks5Credentials(
@@ -341,75 +261,47 @@ export class ClientService {
     }
     const login = generateSocks5Credential();
     const password = generateSocks5Credential();
-    await this.setSocks5Credentials(id, login, password);
+    await this.db
+      .update(client)
+      .set({ socks5Login: login, socks5Password: password })
+      .where(eq(client.id, id))
+      .execute();
     return { login, password };
   }
 
   delete(id: ID) {
-    return this.#statements.delete.execute({ id });
+    return this.statements.delete.execute({ id });
   }
 
   update(id: ID, data: UpdateClientType) {
-    return this.#db.transaction(async (tx) => {
-      const clients = await tx.query.client.findMany().execute();
-      const normalized = normalizeClientName(data.name);
-      const duplicate = clients.find(
-        (c) => c.id !== id && normalizeClientName(c.name) === normalized
-      );
-      if (duplicate) {
+    return this.db.transaction(async (tx) => {
+      await assertNameUnique(tx, data.name, id);
+      const iface = await loadInterface(tx);
+
+      if (!containsCidr(iface.ipv4Cidr, data.ipv4Address)) {
         throw createError({
-          statusCode: 409,
-          statusMessage: `A client named "${duplicate.name}" already exists. Client names must be unique (case-insensitive).`,
+          statusCode: 400,
+          statusMessage: `IPv4 address ${data.ipv4Address} is not within the interface subnet ${iface.ipv4Cidr}. Widen the WireGuard IPv4 subnet under Admin → Network Interface to use this range.`,
         });
       }
 
-      const clientInterface = await tx.query.wgInterface
-        .findFirst({
-          where: eq(wgInterface.name, 'wg0'),
-        })
-        .execute();
-
-      if (!clientInterface) {
-        throw new Error('WireGuard interface not found');
-      }
-
-      if (!containsCidr(clientInterface.ipv4Cidr, data.ipv4Address)) {
+      if (!containsCidr(iface.ipv6Cidr, data.ipv6Address)) {
         throw createError({
           statusCode: 400,
-          statusMessage: `IPv4 address ${data.ipv4Address} is not within the interface subnet ${clientInterface.ipv4Cidr}. Widen the WireGuard IPv4 subnet under Admin → Network Interface to use this range.`,
-        });
-      }
-
-      if (!containsCidr(clientInterface.ipv6Cidr, data.ipv6Address)) {
-        throw createError({
-          statusCode: 400,
-          statusMessage: `IPv6 address ${data.ipv6Address} is not within the interface subnet ${clientInterface.ipv6Cidr}. Widen the WireGuard IPv6 subnet under Admin → Network Interface to use this range.`,
+          statusMessage: `IPv6 address ${data.ipv6Address} is not within the interface subnet ${iface.ipv6Cidr}. Widen the WireGuard IPv6 subnet under Admin → Network Interface to use this range.`,
         });
       }
 
       const values: Partial<ClientType> = { ...data };
-      // A null presetId falls back to the server's default preset, whose
-      // mode is whatever the admin has configured it to be.
-      const presetMode =
-        data.presetId != null
-          ? (
-              await tx.query.obfuscatorPreset
-                .findFirst({ where: eq(obfuscatorPreset.id, data.presetId) })
-                .execute()
-            )?.mode
-          : (
-              await tx.query.obfuscatorPreset
-                .findFirst({ where: eq(obfuscatorPreset.isDefault, true) })
-                .execute()
-            )?.mode;
-      if (presetMode === 'SOCKS5') {
+      const preset = await requirePreset(tx, data.presetId);
+      if (preset?.mode === 'SOCKS5') {
         const current = await tx.query.client
           .findFirst({
             where: eq(client.id, id),
             columns: { socks5Login: true, socks5Password: true },
           })
           .execute();
-        if (!current?.socks5Login || !current?.socks5Password) {
+        if (!current?.socks5Login || !current.socks5Password) {
           values.socks5Login = generateSocks5Credential();
           values.socks5Password = generateSocks5Credential();
         }
@@ -420,38 +312,5 @@ export class ClientService {
 
       await tx.update(client).set(values).where(eq(client.id, id)).execute();
     });
-  }
-
-  async createFromExisting({
-    name,
-    enabled,
-    ipv4Address,
-    ipv6Address,
-    preSharedKey,
-    privateKey,
-    publicKey,
-  }: ClientCreateFromExistingType) {
-    const clientConfig = await Database.userConfigs.get();
-
-    return this.#db
-      .insert(client)
-      .values({
-        name,
-        userId: 1,
-        interfaceId: 'wg0',
-        presetId: null,
-        privateKey,
-        publicKey,
-        preSharedKey,
-        ipv4Address,
-        ipv6Address,
-        mtu: clientConfig.defaultMtu,
-        allowedIps: clientConfig.defaultAllowedIps,
-        dns: clientConfig.defaultDns,
-        persistentKeepalive: clientConfig.defaultPersistentKeepalive,
-        serverAllowedIps: [],
-        enabled,
-      })
-      .execute();
   }
 }

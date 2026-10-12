@@ -37,9 +37,6 @@
     "logout": "Odhlásit se",
     "continue": "Pokračovat",
     "host": "Hostitel",
-    "port": "Port",
-    "yes": "Ano",
-    "no": "Ne",
     "confirmPassword": "Potvrdit heslo",
     "loading": "Načítání...",
     "2fa": "Dvoufázové ověření",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "Vítejte u první instalace PhobosWG",
     "welcomeDesc": "Našli jste nejjednodušší způsob, jak nasadit odolný WireGuard",
-    "existingSetup": "Máte již existující nastavení?",
     "createAdminDesc": "Nejprve zadejte uživatelské jméno administrátora a silné heslo. Tyto údaje budou použity pro přihlášení do administrace.",
     "setupConfigDesc": "Zadejte údaje o hostiteli a portu. Tyto informace budou použity pro konfiguraci klientů při nastavování WireGuard na jejich zařízeních.",
-    "setupMigrationDesc": "Pokud chcete migrovat data z předchozí verze wg-easy do nové instalace, nahrajte soubor se zálohou.",
-    "upload": "Nahrát",
-    "migration": "Obnovit zálohu:",
     "createAccount": "Vytvořit účet",
-    "successful": "Nastavení bylo úspěšné",
     "hostDesc": "Veřejný název hostitele, ke kterému se budou klienti připojovat",
-    "portDesc": "Veřejný UDP port, ke kterému se budou klienti připojovat a na kterém bude WireGuard naslouchat",
     "tls": {
-      "title": "Certifikát HTTPS / TLS",
       "desc": "Nastavte certifikát TLS, abyste povolili zabezpečený přístup přes HTTPS. Bez HTTPS je přihlášení ve výchozím stavu zablokováno.",
       "selfSigned": "Certifikát podepsaný svým vydavatelem",
       "selfSignedDesc": "Vygeneruje se okamžitě pro váš host. Prohlížeč zobrazí bezpečnostní varování — klikněte na Rozšířené → Pokračovat.",
@@ -76,13 +66,10 @@
       "certLabel": "Certifikát (PEM fullchain)",
       "keyLabel": "Soukromý klíč (PEM)",
       "generate": "Vygenerovat certifikát",
-      "apply": "Použít",
       "restarting": "Certifikát byl použit. Server se restartuje s HTTPS...",
       "redirectPrompt": "Otevřít zabezpečenou verzi:",
       "openLink": "Otevřít HTTPS",
-      "skipWarning": "Bez certifikátu TLS je webové rozhraní dostupné pouze přes HTTP.",
-      "errorCert": "Ověření certifikátu selhalo",
-      "errorKey": "Ověření soukromého klíče selhalo"
+      "skipWarning": "Bez certifikátu TLS je webové rozhraní dostupné pouze přes HTTP."
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "Přihlásit se",
-    "rememberMe": "Zapamatovat si mě",
-    "rememberMeDesc": "Zůstat přihlášen i po zavření prohlížeče",
     "2faRequired": "Je vyžadováno dvoufázové ověření",
     "2faWrong": "Neplatný kód dvoufázového ověření"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "Naposledy viděn ",
     "totalDownload": "Celkem staženo: ",
     "totalUpload": "Celkem nahráno: ",
-    "newClient": "Nový klient",
     "disableClient": "Deaktivovat klienta",
     "enableClient": "Aktivovat klienta",
-    "noPrivKey": "Tento klient nemá známý soukromý klíč. Nelze vytvořit konfiguraci.",
     "showQR": "Zobrazit QR kód",
     "allowedIpsDesc": "Které IP adresy budou směrovány přes VPN (přebíjí globální nastavení)",
     "serverAllowedIpsDesc": "Které IP adresy bude server směrovat ke klientovi",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "Připojení",
       "hostDesc": "Veřejný název hostitele, ke kterému se klienti připojují (zneplatní stávající konfigurace)",
-      "portDesc": "Veřejný UDP port, ke kterému se klienti připojují (zneplatní stávající konfigurace, pravděpodobně budete chtít změnit i Port rozhraní)",
       "allowedIpsDesc": "Povolené IP adresy, které budou klienti používat (globální nastavení)",
       "dnsDesc": "DNS server, který budou klienti používat (globální nastavení)",
       "mtuDesc": "MTU, které budou klienti používat (pouze pro nové klienty)",
@@ -218,10 +200,8 @@
       "device": "Zařízení",
       "deviceDesc": "Ethernetové zařízení, přes které má být provoz WireGuard přeposílán",
       "mtuDesc": "MTU, které bude WireGuard používat",
-      "portDesc": "UDP port, na kterém bude WireGuard naslouchat (pravděpodobně budete chtít změnit i Konfigurační port)",
       "changeCidr": "Změnit CIDR",
       "restart": "Restartovat rozhraní",
-      "restartDesc": "Restartovat rozhraní WireGuard",
       "restartWarn": "Opravdu chcete restartovat rozhraní? Dojde k odpojení všech klientů.",
       "restartSuccess": "Rozhraní bylo restartováno",
       "egress": "Výstup",
@@ -290,7 +270,6 @@
       "apply": "Použít konfiguraci TLS",
       "applied": "Konfigurace TLS byla použita. Server se restartuje.",
       "appliedRestart": "Konfigurace TLS byla použita. Server se restartuje; za několik sekund znovu otevřete {url}.",
-      "externalManaged": "TLS spravuje externí reverzní proxy (TLS_TERMINATION=external). Certifikát je nutné vydávat a obnovovat mimo PhobosWG.",
       "origin": {
         "self-signed": "Podepsaný svým vydavatelem",
         "imported": "Importovaný (vložený PEM)",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "Předvolby obfuskátoru",
       "desc": "Každá předvolba provozuje vlastní naslouchání wg-obfuscator s nezávislým portem, klíčem a maskováním. Výchozí předvolba platí pro každého klienta bez výslovného přiřazení. Předvolby WireGuard používají porty UDP 51822-51861, předvolby SOCKS5 porty TCP 51862-51891 — rozsahy publikované souborem docker-compose.",
       "add": "Přidat předvolbu",
       "addDesc": "Zadejte pouze název. Port, klíč a další parametry dostanou rozumné výchozí hodnoty a lze je následně v předvolbě upravit.",
@@ -347,7 +325,6 @@
     "generic": {
       "required": "Pole {0} je povinné",
       "validNumber": "{0} musí být platné číslo",
-      "validNumberRange": "{0} musí být platné číslo nebo rozsah čísel",
       "validString": "{0} musí být platný řetězec",
       "validBoolean": "{0} musí být platná logická hodnota",
       "validArray": "{0} musí být platné pole",
@@ -370,13 +347,10 @@
     "user": {
       "username": "Uživatelské jméno",
       "password": "Heslo",
-      "remember": "Pamatovat si",
       "name": "Jméno",
       "email": "E-mail",
       "emailInvalid": "E-mail musí být platná e-mailová adresa",
       "passwordMatch": "Hesla se musí shodovat",
-      "totpEnable": "Zapnout TOTP",
-      "totpEnableTrue": "Zapnutí TOTP musí být potvrzeno",
       "totpCode": "TOTP kód"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "Řetězec má nesprávný formát",
-    "body": "Tělo požadavku musí být platný objekt",
     "hook": "Hook",
     "enabled": "Aktivní",
     "mtu": "MTU",
-    "port": "Port",
     "persistentKeepalive": "Persistent Keepalive",
     "address": "IP adresa",
     "dns": "DNS",
     "allowedIps": "Povolené IP adresy",
-    "file": "Soubor",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "Adresa IPv4",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "Obfuskované bajty (0-1024)",
       "obfuscateBytesMedia": "Pro MEDIA je minimum 4 (nebo 0 pro výchozí hodnotu 16)",
       "verbose": "Úroveň logování",
-      "idle": "Časový limit nečinnosti",
       "dummy": "Max. výplňových bajtů",
       "clientWgLocalPort": "Místní port WireGuard na straně klienta",
       "mediaSsrc": "SSRC pro RTP",
@@ -454,7 +418,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "Kopírování není podporováno",
     "copied": "Zkopírováno!",
     "failed": "Kopírování selhalo",
     "copy": "Kopírovat",

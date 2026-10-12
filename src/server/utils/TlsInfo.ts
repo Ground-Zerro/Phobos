@@ -55,7 +55,3 @@ export function isUntrustedTls(origin: TlsOrigin): boolean {
 export function hasActiveTlsCert(): boolean {
   return existsSync(FULLCHAIN_PATH) && existsSync(PRIVKEY_PATH);
 }
-
-export function isExternalTlsManaged(): boolean {
-  return process.env.TLS_TERMINATION === 'external';
-}

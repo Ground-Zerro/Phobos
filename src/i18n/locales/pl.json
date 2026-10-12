@@ -37,9 +37,6 @@
     "logout": "Wyloguj",
     "continue": "Kontynuuj",
     "host": "Host",
-    "port": "Port",
-    "yes": "Tak",
-    "no": "Nie",
     "confirmPassword": "Potwierdź hasło",
     "loading": "Ładowanie...",
     "2fa": "Uwierzytelnianie dwuskładnikowe",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "Witaj w pierwszej konfiguracji PhobosWG",
     "welcomeDesc": "Znalazłeś najprostszy sposób na wdrożenie odpornego WireGuard",
-    "existingSetup": "Czy masz już istniejącą konfigurację?",
     "createAdminDesc": "Najpierw wprowadź nazwę użytkownika administratora i silne hasło. Dane te będą używane do logowania się do panelu administracyjnego.",
     "setupConfigDesc": "Wprowadź informacje o hoście i porcie. Zostaną one użyte do konfiguracji klientów podczas ustawiania WireGuard na ich urządzeniach.",
-    "setupMigrationDesc": "Wskaż plik kopii zapasowej, jeśli chcesz przenieść dane z poprzedniej wersji wg-easy do nowej konfiguracji.",
-    "upload": "Prześlij",
-    "migration": "Przywróć kopię zapasową:",
     "createAccount": "Utwórz konto",
-    "successful": "Konfiguracja zakończona sukcesem",
     "hostDesc": "Publiczna nazwa hosta, z którą będą łączyć się klienci",
-    "portDesc": "Publiczny port UDP, na którym WireGuard będzie nasłuchiwać i z którym połączą się klienci",
     "tls": {
-      "title": "Certyfikat HTTPS / TLS",
       "desc": "Skonfiguruj certyfikat TLS, aby włączyć bezpieczny dostęp przez HTTPS. Bez HTTPS logowanie jest domyślnie zablokowane.",
       "selfSigned": "Certyfikat samopodpisany",
       "selfSignedDesc": "Generowany natychmiast dla Twojego hosta. Przeglądarka wyświetli ostrzeżenie o zabezpieczeniach — kliknij Zaawansowane → Kontynuuj.",
@@ -76,13 +66,10 @@
       "certLabel": "Certyfikat (PEM fullchain)",
       "keyLabel": "Klucz prywatny (PEM)",
       "generate": "Wygeneruj certyfikat",
-      "apply": "Zastosuj",
       "restarting": "Certyfikat zastosowany. Serwer uruchamia się ponownie z HTTPS...",
       "redirectPrompt": "Otwórz wersję bezpieczną:",
       "openLink": "Otwórz HTTPS",
-      "skipWarning": "Bez certyfikatu TLS interfejs webowy jest dostępny wyłącznie przez HTTP.",
-      "errorCert": "Weryfikacja certyfikatu nie powiodła się",
-      "errorKey": "Weryfikacja klucza prywatnego nie powiodła się"
+      "skipWarning": "Bez certyfikatu TLS interfejs webowy jest dostępny wyłącznie przez HTTP."
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "Zaloguj się",
-    "rememberMe": "Zapamiętaj mnie",
-    "rememberMeDesc": "Pozostań zalogowany po zamknięciu przeglądarki",
     "2faRequired": "Wymagane jest uwierzytelnianie dwuskładnikowe",
     "2faWrong": "Błędny kod uwierzytelniania dwuskładnikowego"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "Ostatnio widziany: ",
     "totalDownload": "Pobieranie łącznie: ",
     "totalUpload": "Wysyłanie łącznie: ",
-    "newClient": "Nowy klient",
     "disableClient": "Wyłącz klienta",
     "enableClient": "Włącz klienta",
-    "noPrivKey": "Ten klient nie posiada klucza prywatnego. Nie można utworzyć konfiguracji.",
     "showQR": "Pokaż kod QR",
     "allowedIpsDesc": "Adresy IP kierowane przez VPN (nadpisuje konfigurację globalną)",
     "serverAllowedIpsDesc": "Adresy IP, które serwer będzie kierował do klienta",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "Połączenie",
       "hostDesc": "Publiczna nazwa hosta, z którą będą łączyć się klienci (unieważnia konfigurację)",
-      "portDesc": "Publiczny port UDP klientów (unieważnia konfigurację; zaleca się także zmianę Portu Interfejsu)",
       "allowedIpsDesc": "Dozwolone adresy IP klientów (konfiguracja globalna)",
       "dnsDesc": "Serwer DNS klientów (konfiguracja globalna)",
       "mtuDesc": "MTU klientów (tylko dla nowych klientów)",
@@ -218,10 +200,8 @@
       "device": "Urządzenie",
       "deviceDesc": "Interfejs sieciowy, przez który ma być przekazywany ruch WireGuard",
       "mtuDesc": "MTU, którego będzie używać WireGuard",
-      "portDesc": "Port UDP, na którym będzie nasłuchiwać WireGuard (zaleca się także zmianę Portu Konfiguracji)",
       "changeCidr": "Zmień CIDR",
       "restart": "Restartuj interfejs",
-      "restartDesc": "Zrestartuj interfejs WireGuard",
       "restartWarn": "Czy na pewno chcesz zrestartować interfejs? Spowoduje to rozłączenie wszystkich klientów.",
       "restartSuccess": "Interfejs zrestartowany",
       "firewall": "Filtrowanie ruchu",
@@ -290,7 +270,6 @@
       "apply": "Zastosuj konfigurację TLS",
       "applied": "Konfiguracja TLS zastosowana. Serwer uruchamia się ponownie.",
       "appliedRestart": "Konfiguracja TLS zastosowana. Serwer uruchamia się ponownie; otwórz {url} ponownie za kilka sekund.",
-      "externalManaged": "TLS jest obsługiwany przez zewnętrzny reverse proxy (TLS_TERMINATION=external). Certyfikat musi być wystawiany i odnawiany poza PhobosWG.",
       "origin": {
         "self-signed": "Samopodpisany",
         "imported": "Zaimportowany (wklejony PEM)",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "Presety obfuskatora",
       "desc": "Każdy preset uruchamia własny nasłuch wg-obfuscator z niezależnym portem, kluczem i maskowaniem. Preset domyślny obowiązuje każdego klienta bez jawnego przypisania. Presety WireGuard używają portów UDP 51822-51861, presety SOCKS5 portów TCP 51862-51891 — zakresów publikowanych przez docker-compose.",
       "add": "Dodaj preset",
       "addDesc": "Podaj wyłącznie nazwę. Port, klucz i pozostałe parametry otrzymają sensowne wartości domyślne, które można później edytować w presecie.",
@@ -347,7 +325,6 @@
     "generic": {
       "required": "{0} jest wymagane",
       "validNumber": "{0} musi być prawidłową liczbą",
-      "validNumberRange": "{0} musi być prawidłową liczbą lub zakresem liczb",
       "validString": "{0} musi być prawidłowym ciągiem znaków",
       "validBoolean": "{0} musi być prawidłową wartością logiczną",
       "validArray": "{0} musi być prawidłową tablicą",
@@ -370,13 +347,10 @@
     "user": {
       "username": "Nazwa użytkownika",
       "password": "Hasło",
-      "remember": "Zapamiętaj",
       "name": "Nazwa",
       "email": "E-mail",
       "emailInvalid": "E-mail musi być prawidłowym adresem",
       "passwordMatch": "Hasła muszą się zgadzać",
-      "totpEnable": "Włącz TOTP",
-      "totpEnableTrue": "Włączenie TOTP musi mieć wartość prawda",
       "totpCode": "Kod TOTP"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "Ciąg znaków jest zniekształcony",
-    "body": "Body musi być prawidłowym obiektem",
     "hook": "Hook",
     "enabled": "Włączone",
     "mtu": "MTU",
-    "port": "Port",
     "persistentKeepalive": "Utrzymywanie połączenia",
     "address": "Adres IP",
     "dns": "DNS",
     "allowedIps": "Dozwolone IP",
-    "file": "Plik",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "Adres IPv4",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "Obfuskowane bajty (0-1024)",
       "obfuscateBytesMedia": "Dla MEDIA minimum to 4 (albo 0 dla wartości domyślnej 16)",
       "verbose": "Poziom logowania",
-      "idle": "Limit bezczynności",
       "dummy": "Maks. bajtów dummy",
       "clientWgLocalPort": "Lokalny port WireGuard po stronie klienta",
       "mediaSsrc": "SSRC RTP",
@@ -454,7 +418,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "Kopiowanie nie jest obsługiwane",
     "copied": "Skopiowano!",
     "failed": "Kopiowanie nieudane",
     "copy": "Kopiuj",

@@ -9,7 +9,7 @@ export default definePermissionEventHandler(
       validateZod(WarpIntervalSchema, event)
     );
 
-    await Database.warp.setUpdateInterval(updateIntervalDays);
+    await Database.warp.update({ updateIntervalDays });
 
     return { success: true };
   }

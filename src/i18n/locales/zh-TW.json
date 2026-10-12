@@ -36,9 +36,6 @@
     "logout": "登出",
     "continue": "繼續",
     "host": "主機",
-    "port": "連接埠",
-    "yes": "是",
-    "no": "否",
     "confirmPassword": "確認密碼",
     "loading": "正在載入...",
     "2fa": "兩步驟驗證",
@@ -47,16 +44,10 @@
   "setup": {
     "welcome": "歡迎首次設定您的 PhobosWG",
     "welcomeDesc": "您已找到部署高可用 WireGuard 的最簡單方法",
-    "existingSetup": "您已有現存的設定了嗎?",
     "createAdminDesc": "請先輸入管理員使用者名稱與高強度密碼。此資訊將用於登入管理面板。",
     "setupConfigDesc": "請輸入主機與連接埠資訊。此資訊將用於設定用戶端的 WireGuard 連線。",
-    "setupMigrationDesc": "若要從先前的 wg-easy 版本移轉資料，請提供備份檔案。",
-    "upload": "上傳",
-    "migration": "還原備份:",
     "createAccount": "建立帳戶",
-    "successful": "設定成功",
-    "hostDesc": "用戶端將連線的公開主機名稱",
-    "portDesc": "用戶端將連線的公開 UDP 連接埠，且 WireGuard 會在此監聽"
+    "hostDesc": "用戶端將連線的公開主機名稱"
   },
   "theme": {
     "dark": "深色佈景主題",
@@ -69,8 +60,6 @@
   },
   "login": {
     "signIn": "登入",
-    "rememberMe": "記住我",
-    "rememberMeDesc": "關閉瀏覽器後仍保持登入狀態",
     "2faRequired": "需要兩步驟驗證",
     "2faWrong": "兩步驟驗證碼不正確"
   },
@@ -96,10 +85,8 @@
     "lastSeen": "上次連線於 ",
     "totalDownload": "總下載量: ",
     "totalUpload": "總上傳量: ",
-    "newClient": "新增用戶端",
     "disableClient": "停用用戶端",
     "enableClient": "啟用用戶端",
-    "noPrivKey": "此用戶端沒有已知的私密金鑰，無法建立設定。",
     "showQR": "顯示 QR Code",
     "allowedIpsDesc": "將透過 VPN 路由的 IP (會覆寫全域設定)",
     "serverAllowedIpsDesc": "伺服器將路由至用戶端的 IP",
@@ -159,7 +146,6 @@
     "config": {
       "connection": "連線",
       "hostDesc": "用戶端將連線的公開主機名稱 (變更後會使目前組態設定檔失效)",
-      "portDesc": "用戶端將連線的公開 UDP 連接埠 (變更後會使目前組態設定檔失效，您可能也需要變更介面連接埠)",
       "allowedIpsDesc": "用戶端將使用的允許 IP (全域設定)",
       "dnsDesc": "用戶端將使用的 DNS 伺服器 (全域設定)",
       "mtuDesc": "用戶端使用的 MTU (僅適用於新用戶端)",
@@ -170,10 +156,8 @@
       "device": "裝置",
       "deviceDesc": "用於轉送 WireGuard 流量的乙太網路裝置",
       "mtuDesc": "WireGuard 將使用的 MTU",
-      "portDesc": "WireGuard 監聽的 UDP 連接埠 (您可能也需要變更連接埠組態設定檔)",
       "changeCidr": "變更 CIDR",
       "restart": "重新啟動介面",
-      "restartDesc": "重新啟動 WireGuard 介面",
       "restartWarn": "您確定要重新啟動介面嗎? 所有用戶端將被中斷連線。",
       "restartSuccess": "介面已重新啟動",
       "firewall": "流量過濾",
@@ -228,7 +212,6 @@
     "generic": {
       "required": "{0} 為必填項目",
       "validNumber": "{0} 必須為有效的數字",
-      "validNumberRange": "{0} 必須為有效的數字或範圍",
       "validString": "{0} 必須為有效的字串",
       "validBoolean": "{0} 必須為有效的布林值",
       "validArray": "{0} 必須為有效的陣列",
@@ -248,13 +231,10 @@
     "user": {
       "username": "使用者名稱",
       "password": "密碼",
-      "remember": "記住我",
       "name": "名稱",
       "email": "電子郵件",
       "emailInvalid": "電子郵件格式無效",
       "passwordMatch": "密碼必須一致",
-      "totpEnable": "啟用 TOTP",
-      "totpEnableTrue": "必須啟用 TOTP",
       "totpCode": "TOTP 驗證碼"
     },
     "userConfig": {
@@ -273,28 +253,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "字串格式錯誤",
-    "body": "Body 必須為有效的物件",
     "hook": "Hook",
     "enabled": "啟用",
     "mtu": "MTU",
-    "port": "連接埠",
     "persistentKeepalive": "保持連線",
     "address": "IP 位址",
     "dns": "DNS",
     "allowedIps": "允許的 IP",
-    "file": "檔案",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "IPv4 位址",
@@ -312,7 +283,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "無法複製",
     "copied": "已複製!",
     "failed": "複製失敗",
     "copy": "複製"

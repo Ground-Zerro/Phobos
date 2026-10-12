@@ -4,6 +4,7 @@ set -euo pipefail
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/phoboswg}"
 COMPOSE_FILE="docker-compose.yml"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-phoboswg}"
+WATCHDOG_LOG="/var/log/phoboswg-deploy-watchdog.log"
 export COMPOSE_PROJECT_NAME
 
 log()  { printf '\e[1;34m==>\e[0m %s\n' "$*"; }
@@ -21,7 +22,7 @@ else
     HAS_DOCKER=1
 fi
 
-CONTAINER_NAMES=(phobos phobos-dev)
+CONTAINER_NAMES=(phobos)
 VOLUME_KEYS_RE='etc_wireguard|sqlite_data|certs_data'
 VOLUME_RE="(^|_)phobos_(${VOLUME_KEYS_RE})$"
 NETWORK_RE='^(phobos|phoboswg)_(wg|default)$'
@@ -42,7 +43,7 @@ printf '│    • PhobosWG Docker volumes                │\n'
 printf '│    • PhobosWG Docker networks               │\n'
 printf '│    • PhobosWG Docker image                  │\n'
 printf '│    • Deploy directory %-21s │\n' "$DEPLOY_DIR"
-printf '│    • PhobosWG logs and env files            │\n'
+printf '│    • PhobosWG deploy watchdog log           │\n'
 printf '│                                             │\n'
 printf '│  Other Docker workloads remain untouched.   │\n'
 printf '└─────────────────────────────────────────────┘\n'
@@ -158,27 +159,13 @@ else
     info "Deploy directory not present"
 fi
 
-log "Removing logs"
-LOG_REMOVED=0
-for LOG_PATH in /var/log/phoboswg /var/log/phoboswg.log; do
-    if [ -e "$LOG_PATH" ]; then
-        rm -rf "$LOG_PATH"
-        ok "Removed $LOG_PATH"
-        LOG_REMOVED=$((LOG_REMOVED + 1))
-    fi
-done
-[ "$LOG_REMOVED" -eq 0 ] && info "No PhobosWG logs found"
-
-log "Removing env residuals"
-ENV_REMOVED=0
-for ENV_FILE in /root/.phoboswg.env /etc/phoboswg.env; do
-    if [ -f "$ENV_FILE" ]; then
-        rm -f "$ENV_FILE"
-        ok "Removed $ENV_FILE"
-        ENV_REMOVED=$((ENV_REMOVED + 1))
-    fi
-done
-[ "$ENV_REMOVED" -eq 0 ] && info "No env residuals found"
+log "Removing deploy watchdog log"
+if [ -e "$WATCHDOG_LOG" ]; then
+    rm -f "$WATCHDOG_LOG"
+    ok "Removed $WATCHDOG_LOG"
+else
+    info "No deploy watchdog log found"
+fi
 
 printf '\n\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'
 printf '\e[1;32m  PhobosWG fully removed from this server\e[0m\n'

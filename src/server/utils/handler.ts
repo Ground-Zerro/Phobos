@@ -1,5 +1,12 @@
 import type { EventHandlerRequest, EventHandlerResponse, H3Event } from 'h3';
 import type { UserType } from '#db/repositories/user/types';
+import {
+  ClientGetSchema,
+  type ClientType,
+} from '#db/repositories/client/types';
+import { ObfuscatorPresetGetSchema } from '#db/repositories/obfuscatorPreset/types';
+import { maskWarp } from '#db/repositories/warp/service';
+import { InstallTokenParamSchema } from '#db/repositories/installLink/types';
 import type { SetupStepType } from '#db/repositories/general/types';
 import {
   type Permissions,
@@ -14,18 +21,10 @@ type PermissionHandler<
   (params: {
     event: H3Event<TReq>;
     user: UserType;
-    /**
-     * check if user has permissions to access the resource
-     *
-     * see: {@link hasPermissionsWithData}
-     */
     checkPermissions: (data?: Permissions[Resource]['dataType']) => true;
   }): TRes;
 };
 
-/**
- * get current user
- */
 export const definePermissionEventHandler = <
   TReq extends EventHandlerRequest,
   TRes extends EventHandlerResponse,
@@ -40,18 +39,22 @@ export const definePermissionEventHandler = <
 
     const permissions = hasPermissionsWithData(user, resource, action);
 
-    // if no data is required, check permissions
+    const checkPermissions = (data?: Permissions[Resource]['dataType']) => {
+      if (!permissions.check(data)) {
+        throw createError({
+          statusCode: 403,
+          statusMessage: 'Permission denied',
+        });
+      }
+      return true as const;
+    };
+
     if (permissions.isBoolean()) {
-      permissions.check();
+      checkPermissions();
     }
 
-    const response = await handler({
-      event,
-      user,
-      checkPermissions: permissions.check,
-    });
+    const response = await handler({ event, user, checkPermissions });
 
-    // if data is required, make sure permissions were checked
     if (!permissions.checked) {
       throw createError({
         statusCode: 500,
@@ -63,13 +66,93 @@ export const definePermissionEventHandler = <
   });
 };
 
-// which api route is allowed for each setup step
-// 0 is done, 1 is start
-// 3 means step 2 is done
+export async function asBadRequest<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (e) {
+    throw createError({ statusCode: 400, statusMessage: (e as Error).message });
+  }
+}
+
+export const defineClientHandler = <TRes extends EventHandlerResponse>(
+  action: Permissions['clients']['action'],
+  handler: (params: {
+    event: H3Event;
+    user: UserType;
+    client: ClientType;
+  }) => TRes
+) =>
+  definePermissionEventHandler(
+    'clients',
+    action,
+    async ({ event, user, checkPermissions }) => {
+      const { clientId } = await getValidatedRouterParams(
+        event,
+        validateZod(ClientGetSchema, event)
+      );
+      const client = await Database.clients.get(clientId);
+      if (!client) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: 'Client not found',
+        });
+      }
+      checkPermissions(client);
+      return handler({ event, user, client });
+    }
+  );
+
+export async function refreshObfuscation() {
+  await Obfuscator.applyAll();
+  PhobosPackage.invalidate();
+}
+
+export const definePresetMutation = <T>(
+  handler: (params: { event: H3Event; presetId: number }) => Promise<T>
+) =>
+  definePermissionEventHandler('admin', 'any', async ({ event }) => {
+    const { presetId } = await getValidatedRouterParams(
+      event,
+      validateZod(ObfuscatorPresetGetSchema, event)
+    );
+    const result = await asBadRequest(() => handler({ event, presetId }));
+    await refreshObfuscation();
+    return result;
+  });
+
+export async function requireWarpRegistered() {
+  if (!(await Database.warp.isRegistered())) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'WARP is not registered.',
+    });
+  }
+}
+
+export async function maskedWarp() {
+  return maskWarp(await Database.warp.get());
+}
+
+export async function resolveInstallClient(event: H3Event) {
+  const { token } = await getValidatedRouterParams(
+    event,
+    validateZod(InstallTokenParamSchema, event)
+  );
+  const link = await Database.installLinks.getActiveByToken(token);
+  const client = link ? await Database.clients.get(link.id) : undefined;
+  if (!client) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'Install link not found',
+    });
+  }
+  return { token, client };
+}
+
 const ValidSetupSteps = {
   1: [2] as const,
-  3: [4, 'migrate'] as const,
-  5: ['tls'] as const,
+  3: [3] as const,
+  4: ['tls'] as const,
 } as const;
 
 type ValidSteps =
@@ -80,9 +163,6 @@ type SetupHandler<
   TRes extends EventHandlerResponse,
 > = { (params: { event: H3Event<TReq>; setup: SetupStepType }): TRes };
 
-/**
- * check if the setup is done, if not, run the handler
- */
 export const defineSetupEventHandler = <
   TReq extends EventHandlerRequest,
   TRes extends EventHandlerResponse,
@@ -123,14 +203,13 @@ export const defineSetupEventHandler = <
 
 type Metrics = 'prometheus' | 'json';
 
+const metricsTokens = new CachedTokenVerifier();
+
 type MetricsHandler<
   TReq extends EventHandlerRequest,
   TRes extends EventHandlerResponse,
 > = { (params: { event: H3Event<TReq> }): TRes };
 
-/**
- * check if the metrics are enabled and the token is correct
- */
 export const defineMetricsHandler = <
   TReq extends EventHandlerRequest,
   TRes extends EventHandlerResponse,
@@ -160,7 +239,10 @@ export const defineMetricsHandler = <
         });
       }
 
-      const tokenValid = await isPasswordValid(value, metricsConfig.password);
+      const tokenValid = await metricsTokens.verify(
+        value,
+        metricsConfig.password
+      );
 
       if (!tokenValid) {
         throw createError({

@@ -30,16 +30,17 @@
 
         <div class="mt-4 flex flex-wrap justify-end gap-2">
           <DialogClose as-child>
-            <BaseSecondaryButton :disabled="loading" @click="onCancel">
+            <BaseButton :disabled="loading" @click="onCancel">
               {{ $t('dialog.cancel') }}
-            </BaseSecondaryButton>
+            </BaseButton>
           </DialogClose>
-          <BasePrimaryButton
+          <BaseButton
+            variant="primary"
             :disabled="loading || fetching || !configText.trim()"
             @click="apply"
           >
             {{ loading ? $t('general.loading') : $t('admin.warp.importApply') }}
-          </BasePrimaryButton>
+          </BaseButton>
         </div>
       </DialogContent>
     </DialogPortal>

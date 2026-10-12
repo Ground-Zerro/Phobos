@@ -1,15 +1,6 @@
-import { Secret, TOTP } from 'otpauth';
+import { Secret } from 'otpauth';
+import { createTotp } from '#db/repositories/user/service';
 import { UserUpdateTotpSchema } from '#db/repositories/user/types';
-
-type Response =
-  | {
-      success: boolean;
-      type: 'setup';
-      key: string;
-      uri: string;
-    }
-  | { success: boolean; type: 'created' }
-  | { success: boolean; type: 'deleted' };
 
 export default definePermissionEventHandler(
   'me',
@@ -25,41 +16,24 @@ export default definePermissionEventHandler(
     if (body.type === 'setup') {
       const key = new Secret({ size: 20 });
 
-      const totp = new TOTP({
-        issuer: TOTP_ISSUER,
-        label: user.username,
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: key,
-      });
+      const totp = createTotp(user.username, key.base32);
 
       await Database.users.updateTotpKey(user.id, key.base32);
 
       return {
         success: true,
-        type: 'setup',
+        type: 'setup' as const,
         key: key.base32,
         uri: totp.toString(),
-      } as Response;
-    } else if (body.type === 'create') {
-      await Database.users.verifyTotp(user.id, body.code);
-
-      return {
-        success: true,
-        type: 'created',
-      } as Response;
-    } else if (body.type === 'delete') {
-      await Database.users.deleteTotpKey(user.id, body.currentPassword);
-
-      return {
-        success: true,
-        type: 'deleted',
-      } as Response;
+      };
     }
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Invalid request',
-    });
+
+    if (body.type === 'create') {
+      await Database.users.verifyTotp(user.id, body.code);
+      return { success: true, type: 'created' as const };
+    }
+
+    await Database.users.deleteTotpKey(user.id, body.currentPassword);
+    return { success: true, type: 'deleted' as const };
   }
 );

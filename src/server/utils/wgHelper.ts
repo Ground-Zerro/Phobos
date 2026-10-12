@@ -1,21 +1,15 @@
-// ! Auto Imports are not supported in this file
-
 import { parseCidr } from 'cidr-tools';
 import { stringifyIp } from 'ip-bigint';
-import { removeNewlines } from './template';
+import { iptablesTemplate, joinShell, removeNewlines } from './template';
 
 import type { ClientType } from '#db/repositories/client/types';
 import type { InterfaceType } from '#db/repositories/interface/types';
 import type { UserConfigType } from '#db/repositories/userConfig/types';
 import type { HooksType } from '#db/repositories/hooks/types';
 
-type Options = {
-  enableIpv6?: boolean;
-  /** Local WG port on the client side, from the preset bound to this client. */
-  clientWgLocalPort?: number;
-};
+type ServerOptions = { enableIpv6: boolean };
 
-const DEFAULT_CLIENT_WG_LOCAL_PORT = 13255;
+type ClientOptions = ServerOptions & { clientWgLocalPort: number };
 
 const wgExecutable =
   typeof WG_ENV !== 'undefined' ? WG_ENV.WG_EXECUTABLE : 'wg';
@@ -23,9 +17,9 @@ const wgExecutable =
 export const wg = {
   generateServerPeer: (
     client: Omit<ClientType, 'createdAt' | 'updatedAt'>,
-    options: Options = {}
+    options: ServerOptions
   ) => {
-    const { enableIpv6 = true } = options;
+    const { enableIpv6 } = options;
 
     const allowedIps = [
       `${client.ipv4Address}/32`,
@@ -48,9 +42,9 @@ AllowedIPs = ${allowedIps.join(', ')}${extraLines.length ? `\n${extraLines.join(
   generateServerInterface: (
     wgInterface: InterfaceType,
     hooks: HooksType,
-    options: Options = {}
+    options: ServerOptions
   ) => {
-    const { enableIpv6 = true } = options;
+    const { enableIpv6 } = options;
 
     const cidr4 = parseCidr(wgInterface.ipv4Cidr);
     const cidr6 = parseCidr(wgInterface.ipv6Cidr);
@@ -65,13 +59,6 @@ AllowedIPs = ${allowedIps.join(', ')}${extraLines.length ? `\n${extraLines.join(
     const loopbackDrop6 = `ip6tables -I INPUT 1 -p udp --dport ${wgInterface.port} ! -s ::1 -j DROP;`;
     const loopbackDel4 = `iptables -D INPUT -p udp --dport ${wgInterface.port} ! -s 127.0.0.1 -j DROP;`;
     const loopbackDel6 = `ip6tables -D INPUT -p udp --dport ${wgInterface.port} ! -s ::1 -j DROP;`;
-
-    const joinShell = (parts: string[]) =>
-      parts
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .map((p) => (p.endsWith(';') ? p : `${p};`))
-        .join(' ');
 
     const postUpCombined = joinShell([
       iptablesTemplate(hooks.postUp, wgInterface),
@@ -105,12 +92,9 @@ PostDown = ${iptablesTemplate(hooks.postDown, wgInterface)}`;
     wgInterface: InterfaceType,
     userConfig: UserConfigType,
     client: ClientType,
-    options: Options = {}
+    options: ClientOptions
   ) => {
-    const {
-      enableIpv6 = true,
-      clientWgLocalPort = DEFAULT_CLIENT_WG_LOCAL_PORT,
-    } = options;
+    const { enableIpv6, clientWgLocalPort } = options;
 
     const address =
       `${client.ipv4Address}/32` +
@@ -164,64 +148,9 @@ Endpoint = 127.0.0.1:${clientWgLocalPort}`;
     return exec(`${wgExecutable}-quick down ${infName}`);
   },
 
-  restart: (infName: string) => {
-    return exec(
-      `${wgExecutable}-quick down ${infName}; ${wgExecutable}-quick up ${infName}`
-    );
-  },
-
   sync: (infName: string) => {
     return exec(
       `${wgExecutable} syncconf ${infName} <(${wgExecutable}-quick strip ${infName})`
     );
-  },
-
-  dump: async (infName: string) => {
-    const rawDump = await exec(`${wgExecutable} show ${infName} dump`, {
-      log: false,
-    });
-
-    type wgDumpLine = [
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-    ];
-
-    return rawDump
-      .trim()
-      .split('\n')
-      .slice(1)
-      .map((line) => {
-        const splitLines = line.split('\t');
-        const [
-          publicKey,
-          preSharedKey,
-          endpoint,
-          allowedIps,
-          latestHandshakeAt,
-          transferRx,
-          transferTx,
-          persistentKeepalive,
-        ] = splitLines as wgDumpLine;
-
-        return {
-          publicKey,
-          preSharedKey,
-          endpoint: endpoint === '(none)' ? null : endpoint,
-          allowedIps,
-          latestHandshakeAt:
-            latestHandshakeAt === '0'
-              ? null
-              : new Date(Number.parseInt(`${latestHandshakeAt}000`)),
-          transferRx: Number.parseInt(transferRx),
-          transferTx: Number.parseInt(transferTx),
-          persistentKeepalive: persistentKeepalive,
-        };
-      });
   },
 };

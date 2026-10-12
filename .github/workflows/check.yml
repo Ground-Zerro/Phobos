@@ -2,6 +2,7 @@ name: Check
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -37,6 +38,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install docs dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Check docs formatting
+        working-directory: .
+        run: pnpm format:check:docs
 
       - name: Run checks
         run: pnpm check:all

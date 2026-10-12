@@ -61,17 +61,16 @@ COPY --from=build /app/.output /app
 COPY --from=build /app/server/database/migrations /app/server/database/migrations
 COPY src/phobos-obfuscator/bin /app/phobos/bin
 COPY src/server/phobos/templates /app/phobos/templates
-RUN apk add --no-cache curl
 COPY --from=build /tmp/libsql-native /app/server/node_modules/@libsql/
 
 COPY --from=build /app/cli/cli.sh /usr/local/bin/cli
 RUN chmod +x /usr/local/bin/cli
 
 RUN apk add --no-cache \
+    curl \
     dpkg \
     iptables \
     ip6tables \
-    nftables \
     kmod \
     iptables-legacy \
     wireguard-go \
@@ -87,8 +86,7 @@ RUN ARCH=$(uname -m) && \
     chmod +x /app/phobos/bin/wg-obfuscator-*
 
 COPY docker/s6-rc.d /etc/s6-overlay/s6-rc.d
-RUN chmod +x /etc/s6-overlay/s6-rc.d/node/run \
-    /etc/s6-overlay/s6-rc.d/node/finish
+RUN chmod +x /etc/s6-overlay/s6-rc.d/node/run
 
 HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=5 CMD \
     /usr/bin/timeout 8s /bin/sh -c \

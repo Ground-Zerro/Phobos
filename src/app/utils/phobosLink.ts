@@ -35,14 +35,7 @@ const SOCKS5_REQUIRED_FIELDS: Record<string, readonly string[]> = {
 
 const SOCKS5_MODE_RE = /^\s*mode\s*=\s*socks5\s*$/im;
 
-/**
- * Pad a .conf text with `key = none` lines for fields that are required by the
- * phobos:// link spec (docs/phobos-link-format.md §2.3) but absent in the
- * original config. Operates only on the section bodies we know about and does
- * not reorder existing lines. The required-field set is chosen by protocol:
- * a SOCKS5 config (marked by `mode = socks5`) carries no WireGuard sections.
- */
-export function padConfWithNone(confText: string): string {
+function padConfWithNone(confText: string): string {
   const requiredFields = SOCKS5_MODE_RE.test(confText)
     ? SOCKS5_REQUIRED_FIELDS
     : WIREGUARD_REQUIRED_FIELDS;

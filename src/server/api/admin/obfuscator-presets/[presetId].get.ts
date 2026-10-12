@@ -8,6 +8,6 @@ export default definePermissionEventHandler(
       event,
       validateZod(ObfuscatorPresetGetSchema, event)
     );
-    return Database.obfuscatorPresets.get(presetId);
+    return asBadRequest(() => Database.obfuscatorPresets.get(presetId));
   }
 );

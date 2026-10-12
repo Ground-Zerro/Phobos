@@ -1,10 +1,10 @@
-import { sql } from 'drizzle-orm';
 import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { timestamps } from '../../timestamps';
 
 import { wgInterface } from '../../schema';
 
 export const hooks = sqliteTable('hooks_table', {
-  /** same as `wgInterface.name` */
   id: text()
     .primaryKey()
     .references(() => wgInterface.name, {
@@ -15,11 +15,5 @@ export const hooks = sqliteTable('hooks_table', {
   postUp: text('post_up').notNull(),
   preDown: text('pre_down').notNull(),
   postDown: text('post_down').notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });

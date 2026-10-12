@@ -3,12 +3,11 @@
     <FormElement @submit.prevent="submit">
       <FormGroup>
         <FormHeading>{{ $t('admin.config.connection') }}</FormHeading>
-        <div class="flex items-center">
-          <FormLabel for="host">{{ $t('general.host') }}</FormLabel>
-          <BaseTooltip :text="$t('admin.config.hostDesc')">
-            <IconsInfo class="size-4" />
-          </BaseTooltip>
-        </div>
+        <FormFieldHeader
+          id="host"
+          :label="$t('general.host')"
+          :description="$t('admin.config.hostDesc')"
+        />
         <BaseInput
           id="host"
           v-model.trim="data.host"
@@ -60,11 +59,9 @@
 </template>
 
 <script lang="ts" setup>
-const { data: _data, refresh } = await useFetch(`/api/admin/userconfig`, {
-  method: 'get',
-});
-
-const data = toRef(_data.value);
+const { data, revert } = useEditable(
+  await useFetch(`/api/admin/userconfig`, { method: 'get' })
+);
 
 const _submit = useSubmit(
   `/api/admin/userconfig`,
@@ -76,10 +73,5 @@ const _submit = useSubmit(
 
 function submit() {
   return _submit(data.value);
-}
-
-async function revert() {
-  await refresh();
-  data.value = toRef(_data.value).value;
 }
 </script>

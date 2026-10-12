@@ -37,8 +37,6 @@
     "logout": "Logout",
     "continue": "Continue",
     "host": "Host",
-    "yes": "Yes",
-    "no": "No",
     "confirmPassword": "Confirm Password",
     "loading": "Loading...",
     "2fa": "Two Factor Authentication",
@@ -47,17 +45,11 @@
   "setup": {
     "welcome": "Welcome to your first setup of PhobosWG",
     "welcomeDesc": "You have found the easiest way to deploy a resilient WireGuard",
-    "existingSetup": "Do you have an existing setup?",
     "createAdminDesc": "Please first enter an admin username and a strong secure password. This information will be used to log in to your administration panel.",
     "setupConfigDesc": "Please enter the public hostname or address. It is used for display and TLS; clients connect via the obfuscator port.",
-    "setupMigrationDesc": "Please provide the backup file if you want to migrate your data from your previous wg-easy version to your new setup.",
-    "upload": "Upload",
-    "migration": "Restore the backup:",
     "createAccount": "Create Account",
-    "successful": "Setup successful",
     "hostDesc": "Public hostname or IP (e.g. for the web UI and certificates)",
     "tls": {
-      "title": "HTTPS / TLS Certificate",
       "desc": "Configure a TLS certificate to enable secure HTTPS access. Without HTTPS, login is blocked by default.",
       "selfSigned": "Self-signed certificate",
       "selfSignedDesc": "Generated instantly for your host. Browser will show a security warning — click Advanced → Proceed.",
@@ -74,13 +66,10 @@
       "certLabel": "Certificate (PEM fullchain)",
       "keyLabel": "Private key (PEM)",
       "generate": "Generate certificate",
-      "apply": "Apply",
       "restarting": "Certificate applied. Server is restarting with HTTPS...",
       "redirectPrompt": "Open the secure version:",
       "openLink": "Open HTTPS",
-      "skipWarning": "Without a TLS certificate the web interface is only accessible over HTTP.",
-      "errorCert": "Certificate validation failed",
-      "errorKey": "Private key validation failed"
+      "skipWarning": "Without a TLS certificate the web interface is only accessible over HTTP."
     }
   },
   "theme": {
@@ -92,11 +81,8 @@
     "toggleCharts": "Show/hide Charts",
     "donate": "Donate"
   },
-  "header": {},
   "login": {
     "signIn": "Sign In",
-    "rememberMe": "Remember me",
-    "rememberMeDesc": "Stay logged after closing the browser",
     "2faRequired": "Two Factor Authentication is required",
     "2faWrong": "Two Factor Authentication is wrong"
   },
@@ -126,10 +112,8 @@
     "lastSeen": "Last seen on ",
     "totalDownload": "Total Download: ",
     "totalUpload": "Total Upload: ",
-    "newClient": "New Client",
     "disableClient": "Disable Client",
     "enableClient": "Enable Client",
-    "noPrivKey": "This client has no known private key. Cannot create Configuration.",
     "showQR": "Show QR Code",
     "allowedIpsDesc": "Which IPs will be routed through the VPN (overrides global config)",
     "serverAllowedIpsDesc": "Which IPs the server will route to the client",
@@ -218,7 +202,6 @@
       "apply": "Apply TLS configuration",
       "applied": "TLS configuration applied. Server is restarting.",
       "appliedRestart": "TLS configuration applied. Server is restarting; reopen {url} in a few seconds.",
-      "externalManaged": "TLS is managed by an external reverse proxy (TLS_TERMINATION=external). The certificate must be issued and rotated outside of PhobosWG.",
       "origin": {
         "self-signed": "Self-signed",
         "imported": "Imported (inline PEM)",
@@ -233,7 +216,6 @@
       "mtuDesc": "MTU WireGuard will use",
       "changeCidr": "Change CIDR",
       "restart": "Restart Interface",
-      "restartDesc": "Restart the WireGuard interface",
       "restartWarn": "Are you sure to restart the interface? This will disconnect all clients.",
       "restartSuccess": "Interface restarted",
       "subnet": "WireGuard subnet",
@@ -256,7 +238,6 @@
       "egressWarpDesc": "When enabled, clients exit via Cloudflare WARP instead of the server's WAN, hiding the server IP. Requires a registered WARP configuration. A lower client MTU may be needed."
     },
     "obfuscatorPresets": {
-      "title": "Obfuscator presets",
       "desc": "Each preset runs its own wg-obfuscator listener with independent port, key and masking. The default preset is used by every client that has no explicit assignment. WireGuard presets use UDP ports 51822-51861, SOCKS5 presets use TCP ports 51862-51891 — the ranges published by docker-compose.",
       "add": "Add preset",
       "addDesc": "Enter a name only. Port, key and other parameters get sensible defaults and can be edited in the preset afterwards.",
@@ -344,7 +325,6 @@
     "generic": {
       "required": "{0} is required",
       "validNumber": "{0} must be a valid number",
-      "validNumberRange": "{0} must be a valid number or number range",
       "validString": "{0} must be a valid string",
       "validBoolean": "{0} must be a valid boolean",
       "validArray": "{0} must be a valid array",
@@ -378,7 +358,6 @@
       "obfuscateBytes": "Obfuscate bytes (0-1024)",
       "obfuscateBytesMedia": "For MEDIA the minimum is 4 (or 0 for the default 16)",
       "verbose": "Log level",
-      "idle": "Idle timeout",
       "dummy": "Max dummy bytes",
       "clientWgLocalPort": "Client-side WireGuard local port",
       "mediaSsrc": "RTP SSRC",
@@ -387,13 +366,10 @@
     "user": {
       "username": "Username",
       "password": "Password",
-      "remember": "Remember",
       "name": "Name",
       "email": "Email",
       "emailInvalid": "Email must be a valid email",
       "passwordMatch": "Passwords must match",
-      "totpEnable": "TOTP Enable",
-      "totpEnableTrue": "TOTP Enable must be true",
       "totpCode": "TOTP Code"
     },
     "userConfig": {
@@ -415,16 +391,10 @@
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
       "publicIpV6": "Server public IPv6"
     },
     "stringMalformed": "String is malformed",
-    "body": "Body must be a valid object",
     "hook": "Hook",
     "enabled": "Enabled",
     "mtu": "MTU",
@@ -432,7 +402,6 @@
     "address": "IP Address",
     "dns": "DNS",
     "allowedIps": "Allowed IPs",
-    "file": "File",
     "warp": {
       "key": "WireGuard key",
       "endpoint": "Endpoint (host:port)",
@@ -449,7 +418,6 @@
     "postDown": "PostDown"
   },
   "copy": {
-    "notSupported": "Copy is not supported",
     "copied": "Copied!",
     "failed": "Copy failed",
     "copy": "Copy",

@@ -17,17 +17,13 @@ export default defineEventHandler(async (event) => {
     if (!parsedSetup) {
       return sendRedirect(event, `/setup/1`, 302);
     }
-    const [_, currentSetup] = parsedSetup;
-
-    if (step.toString() === currentSetup) {
+    if (step.toString() === parsedSetup[1]) {
       return;
     }
     return sendRedirect(event, `/setup/${step}`, 302);
-  } else {
-    // If already set up
-    if (!url.pathname.startsWith('/setup/')) {
-      return;
-    }
+  }
+
+  if (url.pathname.startsWith('/setup/')) {
     return sendRedirect(event, '/login', 302);
   }
 });

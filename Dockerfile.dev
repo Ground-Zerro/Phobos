@@ -9,6 +9,7 @@ HEALTHCHECK --interval=30s --timeout=8s --start-period=60s --retries=5 CMD \
     /usr/bin/timeout 8s wget -qO- http://localhost:${PORT:-51831}/ >/dev/null 2>&1
 
 RUN apk add --no-cache \
+    curl \
     dpkg \
     dumb-init \
     iptables \
@@ -16,12 +17,14 @@ RUN apk add --no-cache \
     kmod \
     iptables-legacy \
     wireguard-go \
-    wireguard-tools
+    wireguard-tools \
+    procps-ng \
+    openssl
 
 RUN update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 10 --slave /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save
 RUN update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 10 --slave /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore --slave /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save
 
-ENV DEBUG=Server,WireGuard,Database,CMD
+ENV DEBUG=Server,WireGuard,Database,CMD,Obfuscator,PhobosPackage,Firewall,Warp
 ENV PORT=51831
 ENV HOST=0.0.0.0
 ENV INSECURE=true
@@ -32,5 +35,7 @@ COPY src/package.json src/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY src ./
+
+RUN install -m 0755 /app/phobos-obfuscator/bin/wg-obfuscator-$(uname -m) /usr/local/bin/wg-obfuscator
 
 ENTRYPOINT ["dumb-init", "--", "pnpm", "run"]

@@ -1,5 +1,6 @@
-import { sql } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { timestamps } from '../../timestamps';
 
 export const warp = sqliteTable('warp_table', {
   id: int().primaryKey({ autoIncrement: false }).default(1),
@@ -22,11 +23,5 @@ export const warp = sqliteTable('warp_table', {
   updateIntervalDays: int('update_interval_days').notNull().default(0),
   lastUpdateAt: text('last_update_at'),
 
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });

@@ -291,4 +291,66 @@ describe('firewall', () => {
       ]);
     });
   });
+  describe('collectRules', () => {
+    const client = {
+      id: 7,
+      name: 'phone',
+      ipv4Address: '10.8.0.7',
+      ipv6Address: 'fdcc::7',
+      allowedIps: null,
+      firewallIps: ['10.0.0.0/24:443/tcp', '2001:db8::1'],
+      enabled: true,
+    };
+
+    test('splits rules by family and terminates both chains with DROP', () => {
+      const rules = firewallTestExports.collectRules([client], [], true);
+      expect(rules.v4).toEqual([
+        '-A WG_CLIENTS -s 10.8.0.7 -d 10.0.0.0/24 -p tcp --dport 443 -m comment --comment "client 7: phone" -j ACCEPT',
+        '-A WG_CLIENTS -j DROP',
+      ]);
+      expect(rules.v6).toEqual([
+        '-A WG_CLIENTS -s fdcc::7 -d 2001:db8::1 -m comment --comment "client 7: phone" -j ACCEPT',
+        '-A WG_CLIENTS -j DROP',
+      ]);
+    });
+
+    test('leaves the IPv6 chain empty when IPv6 is disabled', () => {
+      const rules = firewallTestExports.collectRules([client], [], false);
+      expect(rules.v6).toEqual([]);
+      expect(rules.v4.at(-1)).toBe('-A WG_CLIENTS -j DROP');
+    });
+
+    test('skips disabled clients and falls back to default allowed IPs', () => {
+      const rules = firewallTestExports.collectRules(
+        [
+          { ...client, enabled: false },
+          { ...client, id: 8, firewallIps: null, ipv4Address: '10.8.0.8' },
+        ],
+        ['0.0.0.0/0'],
+        true
+      );
+      expect(rules.v4).toEqual([
+        '-A WG_CLIENTS -s 10.8.0.8 -d 0.0.0.0/0 -m comment --comment "client 8: phone" -j ACCEPT',
+        '-A WG_CLIENTS -j DROP',
+      ]);
+    });
+
+    test('rejects invalid entries before any rule is produced', () => {
+      expect(() =>
+        firewallTestExports.collectRules(
+          [{ ...client, firewallIps: ['10.0.0.1/tcp'] }],
+          [],
+          true
+        )
+      ).toThrow();
+    });
+  });
+
+  describe('buildRestorePayload', () => {
+    test('declares the chain so iptables-restore --noflush flushes it atomically', () => {
+      expect(
+        firewallTestExports.buildRestorePayload(['-A WG_CLIENTS -j DROP'])
+      ).toBe('*filter\n:WG_CLIENTS - [0:0]\n-A WG_CLIENTS -j DROP\nCOMMIT\n');
+    });
+  });
 });

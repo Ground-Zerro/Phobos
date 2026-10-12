@@ -36,9 +36,6 @@
     "logout": "Pechar sesión",
     "continue": "Continuar",
     "host": "Host",
-    "port": "Porto",
-    "yes": "Si",
-    "no": "Non",
     "confirmPassword": "Confirmar o contrasinal",
     "loading": "Cargando...",
     "2fa": "Autenticación de dobre factor",
@@ -47,16 +44,10 @@
   "setup": {
     "welcome": "Benvido á túa primeira configuración de PhobosWG",
     "welcomeDesc": "Atopaches a forma máis sinxela de implantar un WireGuard resiliente",
-    "existingSetup": "Tes unha configuración existente?",
     "createAdminDesc": "Por favor, introduce primeiro un usuario administrador cun contrasinal seguro. Esta información empregarase para acceder ao panel de administración.",
     "setupConfigDesc": "Por favor, introduce a información do host e do porto. Isto empregarase para a configuración dos clientes ao configurar WireGuard nos seus dispositivos.",
-    "setupMigrationDesc": "Por favor, fornece o ficheiro da copia de seguridade se queres migrar os datos da túa versión anterior de wg-easy á nova configuración.",
-    "upload": "Subir",
-    "migration": "Recuperar a copia de seguridade:",
     "createAccount": "Crear conta",
-    "successful": "Configuración completada con éxito",
-    "hostDesc": "Nome de host público ao que se conectarán os clientes",
-    "portDesc": "Porto UDP público ao que se conectarán os clientes e no que escoitará WireGuard"
+    "hostDesc": "Nome de host público ao que se conectarán os clientes"
   },
   "theme": {
     "dark": "Tema escuro",
@@ -69,8 +60,6 @@
   },
   "login": {
     "signIn": "Iniciar sesión",
-    "rememberMe": "Lembrarme",
-    "rememberMeDesc": "Manter a sesión iniciada ao pechar o navegador",
     "2faRequired": "É necesaria a autenticación de dobre factor",
     "2faWrong": "A autenticación de dobre factor é incorrecta"
   },
@@ -96,10 +85,8 @@
     "lastSeen": "Visto por última vez o ",
     "totalDownload": "Descarga total: ",
     "totalUpload": "Subida total: ",
-    "newClient": "Novo cliente",
     "disableClient": "Desactivar cliente",
     "enableClient": "Activar cliente",
-    "noPrivKey": "Este cliente non ten unha chave privada coñecida. Non se pode crear a configuración.",
     "showQR": "Amosar código QR",
     "allowedIpsDesc": "IP que se encamiñarán a través da VPN (sobrescribe a configuración global)",
     "serverAllowedIpsDesc": "IP que o servidor encamiñará ao cliente",

@@ -1,7 +1,11 @@
-import { sql, relations } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+import { timestamps } from '../../timestamps';
+
 import { userConfig, hooks } from '../../schema';
+
+export const WG_INTERFACE_NAME = 'wg0';
 
 export const wgInterface = sqliteTable('interfaces_table', {
   name: text().primaryKey(),
@@ -22,13 +26,7 @@ export const wgInterface = sqliteTable('interfaces_table', {
   serverPublicIpV4: text('server_public_ip_v4').notNull().default(''),
   serverPublicIpV6: text('server_public_ip_v6'),
   serverPublicDomain: text('server_public_domain'),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });
 
 export const wgInterfaceRelations = relations(wgInterface, ({ one }) => ({

@@ -39,17 +39,19 @@
       <FormGroup>
         <FormHeading>{{ $t('form.actions') }}</FormHeading>
         <FormPrimaryActionField type="submit" :label="$t('form.save')" />
-        <FormSecondaryActionField :label="$t('form.revert')" @click="revert" />
+        <FormSecondaryActionField
+          :label="$t('form.revert')"
+          @click="resetForm"
+        />
       </FormGroup>
     </FormElement>
   </main>
 </template>
 
 <script setup lang="ts">
-const { data: _data, refresh } = await useFetch(`/api/admin/general`, {
-  method: 'get',
-});
-const data = toRef(_data.value);
+const { data, revert } = useEditable(
+  await useFetch(`/api/admin/general`, { method: 'get' })
+);
 
 const metricsPassword = ref('');
 
@@ -58,7 +60,7 @@ const _submit = useSubmit(
   {
     method: 'post',
   },
-  { revert }
+  { revert: resetForm }
 );
 
 function submit() {
@@ -79,9 +81,8 @@ function submit() {
   return _submit(body);
 }
 
-async function revert() {
+async function resetForm() {
   metricsPassword.value = '';
-  await refresh();
-  data.value = toRef(_data.value).value;
+  await revert();
 }
 </script>

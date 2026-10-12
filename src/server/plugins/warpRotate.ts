@@ -12,7 +12,9 @@ export default defineNitroPlugin((nitroApp) => {
       const now = Date.now();
 
       if (!warp.lastUpdateAt) {
-        await Database.warp.setLastUpdateAt(new Date(now).toISOString());
+        await Database.warp.update({
+          lastUpdateAt: new Date(now).toISOString(),
+        });
         return;
       }
 

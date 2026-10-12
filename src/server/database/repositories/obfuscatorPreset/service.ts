@@ -4,32 +4,54 @@ import {
   isPortInModeRange,
   obfuscatorPortRange,
   type ObfuscatorPresetCreateType,
-  type ObfuscatorPresetMode,
   type ObfuscatorPresetType,
   type ObfuscatorPresetUpdateType,
 } from './types';
+import { resolvePreset } from './resolve';
 import { client as clientSchema } from '#db/schema';
+import { Repository } from '#db/repository';
 import type { DBType } from '#db/sqlite';
+import {
+  PRESET_DEFAULTS,
+  type ObfuscationMode,
+} from '#shared/utils/obfuscation';
 
-export class ObfuscatorPresetService {
-  #db: DBType;
+type ObfuscatorPresetInsert = typeof obfuscatorPreset.$inferInsert;
 
-  constructor(db: DBType) {
-    this.#db = db;
-  }
+type DefaultPresetSeed = Omit<
+  ObfuscatorPresetInsert,
+  'id' | 'name' | 'isDefault' | 'mode' | 'createdAt' | 'updatedAt'
+>;
 
-  list() {
-    return this.#db.query.obfuscatorPreset
+function createPreparedStatement(db: DBType) {
+  return {
+    list: db.query.obfuscatorPreset
       .findMany({
         orderBy: (p, { desc, asc }) => [desc(p.isDefault), asc(p.id)],
       })
-      .execute();
+      .prepare(),
+    findById: db.query.obfuscatorPreset
+      .findFirst({ where: eq(obfuscatorPreset.id, sql.placeholder('id')) })
+      .prepare(),
+    findDefault: db.query.obfuscatorPreset
+      .findFirst({ where: eq(obfuscatorPreset.isDefault, true) })
+      .prepare(),
+  };
+}
+
+export class ObfuscatorPresetService extends Repository<
+  ReturnType<typeof createPreparedStatement>
+> {
+  constructor(db: DBType) {
+    super(db, createPreparedStatement);
+  }
+
+  list() {
+    return this.statements.list.execute();
   }
 
   async get(id: number): Promise<ObfuscatorPresetType> {
-    const row = await this.#db.query.obfuscatorPreset
-      .findFirst({ where: eq(obfuscatorPreset.id, id) })
-      .execute();
+    const row = await this.statements.findById.execute({ id });
     if (!row) {
       throw new Error(`Obfuscator preset ${id} not found`);
     }
@@ -37,28 +59,23 @@ export class ObfuscatorPresetService {
   }
 
   async getDefault(): Promise<ObfuscatorPresetType> {
-    const row = await this.#db.query.obfuscatorPreset
-      .findFirst({ where: eq(obfuscatorPreset.isDefault, true) })
-      .execute();
+    const row = await this.statements.findDefault.execute();
     if (!row) {
       throw new Error('No default obfuscator preset configured');
     }
     return row;
   }
 
-  async getForClient(
-    presetId: number | null | undefined
-  ): Promise<ObfuscatorPresetType> {
-    if (presetId == null) return this.getDefault();
-    try {
-      return await this.get(presetId);
-    } catch {
-      return this.getDefault();
+  async getForClient(presetId: number | null): Promise<ObfuscatorPresetType> {
+    const preset = await resolvePreset(this.db, presetId);
+    if (!preset) {
+      throw new Error('No default obfuscator preset configured');
     }
+    return preset;
   }
 
-  async usedPorts(excludeId?: number): Promise<Set<number>> {
-    const rows = await this.#db.query.obfuscatorPreset
+  async #usedPorts(excludeId?: number): Promise<Set<number>> {
+    const rows = await this.db.query.obfuscatorPreset
       .findMany({ columns: { id: true, extPort: true } })
       .execute();
     return new Set(
@@ -67,10 +84,10 @@ export class ObfuscatorPresetService {
   }
 
   async pickFreePort(
-    mode: ObfuscatorPresetMode,
+    mode: ObfuscationMode,
     excludeId?: number
   ): Promise<number> {
-    const used = await this.usedPorts(excludeId);
+    const used = await this.#usedPorts(excludeId);
     const { min, max } = obfuscatorPortRange(mode);
     for (let p = min; p <= max; p++) {
       if (!used.has(p)) return p;
@@ -78,7 +95,7 @@ export class ObfuscatorPresetService {
     throw new Error(`No free obfuscator port in range ${min}-${max}`);
   }
 
-  #assertPortInRange(extPort: number, mode: ObfuscatorPresetMode): void {
+  #assertPortInRange(extPort: number, mode: ObfuscationMode): void {
     const { min, max } = obfuscatorPortRange(mode);
     if (extPort < min || extPort > max) {
       throw new Error(
@@ -88,18 +105,22 @@ export class ObfuscatorPresetService {
   }
 
   async clientCounts(): Promise<Record<number, number>> {
-    const rows = await this.#db
-      .select({
-        presetId: clientSchema.presetId,
-        count: sql<number>`count(*)`,
-      })
-      .from(clientSchema)
-      .groupBy(clientSchema.presetId)
-      .execute();
+    const [rows, defaultPreset] = await Promise.all([
+      this.db
+        .select({
+          presetId: clientSchema.presetId,
+          count: sql<number>`count(*)`,
+        })
+        .from(clientSchema)
+        .groupBy(clientSchema.presetId)
+        .execute(),
+      this.getDefault(),
+    ]);
 
     const result: Record<number, number> = {};
     for (const r of rows) {
-      if (r.presetId != null) result[r.presetId] = Number(r.count);
+      const presetId = r.presetId ?? defaultPreset.id;
+      result[presetId] = (result[presetId] ?? 0) + Number(r.count);
     }
     return result;
   }
@@ -110,9 +131,11 @@ export class ObfuscatorPresetService {
     const mode = data.mode ?? 'WIREGUARD';
     const extPort = data.extPort ?? (await this.pickFreePort(mode));
     this.#assertPortInRange(extPort, mode);
-    const inserted = await this.#db
+    const inserted = await this.db
       .insert(obfuscatorPreset)
       .values({
+        ...PRESET_DEFAULTS,
+        ...data,
         name: data.name,
         isDefault: false,
         mode,
@@ -120,13 +143,7 @@ export class ObfuscatorPresetService {
         sourceIf: data.sourceIf ?? '',
         target: data.target?.trim() ? data.target.trim() : null,
         key: data.key ?? generateObfuscatorKey(),
-        masking: data.masking ?? 'STUN',
-        obfuscateBytes: data.obfuscateBytes ?? 0,
-        dummy: data.dummy ?? 40,
-        verbose: data.verbose ?? 'error',
-        clientWgLocalPort: data.clientWgLocalPort ?? 13255,
         mediaSsrc: data.mediaSsrc ?? null,
-        clientLocalPort: data.clientLocalPort ?? 1080,
       })
       .returning()
       .execute();
@@ -155,7 +172,7 @@ export class ObfuscatorPresetService {
     if (data.target !== undefined) {
       values.target = data.target.trim() ? data.target.trim() : null;
     }
-    const updated = await this.#db
+    const updated = await this.db
       .update(obfuscatorPreset)
       .set(values)
       .where(eq(obfuscatorPreset.id, id))
@@ -168,7 +185,7 @@ export class ObfuscatorPresetService {
   }
 
   async setDefault(id: number): Promise<void> {
-    await this.#db.transaction(async (tx) => {
+    await this.db.transaction(async (tx) => {
       const target = await tx.query.obfuscatorPreset
         .findFirst({ where: eq(obfuscatorPreset.id, id) })
         .execute();
@@ -197,13 +214,13 @@ export class ObfuscatorPresetService {
     if (row.isDefault) {
       throw new Error('Cannot delete the default obfuscator preset');
     }
-    await this.#db
+    await this.db
       .delete(obfuscatorPreset)
       .where(eq(obfuscatorPreset.id, id))
       .execute();
   }
 
-  async regenerateKey(id: number): Promise<ObfuscatorPresetType> {
+  regenerateKey(id: number): Promise<ObfuscatorPresetType> {
     return this.update(id, { key: generateObfuscatorKey() });
   }
 
@@ -213,38 +230,12 @@ export class ObfuscatorPresetService {
     return this.update(id, { extPort: port });
   }
 
-  async ensureDefault(seed: {
-    extPort: number;
-    sourceIf: string;
-    target: string | null;
-    key: string;
-    masking: 'STUN' | 'MEDIA' | 'AUTO' | 'NONE' | 'TLS';
-    obfuscateBytes: number;
-    dummy: number;
-    verbose: 'error' | 'warn' | 'info' | 'debug' | 'trace';
-    clientWgLocalPort: number;
-  }): Promise<void> {
-    const existing = await this.#db.query.obfuscatorPreset
-      .findFirst({ where: eq(obfuscatorPreset.isDefault, true) })
-      .execute();
-    if (existing) return;
+  async ensureDefault(seed: DefaultPresetSeed): Promise<void> {
+    if (await this.statements.findDefault.execute()) return;
 
-    await this.#db
+    await this.db
       .insert(obfuscatorPreset)
-      .values({
-        name: 'default',
-        isDefault: true,
-        mode: 'WIREGUARD',
-        extPort: seed.extPort,
-        sourceIf: seed.sourceIf,
-        target: seed.target,
-        key: seed.key,
-        masking: seed.masking,
-        obfuscateBytes: seed.obfuscateBytes,
-        dummy: seed.dummy,
-        verbose: seed.verbose,
-        clientWgLocalPort: seed.clientWgLocalPort,
-      })
+      .values({ ...seed, name: 'default', isDefault: true, mode: 'WIREGUARD' })
       .execute();
   }
 }

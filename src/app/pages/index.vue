@@ -36,15 +36,11 @@
 const globalStore = useGlobalStore();
 const clientsStore = useClientsStore();
 
-// TODO?: use hover card to show more detailed info without leaving the page
-// or do something like a accordion
-
 const intervalId = ref<NodeJS.Timeout | null>(null);
 
 clientsStore.refresh();
 
 onMounted(() => {
-  // TODO?: replace with websocket or similar
   intervalId.value = setInterval(() => {
     clientsStore
       .refresh({

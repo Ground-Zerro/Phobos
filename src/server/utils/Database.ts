@@ -1,20 +1,15 @@
-/**
- * Changing the Database Provider
- * This design allows for easy swapping of different database implementations.
- */
 import { connect, type DBServiceType } from '#db/sqlite';
 
-const nullObject = new Proxy(
-  {},
-  {
-    get() {
-      throw new Error('Database not yet initialized');
-    },
-  }
-);
+let provider: DBServiceType | null = null;
 
-// eslint-disable-next-line import/no-mutable-exports
-let provider = nullObject as never as DBServiceType;
+const Database = new Proxy({} as DBServiceType, {
+  get(_, key: keyof DBServiceType) {
+    if (!provider) {
+      throw new Error('Database not yet initialized');
+    }
+    return provider[key];
+  },
+});
 
 connect().then(async (db) => {
   provider = db;
@@ -23,4 +18,4 @@ connect().then(async (db) => {
   await WarpInterface.Startup();
 });
 
-export default provider;
+export default Database;

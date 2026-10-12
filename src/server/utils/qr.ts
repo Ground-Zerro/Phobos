@@ -1,5 +1,3 @@
-// ! Auto Imports are not supported in this file
-
 import type { ErrorCorrection } from 'qr';
 import { encodeQR } from 'qr';
 
@@ -22,17 +20,21 @@ export function encodeQRCodeTerm(config: string): string {
   });
 }
 
+const ECC_PREFERENCE: readonly ErrorCorrection[] = [
+  'high',
+  'quartile',
+  'medium',
+  'low',
+];
+
 function tryECCModes<T>(callback: (ecc: ErrorCorrection) => T): T {
-  // defined manually, as qr's ECMode is in wrong order
-  const ECMode = ['high', 'quartile', 'medium', 'low'] as const;
-  for (const ecc of ECMode) {
+  for (const ecc of ECC_PREFERENCE) {
     try {
       return callback(ecc);
     } catch (err) {
       if (!(err instanceof Error && err.message === 'Capacity overflow')) {
         throw err;
       }
-      // retry with lower ecc
     }
   }
   throw new Error(

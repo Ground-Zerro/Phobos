@@ -14,10 +14,6 @@ export const roles = {
 
 type Roles = keyof typeof roles;
 
-/**
- * convert role to key
- * @example roleToKey(roles.ADMIN) => 'ADMIN'
- */
 function roleToKey(role: Role) {
   const roleKey = Object.keys(roles).find(
     (key) => roles[key as Roles] === role
@@ -29,8 +25,6 @@ function roleToKey(role: Role) {
 
   return roleKey as Roles;
 }
-
-// TODO: https://github.com/nitrojs/nitro/issues/2758#issuecomment-2650531472
 
 type BrandedNumber = {
   toString: unknown;
@@ -117,7 +111,6 @@ export function hasPermissions<Resource extends keyof Permissions>(
   data?: Permissions[Resource]['dataType']
 ) {
   const permission = (ROLES as RolesWithPermissions)[
-    // TODO: remove typecast
     roleToKey(user.role as Role)
   ][resource][action];
 
@@ -141,13 +134,7 @@ export function hasPermissionsWithData<Resource extends keyof Permissions>(
   return {
     check(data?: Permissions[Resource]['dataType']) {
       checked = true;
-      const isAllowed = hasPermissions(user, resource, action, data);
-
-      if (!isAllowed) {
-        throw new Error('Permission denied');
-      }
-
-      return isAllowed;
+      return hasPermissions(user, resource, action, data);
     },
     isBoolean() {
       return (

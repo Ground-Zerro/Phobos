@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+. "$(dirname "$0")/lib-client.sh"
+
 CLIENT_NAME=""
 OBF_PORT=1080
 REDSOCKS_PORT=12345
@@ -13,15 +15,6 @@ REMOVE=0
 REDSOCKS_CONF="/etc/redsocks.conf"
 NFT_FILE="/etc/nftables.d/30-phobos-socks5.nft"
 REDSOCKS_INIT="/etc/init.d/phobos-redsocks"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-}
-
-error() {
-    echo "[ERROR] $*" >&2
-    log "ERROR: $*"
-}
 
 usage() {
     cat <<EOF

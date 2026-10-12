@@ -4,7 +4,6 @@ export default defineEventHandler(async (event) => {
   const session = await getWGSession(event);
 
   if (!session.data.userId) {
-    // not logged in
     throw createError({
       statusCode: 401,
       statusMessage: 'Not authenticated',

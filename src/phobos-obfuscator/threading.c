@@ -175,7 +175,7 @@ static client_entry_t *worker_get_or_create(worker_ctx_t *w, struct sockaddr_in 
             entry = make_client(w, sender, 1, sp->local_port);
             pthread_rwlock_unlock(&table_lock[s]);
             if (entry) log(LL_INFO, "Activated static binding: %s:%d",
-                           inet_ntoa(entry->client_addr.sin_addr), ntohs(entry->client_addr.sin_port));
+                           ipv4_text(entry->client_addr.sin_addr).s, ntohs(entry->client_addr.sin_port));
             return entry;
         }
     }
@@ -225,7 +225,7 @@ static int process_packet(worker_ctx_t *w, client_entry_t **pclient,
         if (dir == DIR_SERVER_TO_CLIENT && !client_entry->handshaked
             && client_entry->masking_handler && !config->masking_handler_set) {
             log(LL_INFO, "Autodetected masking handler for client %s:%d: %s",
-                inet_ntoa(client_entry->client_addr.sin_addr), ntohs(client_entry->client_addr.sin_port),
+                ipv4_text(client_entry->client_addr.sin_addr).s, ntohs(client_entry->client_addr.sin_port),
                 client_entry->masking_handler->name);
         }
         client_entry->handshaked = 1;
@@ -324,7 +324,7 @@ static void worker_cleanup(worker_ctx_t *w, long now) {
                  || (!cur->handshaked && (now - cur->last_activity_time >= HANDSHAKE_TIMEOUT)))
                 && !cur->is_static) {
                 log(cur->handshaked ? LL_INFO : LL_DEBUG, "Removing idle client %s:%d",
-                    inet_ntoa(cur->client_addr.sin_addr), ntohs(cur->client_addr.sin_port));
+                    ipv4_text(cur->client_addr.sin_addr).s, ntohs(cur->client_addr.sin_port));
 #ifdef __linux__
                 epoll_ctl(w->epfd, EPOLL_CTL_DEL, cur->server_sock, NULL);
 #endif
@@ -557,7 +557,7 @@ static int open_listen_socket(threading_context_t *ctx, obfuscator_config_t *con
     addr.sin_addr.s_addr = ctx->listen_addr;
     addr.sin_port = htons(ctx->listen_port);
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        serror("Failed to bind listen socket to %s:%d", inet_ntoa(addr.sin_addr), ctx->listen_port);
+        serror("Failed to bind listen socket to %s:%d", ipv4_text(addr.sin_addr).s, ctx->listen_port);
         close(sock);
         return -1;
     }

@@ -1,26 +1,9 @@
 #!/bin/sh
 set -e
 
+. "$(dirname "$0")/lib-client.sh"
+
 MAX_INTERFACE_NUM=9
-NDMC_LAST_ERROR=""
-
-check_dependencies() {
-    local missing=""
-
-    for cmd in ndmc date; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            missing="$missing $cmd"
-        fi
-    done
-
-    if [ -n "$missing" ]; then
-        echo "ERROR: Missing required utilities:$missing" >&2
-        echo "Please install them using: opkg update && opkg install$missing" >&2
-        return 1
-    fi
-
-    return 0
-}
 
 CLIENT_NAME=""
 CLIENT_PRIVATE_KEY=""
@@ -32,15 +15,6 @@ ENDPOINT_PORT=13255
 KEEPALIVE=25
 MTU=1420
 FALLBACK_CONFIG=""
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-}
-
-error() {
-    echo "[ERROR] $*" >&2
-    log "ERROR: $*"
-}
 
 usage() {
     cat <<EOF
@@ -134,47 +108,6 @@ parse_args() {
     fi
 }
 
-ndmc_strip() {
-    tr -d '\033' | sed -e 's/\[K//g' -e 's/\r//g'
-}
-
-ndmc_run() {
-    local output
-
-    if output=$(ndmc -c "$1" 2>&1); then
-        NDMC_LAST_ERROR=""
-        return 0
-    fi
-
-    NDMC_LAST_ERROR=$(printf '%s' "${output}" | ndmc_strip | tr '\n' ' ')
-    return 1
-}
-
-ndmc_batch() {
-    local command
-
-    while IFS= read -r command; do
-        [ -n "${command}" ] || continue
-
-        if ! ndmc_run "${command}"; then
-            error "ndmc отклонил команду: ${command}"
-            [ -n "${NDMC_LAST_ERROR}" ] && error "${NDMC_LAST_ERROR}"
-            return 1
-        fi
-    done
-
-    return 0
-}
-
-ndmc_interface_exists() {
-    ndmc -c "show interface $1" >/dev/null 2>&1
-}
-
-ndmc_interface_description() {
-    ndmc -c "show interface $1" 2>/dev/null | ndmc_strip \
-        | sed -n 's/^[[:space:]]*description:[[:space:]]*//p' | head -1
-}
-
 find_phobos_interface() {
     local client_name="$1"
     local target_desc="Phobos-${client_name}"
@@ -260,18 +193,6 @@ EOF
     return 0
 }
 
-save_configuration() {
-    log "Сохранение конфигурации..."
-
-    if ndmc_run "system configuration save"; then
-        log "Конфигурация сохранена ✓"
-        return 0
-    fi
-
-    error "Ошибка сохранения конфигурации: ${NDMC_LAST_ERROR}"
-    return 1
-}
-
 verify_interface_created() {
     local client_name="$1"
     local interface_description="Phobos-${client_name}"
@@ -312,7 +233,7 @@ EOF
 main() {
     parse_args "$@"
 
-    if ! check_dependencies; then
+    if ! ndmc_check_dependencies; then
         exit 1
     fi
 
@@ -344,7 +265,7 @@ main() {
         exit 1
     fi
 
-    if ! save_configuration; then
+    if ! ndmc_save_configuration; then
         error "Не удалось сохранить конфигурацию"
         exit 1
     fi

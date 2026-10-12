@@ -45,7 +45,6 @@ int s5_mask_is_framed(int type, const obfuscator_config_t *config, const uint8_t
 }
 
 static void enc_init(s5_enc_t *st, const obfuscator_config_t *config) {
-    fast_rng_init();
     st->seq = (uint16_t)fast_rand();
     st->ts = fast_rand();
     if (config->media_ssrc) {

@@ -6,18 +6,12 @@ import type { wgInterface } from './schema';
 
 export type InterfaceType = InferSelectModel<typeof wgInterface>;
 
-export type InterfaceCreateType = Omit<
-  InterfaceType,
-  'createdAt' | 'updatedAt'
->;
-
 export type InterfaceUpdateType = Omit<
-  InterfaceCreateType,
+  InterfaceType,
   'name' | 'createdAt' | 'updatedAt' | 'privateKey' | 'publicKey'
 >;
 
-/** Admin/API updates: internal WG listen port is fixed in DB. */
-export type InterfaceAdminUpdateType = Omit<InterfaceUpdateType, 'port'>;
+type InterfaceAdminUpdateType = Omit<InterfaceUpdateType, 'port'>;
 
 const device = z
   .string({ message: t('zod.interface.device') })
@@ -30,20 +24,20 @@ const cidr = z
   .refine((value) => isCidr(value), { message: t('zod.interface.cidrValid') })
   .pipe(safeStringRefine);
 
-export const ServerPublicIpV4Schema = z
+const ServerPublicIpV4Schema = z
   .string({ message: t('zod.obfuscator.publicIpV4') })
   .refine((v) => isIP(v) && !v.includes(':'), {
     message: t('zod.obfuscator.publicIpV4'),
   });
 
-export const ServerPublicIpV6Schema = z
+const ServerPublicIpV6Schema = z
   .string({ message: t('zod.obfuscator.publicIpV6') })
   .refine((v) => isIP(v) && v.includes(':'), {
     message: t('zod.obfuscator.publicIpV6'),
   })
   .nullable();
 
-export const ServerPublicDomainSchema = z
+const ServerPublicDomainSchema = z
   .string()
   .refine(
     (v) =>

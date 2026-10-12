@@ -37,9 +37,6 @@
     "logout": "注销登录",
     "continue": "继续",
     "host": "主机",
-    "port": "端口",
-    "yes": "是",
-    "no": "否",
     "confirmPassword": "确认密码",
     "loading": "加载中...",
     "2fa": "双重认证",
@@ -48,18 +45,11 @@
   "setup": {
     "welcome": "欢迎使用PhobosWG安装向导",
     "welcomeDesc": "您已找到部署高可用 WireGuard 的最简单方法",
-    "existingSetup": "是否已有现有配置？",
     "createAdminDesc": "请首先输入管理员用户名和强密码。这些信息将用于登录管理面板。",
     "setupConfigDesc": "请输入服务器主机和端口信息。这些设置将用于客户端设备连接WireGuard时的配置。",
-    "setupMigrationDesc": "如果您希望从旧版wg-easy迁移数据到新安装，请提供备份文件。",
-    "upload": "上传文件",
-    "migration": "从备份恢复配置：",
     "createAccount": "创建账户",
-    "successful": "安装配置成功",
     "hostDesc": "客户端将连接到的公共主机名或IP地址",
-    "portDesc": "客户端将连接到的公共UDP端口，也是WireGuard服务监听的端口",
     "tls": {
-      "title": "HTTPS / TLS 证书",
       "desc": "配置 TLS 证书以启用安全的 HTTPS 访问。未启用 HTTPS 时，默认禁止登录。",
       "selfSigned": "自签名证书",
       "selfSignedDesc": "为你的主机即时生成。浏览器会显示安全警告——请点击「高级」→「继续访问」。",
@@ -76,13 +66,10 @@
       "certLabel": "证书（PEM fullchain）",
       "keyLabel": "私钥（PEM）",
       "generate": "生成证书",
-      "apply": "应用",
       "restarting": "证书已应用。服务器正在以 HTTPS 重启……",
       "redirectPrompt": "打开安全版本：",
       "openLink": "打开 HTTPS",
-      "skipWarning": "没有 TLS 证书时，Web 界面只能通过 HTTP 访问。",
-      "errorCert": "证书校验失败",
-      "errorKey": "私钥校验失败"
+      "skipWarning": "没有 TLS 证书时，Web 界面只能通过 HTTP 访问。"
     }
   },
   "theme": {
@@ -96,8 +83,6 @@
   },
   "login": {
     "signIn": "登录系统",
-    "rememberMe": "记住我",
-    "rememberMeDesc": "关闭浏览器后保持登录状态",
     "2faRequired": "需要进行双重认证",
     "2faWrong": "双重认证验证码错误"
   },
@@ -123,10 +108,8 @@
     "lastSeen": "最后在线时间 ",
     "totalDownload": "总下载流量： ",
     "totalUpload": "总上传流量： ",
-    "newClient": "新建客户端",
     "disableClient": "禁用客户端",
     "enableClient": "启用客户端",
-    "noPrivKey": "此客户端没有已知的私钥，无法创建配置文件",
     "showQR": "显示二维码",
     "allowedIpsDesc": "指定将通过VPN路由的IP地址（覆盖全局配置）",
     "serverAllowedIpsDesc": "指定服务端将路由到客户端的IP地址范围",
@@ -207,7 +190,6 @@
     "config": {
       "connection": "连接设置",
       "hostDesc": "客户端将连接到的公共主机名（修改会使现有配置失效）",
-      "portDesc": "客户端将连接到的公共UDP端口（修改会使现有配置失效，通常需要同时修改接口端口）",
       "allowedIpsDesc": "客户端使用的全局允许的IP范围",
       "dnsDesc": "客户端使用的全局DNS设置",
       "mtuDesc": "新客户端将使用的MTU（仅影响新客户端）",
@@ -218,10 +200,8 @@
       "device": "网络设备",
       "deviceDesc": "用于转发WireGuard流量的以太网设备",
       "mtuDesc": "WireGuard接口使用的MTU",
-      "portDesc": "WireGuard监听的UDP端口（通常需要同时修改配置端口）",
       "changeCidr": "修改CIDR",
       "restart": "重启接口",
-      "restartDesc": "重新启动WireGuard接口",
       "restartWarn": "确定要重启接口吗？这将断开所有客户端的连接。",
       "restartSuccess": "接口重启成功",
       "firewall": "流量过滤",
@@ -290,7 +270,6 @@
       "apply": "应用 TLS 配置",
       "applied": "TLS 配置已应用。服务器正在重启。",
       "appliedRestart": "TLS 配置已应用。服务器正在重启；请在几秒后重新打开 {url}。",
-      "externalManaged": "TLS 由外部反向代理管理（TLS_TERMINATION=external）。证书需要在 PhobosWG 之外签发和轮换。",
       "origin": {
         "self-signed": "自签名",
         "imported": "已导入（粘贴的 PEM）",
@@ -299,7 +278,6 @@
       }
     },
     "obfuscatorPresets": {
-      "title": "混淆器预设",
       "desc": "每个预设都会运行独立的 wg-obfuscator 监听器，拥有各自的端口、密钥和伪装方式。未显式指定预设的客户端一律使用默认预设。WireGuard 预设使用 UDP 端口 51822-51861，SOCKS5 预设使用 TCP 端口 51862-51891——即 docker-compose 发布的端口范围。",
       "add": "添加预设",
       "addDesc": "只需填写名称。端口、密钥及其他参数会获得合理的默认值，之后可在预设中修改。",
@@ -347,7 +325,6 @@
     "generic": {
       "required": "{0}是必填项",
       "validNumber": "{0}必须是有效数字",
-      "validNumberRange": "{0}必须是有效的数字或数字范围",
       "validString": "{0}必须是有效文本",
       "validBoolean": "{0}必须是是/否选项",
       "validArray": "{0}必须是有效数组",
@@ -370,13 +347,10 @@
     "user": {
       "username": "用户名",
       "password": "密码",
-      "remember": "记住登录",
       "name": "姓名",
       "email": "电子邮箱",
       "emailInvalid": "请输入有效的电子邮箱地址",
       "passwordMatch": "两次输入的密码必须一致",
-      "totpEnable": "启用TOTP",
-      "totpEnableTrue": "必须启用双重认证",
       "totpCode": "验证码"
     },
     "userConfig": {
@@ -395,28 +369,19 @@
       "domainValid": "Domain must be a valid hostname"
     },
     "stringMalformed": "文本格式错误",
-    "body": "请求体必须是有效对象",
     "hook": "钩子脚本",
     "enabled": "启用状态",
     "mtu": "MTU",
-    "port": "端口",
     "persistentKeepalive": "保活间隔",
     "address": "IP地址",
     "dns": "DNS",
     "allowedIps": "允许的IP",
-    "file": "文件",
     "installLink": {
       "token": "Install token"
     },
     "obfuscator": {
-      "extPort": "Obfuscator external port",
-      "key": "Obfuscator key",
-      "masking": "Masking mode",
-      "idle": "Obfuscator idle timeout",
-      "dummy": "Max dummy bytes",
       "publicIpV4": "Server public IPv4",
-      "publicIpV6": "Server public IPv6",
-      "clientWgLocalPort": "Client local WG port"
+      "publicIpV6": "Server public IPv6"
     },
     "warp": {
       "addressV4": "IPv4 地址",
@@ -440,7 +405,6 @@
       "obfuscateBytes": "混淆字节数（0-1024）",
       "obfuscateBytesMedia": "MEDIA 模式下最小值为 4（或填 0 使用默认值 16）",
       "verbose": "日志级别",
-      "idle": "空闲超时",
       "dummy": "最大填充字节",
       "clientWgLocalPort": "客户端本地 WireGuard 端口",
       "mediaSsrc": "RTP SSRC",
@@ -454,7 +418,6 @@
     "postDown": "停止后脚本"
   },
   "copy": {
-    "notSupported": "不支持复制",
     "copied": "已复制!",
     "failed": "复制失败",
     "copy": "复制",

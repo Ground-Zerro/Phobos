@@ -23,6 +23,5 @@ logs
 .env.*
 !.env.example
 
-coverage/
 
 phobos.db

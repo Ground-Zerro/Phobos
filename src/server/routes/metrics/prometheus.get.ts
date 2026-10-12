@@ -1,68 +1,49 @@
 export default defineMetricsHandler('prometheus', async ({ event }) => {
   setHeader(event, 'Content-Type', 'text/plain');
-  return getPrometheusResponse();
-});
 
-async function getPrometheusResponse() {
   const wgInterface = await Database.interfaces.get();
   const clients = await WireGuard.getAllClients();
-  let wireguardPeerCount = 0;
-  let wireguardEnabledPeersCount = 0;
-  let wireguardConnectedPeersCount = 0;
-  const wireguardSentBytes = [];
-  const wireguardReceivedBytes = [];
-  const wireguardLatestHandshakeSeconds = [];
+  const peers = countPeers(clients);
+  const now = Date.now();
+  const iface = `interface="${wgInterface.name}"`;
+
+  const sent: string[] = [];
+  const received: string[] = [];
+  const handshakes: string[] = [];
   for (const client of clients) {
-    wireguardPeerCount++;
-    if (client.enabled === true) {
-      wireguardEnabledPeersCount++;
-    }
-
-    if (isPeerConnected(client)) {
-      wireguardConnectedPeersCount++;
-    }
-
-    const id = `interface="${wgInterface.name}",enabled="${client.enabled}",ipv4Address="${client.ipv4Address}",ipv6Address="${client.ipv6Address}",name="${client.name}"`;
-
-    wireguardSentBytes.push(
-      `wireguard_sent_bytes{${id}} ${client.transferTx ?? 0}`
+    const labels = `${iface},enabled="${client.enabled}",ipv4Address="${client.ipv4Address}",ipv6Address="${client.ipv6Address}",name="${client.name}"`;
+    sent.push(`wireguard_sent_bytes{${labels}} ${client.transferTx ?? 0}`);
+    received.push(
+      `wireguard_received_bytes{${labels}} ${client.transferRx ?? 0}`
     );
-    wireguardReceivedBytes.push(
-      `wireguard_received_bytes{${id}} ${client.transferRx ?? 0}`
-    );
-    // TODO: if latestHandshakeAt is null this would result in client showing as online?
-    wireguardLatestHandshakeSeconds.push(
-      `wireguard_latest_handshake_seconds{${id}} ${client.latestHandshakeAt ? (Date.now() - client.latestHandshakeAt.getTime()) / 1000 : 0}`
+    handshakes.push(
+      `wireguard_latest_handshake_seconds{${labels}} ${client.latestHandshakeAt ? (now - client.latestHandshakeAt.getTime()) / 1000 : 0}`
     );
   }
 
-  const id = `interface="${wgInterface.name}"`;
-
-  const returnText = [
+  return [
     '# HELP wireguard_configured_peers',
     '# TYPE wireguard_configured_peers gauge',
-    `wireguard_configured_peers{${id}} ${wireguardPeerCount}`,
+    `wireguard_configured_peers{${iface}} ${peers.configured}`,
     '',
     '# HELP wireguard_enabled_peers',
     '# TYPE wireguard_enabled_peers gauge',
-    `wireguard_enabled_peers{${id}} ${wireguardEnabledPeersCount}`,
+    `wireguard_enabled_peers{${iface}} ${peers.enabled}`,
     '',
     '# HELP wireguard_connected_peers',
     '# TYPE wireguard_connected_peers gauge',
-    `wireguard_connected_peers{${id}} ${wireguardConnectedPeersCount}`,
+    `wireguard_connected_peers{${iface}} ${peers.connected}`,
     '',
     '# HELP wireguard_sent_bytes Bytes sent to the peer',
     '# TYPE wireguard_sent_bytes counter',
-    `${wireguardSentBytes.join('\n')}`,
+    ...sent,
     '',
     '# HELP wireguard_received_bytes Bytes received from the peer',
     '# TYPE wireguard_received_bytes counter',
-    `${wireguardReceivedBytes.join('\n')}`,
+    ...received,
     '',
     '# HELP wireguard_latest_handshake_seconds UNIX timestamp seconds of the last handshake',
     '# TYPE wireguard_latest_handshake_seconds gauge',
-    `${wireguardLatestHandshakeSeconds.join('\n')}`,
-  ];
-
-  return returnText.join('\n');
-}
+    ...handshakes,
+  ].join('\n');
+});

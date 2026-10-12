@@ -1,13 +1,12 @@
-import { readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate as drizzleMigrate } from 'drizzle-orm/libsql/migrator';
 import { createClient } from '@libsql/client';
-import debug from 'debug';
 import { eq, sql } from 'drizzle-orm';
+import { createLogger } from '../utils/logger';
 
 import * as schema from './schema';
+import { DB_URL } from './url';
 import { ClientService } from './repositories/client/service';
 import { GeneralService } from './repositories/general/service';
 import { UserService } from './repositories/user/service';
@@ -18,9 +17,9 @@ import { InstallLinkService } from './repositories/installLink/service';
 import { ObfuscatorPresetService } from './repositories/obfuscatorPreset/service';
 import { WarpService } from './repositories/warp/service';
 
-const DB_DEBUG = debug('Database');
+const DB_DEBUG = createLogger('Database');
 
-const client = createClient({ url: 'file:/etc/wireguard/phobos.db' });
+const client = createClient({ url: DB_URL });
 const db = drizzle({ client, schema });
 
 export async function connect() {
@@ -64,69 +63,19 @@ class DBService {
 }
 
 export type DBType = typeof db;
+export type DBTransaction = Parameters<Parameters<DBType['transaction']>[0]>[0];
+export type DBExecutor = DBType | DBTransaction;
 export type DBServiceType = DBService;
-
-function resolveMigrationsFolder(): string {
-  const candidates = [
-    join(dirname(fileURLToPath(import.meta.url)), 'migrations'),
-    '/app/server/database/migrations',
-    join(process.cwd(), 'server/database/migrations'),
-    join(process.cwd(), 'src/server/database/migrations'),
-  ];
-  const found = candidates.find((p) => {
-    try {
-      readdirSync(p);
-      return true;
-    } catch {
-      return false;
-    }
-  });
-  if (!found) {
-    throw new Error(
-      `migrations folder not found (tried: ${candidates.join(', ')})`
-    );
-  }
-  return found;
-}
-
-async function hasTable(name: string): Promise<boolean> {
-  const row = await db.run(
-    sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${name}`
-  );
-  return Array.isArray(row.rows) && row.rows.length > 0;
-}
-
-async function seedMigrationTracking() {
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS __drizzle_migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      hash TEXT NOT NULL UNIQUE,
-      created_at NUMERIC
-    )
-  `);
-  await db.run(
-    sql`INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES ('bootstrapped', ${Date.now()})`
-  );
-  DB_DEBUG('Migration tracking seeded for bootstrapped database');
-}
 
 async function migrate() {
   await db.run(sql`PRAGMA journal_mode=WAL`);
   await db.run(sql`PRAGMA wal_autocheckpoint=1000`);
   await db.run(sql`PRAGMA wal_checkpoint(PASSIVE)`);
 
-  const migrationsFolder = resolveMigrationsFolder();
-
-  const hasInterfaces = await hasTable('interfaces_table');
-  const hasMigrations = await hasTable('__drizzle_migrations');
-
-  if (hasInterfaces && !hasMigrations) {
-    DB_DEBUG('Bootstrapped database detected: seeding migration tracking...');
-    await seedMigrationTracking();
-  }
-
   DB_DEBUG('Migrating database...');
-  await drizzleMigrate(db, { migrationsFolder });
+  await drizzleMigrate(db, {
+    migrationsFolder: join(process.cwd(), 'server/database/migrations'),
+  });
   DB_DEBUG('Migration complete');
 }
 
@@ -169,7 +118,7 @@ async function initialSetup(db: DBServiceType) {
     await db.users.create(WG_INITIAL_ENV.USERNAME, WG_INITIAL_ENV.PASSWORD);
 
     DB_DEBUG('Setting initial host...');
-    await db.userConfigs.updateHost(WG_INITIAL_ENV.HOST);
+    await db.userConfigs.update({ host: WG_INITIAL_ENV.HOST });
 
     await db.general.setSetupStep(0);
   }
@@ -183,38 +132,29 @@ async function disableIpv6(db: DBType) {
 
   await db.transaction(async (tx) => {
     const hooks = await tx.query.hooks.findFirst({
-      where: eq(schema.hooks.id, 'wg0'),
+      where: eq(schema.hooks.id, schema.WG_INTERFACE_NAME),
     });
 
     if (!hooks) {
       throw new Error('Hooks not found');
     }
 
-    if (hooks.postUp.includes(postUpMatch)) {
-      DB_DEBUG('Disabling IPv6 in Post Up hooks...');
-      await tx
-        .update(schema.hooks)
-        .set({
-          postUp: hooks.postUp.replace(postUpMatch, ''),
-          postDown: hooks.postDown.replace(postDownMatch, ''),
-        })
-        .where(eq(schema.hooks.id, 'wg0'))
-        .execute();
-    } else {
-      DB_DEBUG('IPv6 Post Up hooks already disabled, skipping...');
+    if (
+      !hooks.postUp.includes(postUpMatch) &&
+      !hooks.postDown.includes(postDownMatch)
+    ) {
+      DB_DEBUG('IPv6 hooks already disabled, skipping...');
+      return;
     }
-    if (hooks.postDown.includes(postDownMatch)) {
-      DB_DEBUG('Disabling IPv6 in Post Down hooks...');
-      await tx
-        .update(schema.hooks)
-        .set({
-          postUp: hooks.postUp.replace(postUpMatch, ''),
-          postDown: hooks.postDown.replace(postDownMatch, ''),
-        })
-        .where(eq(schema.hooks.id, 'wg0'))
-        .execute();
-    } else {
-      DB_DEBUG('IPv6 Post Down hooks already disabled, skipping...');
-    }
+
+    DB_DEBUG('Disabling IPv6 in hooks...');
+    await tx
+      .update(schema.hooks)
+      .set({
+        postUp: hooks.postUp.replace(postUpMatch, ''),
+        postDown: hooks.postDown.replace(postDownMatch, ''),
+      })
+      .where(eq(schema.hooks.id, schema.WG_INTERFACE_NAME))
+      .execute();
   });
 }

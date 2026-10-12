@@ -1,25 +1,4 @@
-import { ObfuscatorPresetGetSchema } from '#db/repositories/obfuscatorPreset/types';
-
-export default definePermissionEventHandler(
-  'admin',
-  'any',
-  async ({ event }) => {
-    const { presetId } = await getValidatedRouterParams(
-      event,
-      validateZod(ObfuscatorPresetGetSchema, event)
-    );
-
-    try {
-      await Database.obfuscatorPresets.setDefault(presetId);
-    } catch (e) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: (e as Error).message,
-      });
-    }
-
-    await Obfuscator.applyAll();
-    PhobosPackage.invalidate();
-    return { success: true };
-  }
-);
+export default definePresetMutation(async ({ presetId }) => {
+  await Database.obfuscatorPresets.setDefault(presetId);
+  return { success: true };
+});

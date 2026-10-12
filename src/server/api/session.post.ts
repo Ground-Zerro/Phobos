@@ -1,14 +1,12 @@
 import { UserLoginSchema } from '#db/repositories/user/types';
 
 export default defineEventHandler(async (event) => {
-  const { username, password, remember, totpCode } = await readValidatedBody(
+  const { username, password, totpCode } = await readValidatedBody(
     event,
     validateZod(UserLoginSchema, event)
   );
 
   const result = await Database.users.login(username, password, totpCode);
-
-  // TODO: add localization support
 
   if (!result.success) {
     switch (result.error) {
@@ -37,13 +35,11 @@ export default defineEventHandler(async (event) => {
 
   const user = result.user;
 
-  const session = await useWGSession(event, remember);
+  const session = await useWGSession(event);
 
   const data = await session.update({
     userId: user.id,
   });
-
-  // TODO?: create audit log
 
   SERVER_DEBUG(`New Session: ${data.id} for ${user.id} (${user.username})`);
 

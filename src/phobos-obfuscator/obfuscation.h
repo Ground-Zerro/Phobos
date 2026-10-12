@@ -88,7 +88,6 @@ static inline void detect_cpu_features(void) {
 static _Thread_local uint32_t rng_state = 0;
 
 static inline void fast_rng_init(void) {
-    if (rng_state) return;
     struct timespec ts;
 #ifdef _WIN32
     timespec_get(&ts, TIME_UTC);
@@ -100,6 +99,7 @@ static inline void fast_rng_init(void) {
 }
 
 static inline uint32_t fast_rand(void) {
+    if (__builtin_expect(rng_state == 0, 0)) fast_rng_init();
     uint32_t x = rng_state;
     x ^= x << 13;
     x ^= x >> 17;
@@ -136,7 +136,6 @@ static inline void init_crc8_table(void) {
         crc8_table[i] = crc;
     }
     crc8_table_initialized = 1;
-    fast_rng_init();
 #ifdef ARCH_X86
     detect_cpu_features();
 #endif

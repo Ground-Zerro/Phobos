@@ -1,5 +1,7 @@
-import { sql, relations } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { timestamps } from '../../timestamps';
 
 import { installLink, obfuscatorPreset, user, wgInterface } from '../../schema';
 
@@ -44,13 +46,7 @@ export const client = sqliteTable('clients_table', {
   dns: text({ mode: 'json' }).$type<string[]>(),
   serverEndpoint: text('server_endpoint'),
   enabled: int({ mode: 'boolean' }).notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });
 
 export const clientsRelations = relations(client, ({ one }) => ({

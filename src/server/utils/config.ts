@@ -1,18 +1,12 @@
-import debug from 'debug';
 import packageJson from '@@/package.json';
+import { readRuntimeEnv } from './env';
+import { createLogger } from './logger';
 
 export const RELEASE = 'v' + packageJson.version;
 
 export const TOTP_ISSUER = 'PhobosWG';
 
-export const SERVER_DEBUG = debug('Server');
-
-export const OLD_ENV = {
-  /** @deprecated Only for migration purposes */
-  PASSWORD: process.env.PASSWORD,
-  /** @deprecated Only for migration purposes */
-  PASSWORD_HASH: process.env.PASSWORD_HASH,
-};
+export const SERVER_DEBUG = createLogger('Server');
 
 export const WG_ENV = {
   INSECURE: process.env.INSECURE === 'true',
@@ -33,7 +27,7 @@ export const WG_INITIAL_ENV = {
 };
 
 function assertEnv<T extends string>(env: T) {
-  const val = process.env[env];
+  const val = readRuntimeEnv(env);
 
   if (!val) {
     throw new Error(`Missing environment variable: ${env}`);

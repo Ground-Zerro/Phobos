@@ -109,6 +109,84 @@ log() {
 
 msg() { printf '%s\n' "$*"; }
 
+error() {
+  log "ERROR: $*" >&2
+}
+
+NDMC_LAST_ERROR=""
+
+ndmc_strip() {
+  tr -d '\033' | sed -e 's/\[K//g' -e 's/\r//g'
+}
+
+ndmc_run() {
+  local output
+
+  if output=$(ndmc -c "$1" 2>&1); then
+    NDMC_LAST_ERROR=""
+    return 0
+  fi
+
+  NDMC_LAST_ERROR=$(printf '%s' "${output}" | ndmc_strip | tr '\n' ' ')
+  return 1
+}
+
+ndmc_batch() {
+  local command
+
+  while IFS= read -r command; do
+    [ -n "${command}" ] || continue
+
+    if ! ndmc_run "${command}"; then
+      error "ndmc отклонил команду: ${command}"
+      [ -n "${NDMC_LAST_ERROR}" ] && error "${NDMC_LAST_ERROR}"
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+ndmc_interface_exists() {
+  ndmc -c "show interface $1" >/dev/null 2>&1
+}
+
+ndmc_interface_description() {
+  ndmc -c "show interface $1" 2>/dev/null | ndmc_strip \
+    | sed -n 's/^[[:space:]]*description:[[:space:]]*//p' | head -1
+}
+
+ndmc_check_dependencies() {
+  local missing=""
+  local cmd
+
+  for cmd in ndmc date; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing="$missing $cmd"
+    fi
+  done
+
+  if [ -n "$missing" ]; then
+    echo "ERROR: Missing required utilities:$missing" >&2
+    echo "Please install them using: opkg update && opkg install$missing" >&2
+    return 1
+  fi
+
+  return 0
+}
+
+ndmc_save_configuration() {
+  log "Сохранение конфигурации..."
+
+  if ndmc_run "system configuration save"; then
+    log "Конфигурация сохранена ✓"
+    return 0
+  fi
+
+  error "Ошибка сохранения конфигурации: ${NDMC_LAST_ERROR}"
+  return 1
+}
+
 print_status() {
   local status="$1"
   local message="$2"

@@ -12,9 +12,7 @@ export default definePermissionEventHandler(
     if (data.firewallEnabled) {
       firewall.clearAvailabilityCache();
 
-      const iptablesAvailable = await firewall.isAvailable(
-        !WG_ENV.DISABLE_IPV6
-      );
+      const iptablesAvailable = await firewall.isAvailable();
       if (!iptablesAvailable) {
         const requiredTools = WG_ENV.DISABLE_IPV6
           ? 'iptables'

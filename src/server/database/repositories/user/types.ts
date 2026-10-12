@@ -14,8 +14,6 @@ const password = z
   .min(12, t('zod.user.password'))
   .pipe(safeStringRefine);
 
-const remember = z.boolean({ message: t('zod.user.remember') });
-
 const totpCode = z
   .string({ message: t('zod.user.totpCode') })
   .min(6, t('zod.user.totpCode'))
@@ -24,7 +22,6 @@ const totpCode = z
 export const UserLoginSchema = z.object({
   username: username,
   password: password,
-  remember: remember.optional().default(true),
   totpCode: totpCode.optional(),
 });
 

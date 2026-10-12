@@ -1,37 +1,22 @@
 <template>
-  <SelectRoot v-model="selected">
-    <SelectTrigger
-      class="inline-flex h-8 items-center justify-around gap-2 rounded bg-gray-200 px-3 text-sm leading-none dark:bg-neutral-500 dark:text-neutral-200"
-      aria-label="Choose option"
+  <select
+    v-model="model"
+    class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+  >
+    <option
+      v-for="option in options"
+      :key="String(option.value)"
+      :value="option.value"
     >
-      <SelectValue placeholder="Select..." />
-      <IconsArrowDown class="size-3" />
-    </SelectTrigger>
-
-    <SelectPortal>
-      <SelectContent
-        class="z-[100] min-w-28 rounded bg-gray-300 dark:bg-neutral-500"
-      >
-        <SelectViewport class="p-2">
-          <SelectItem
-            v-for="(option, index) in options"
-            :key="index"
-            :value="option.value"
-            class="relative flex h-6 items-center rounded px-3 text-sm leading-none outline-none hover:bg-red-800 hover:text-white dark:text-white"
-          >
-            <SelectItemText>
-              {{ option.value }} - {{ option.label }}
-            </SelectItemText>
-          </SelectItem>
-        </SelectViewport>
-      </SelectContent>
-    </SelectPortal>
-  </SelectRoot>
+      {{ option.label }}
+    </option>
+  </select>
 </template>
 
-<script lang="ts" setup>
+<script setup lang="ts" generic="T">
 defineProps<{
-  options: { label: string; value: string }[];
+  options: ReadonlyArray<{ value: T; label: string }>;
 }>();
-const selected = defineModel<string>();
+
+const model = defineModel<T>();
 </script>

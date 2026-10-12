@@ -21,12 +21,12 @@
                 class="group rounded"
                 active-class="bg-red-800 active"
               >
-                <BaseSecondaryButton
+                <BaseButton
                   as="span"
                   class="w-full font-medium group-[.active]:text-white"
                 >
                   {{ item.name }}
-                </BaseSecondaryButton>
+                </BaseButton>
               </NuxtLink>
             </nav>
           </PanelBody>

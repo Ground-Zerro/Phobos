@@ -2,7 +2,7 @@ export const CLIENT_NAME_MAX_LENGTH = 32;
 
 export const CLIENT_NAME_PATTERN = /^[A-Za-z0-9.@-]+$/;
 
-export type ClientNameIssue = 'empty' | 'tooLong' | 'invalidChars';
+type ClientNameIssue = 'empty' | 'tooLong' | 'invalidChars';
 
 export function validateClientName(name: string): ClientNameIssue | null {
   const value = name.trim();

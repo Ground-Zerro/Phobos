@@ -4,7 +4,7 @@ set -euo pipefail
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/phoboswg}"
 UI_PORT="${UI_PORT:-51831}"
 WG_HOST="${WG_HOST:-}"
-WG_EASY_IMAGE="${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}"
+PHOBOS_IMAGE="${PHOBOS_IMAGE:-ghcr.io/ground-zerro/phobos:latest}"
 REPO_RAW_BASE="${REPO_RAW_BASE:-https://raw.githubusercontent.com/Ground-Zerro/Phobos/main}"
 COMPOSE_FILE="docker-compose.yml"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-phoboswg}"
@@ -83,31 +83,24 @@ ensure_docker() {
   install_docker
 }
 
-ensure_json_tools() {
-  log "Installing/updating jq and python3"
+install_jq() {
+  command -v jq >/dev/null 2>&1 && return 0
+  log "Installing jq"
   if command -v apt-get >/dev/null 2>&1; then
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq || true
-    apt-get install -y -qq jq python3 || true
+    apt-get update -qq && apt-get install -y -qq jq
   elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y jq python3 || true
+    dnf install -y jq
   elif command -v yum >/dev/null 2>&1; then
-    yum install -y jq python3 || true
+    yum install -y jq
   elif command -v apk >/dev/null 2>&1; then
-    apk add --upgrade jq python3 || true
+    apk add jq
   elif command -v zypper >/dev/null 2>&1; then
-    zypper --non-interactive install jq python3 || true
+    zypper --non-interactive install jq
   elif command -v pacman >/dev/null 2>&1; then
-    pacman -S --noconfirm --needed jq python3 || true
+    pacman -S --noconfirm --needed jq
   fi
-  local jq_ver py_ver
-  jq_ver="$(jq --version 2>/dev/null || echo absent)"
-  py_ver="$(python3 --version 2>/dev/null || echo absent)"
-  if [ "$jq_ver" = "absent" ] && [ "$py_ver" = "absent" ]; then
-    log "Warning: could not install jq or python3 — daemon.json merge will be skipped if the file already exists"
-  else
-    ok "JSON tools: jq ${jq_ver}, ${py_ver}"
-  fi
+  command -v jq >/dev/null 2>&1
 }
 
 configure_docker_daemon() {
@@ -119,24 +112,13 @@ configure_docker_daemon() {
   mkdir -p /etc/docker
   if [ ! -f "$daemon_json" ]; then
     printf '{\n  "userland-proxy": false\n}\n' > "$daemon_json"
-  elif command -v jq >/dev/null 2>&1; then
+  elif install_jq; then
     local tmp_json
     tmp_json="$(mktemp)"
     jq '. + {"userland-proxy": false}' "$daemon_json" > "$tmp_json"
     mv "$tmp_json" "$daemon_json"
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 - "$daemon_json" <<'PYEOF'
-import json, sys
-path = sys.argv[1]
-with open(path) as f:
-    data = json.load(f)
-data["userland-proxy"] = False
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-PYEOF
   else
-    log "Warning: ${daemon_json} exists and neither jq nor python3 is available — userland-proxy stays enabled (expect one docker-proxy process per published port)"
+    log "Warning: ${daemon_json} exists and jq could not be installed — userland-proxy stays enabled (expect one docker-proxy process per published port)"
     return
   fi
   chmod 644 "$daemon_json"
@@ -291,7 +273,6 @@ wait_healthy() {
 
 require_root
 ensure_docker
-ensure_json_tools
 configure_docker_daemon
 fix_networkd_docker_bridge
 load_wireguard_module
@@ -313,7 +294,7 @@ log "Writing .env"
 if [ "$INIT_ENABLED" = "true" ]; then
   cat > "${DEPLOY_DIR}/.env" <<EOF
 WG_HOST=${WG_HOST}
-WG_EASY_IMAGE=${WG_EASY_IMAGE}
+PHOBOS_IMAGE=${PHOBOS_IMAGE}
 INIT_ENABLED=true
 INIT_USERNAME=${INIT_USERNAME}
 INIT_PASSWORD=${INIT_PASSWORD}
@@ -322,7 +303,7 @@ EOF
 else
   cat > "${DEPLOY_DIR}/.env" <<EOF
 WG_HOST=${WG_HOST}
-WG_EASY_IMAGE=${WG_EASY_IMAGE}
+PHOBOS_IMAGE=${PHOBOS_IMAGE}
 INIT_ENABLED=false
 EOF
 fi
@@ -370,7 +351,7 @@ fi
 printf '\n'
 printf '  Admin UI    : %s:%s\n' "$WG_HOST" "$UI_PORT"
 printf '  Obfuscator  : UDP %s:51822-51861 (WireGuard), TCP %s:51862-51891 (SOCKS5)\n' "$WG_HOST" "$WG_HOST"
-printf '  Image       : %s\n' "$WG_EASY_IMAGE"
+printf '  Image       : %s\n' "$PHOBOS_IMAGE"
 printf '  Deploy dir  : %s\n' "$DEPLOY_DIR"
 printf '\e[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\n'
 printf '\n'

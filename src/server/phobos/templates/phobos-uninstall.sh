@@ -41,12 +41,6 @@ remove_obfuscator_instance() {
   done
 }
 
-ndmc_interface_description() {
-  ndmc -c "show interface $1" 2>/dev/null \
-    | tr -d '\033' | sed -e 's/\[K//g' -e 's/\r//g' \
-    | sed -n 's/^[[:space:]]*description:[[:space:]]*//p' | head -1
-}
-
 find_keenetic_interface_by_description() {
   local desc="$1"
   local prefix i

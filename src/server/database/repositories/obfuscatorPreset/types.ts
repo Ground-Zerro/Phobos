@@ -2,17 +2,22 @@ import type { InferSelectModel } from 'drizzle-orm';
 import z from 'zod';
 
 import type { obfuscatorPreset } from './schema';
+import {
+  OBFUSCATION_MASKINGS,
+  OBFUSCATION_MODES,
+  OBFUSCATOR_VERBOSITY,
+  isMaskingAllowed,
+  type ObfuscationMode,
+} from '#shared/utils/obfuscation';
 
 export type ObfuscatorPresetType = InferSelectModel<typeof obfuscatorPreset>;
 
 export const WIREGUARD_PORT_MIN = 51822;
-export const WIREGUARD_PORT_MAX = 51861;
-export const SOCKS5_PORT_MIN = 51862;
-export const SOCKS5_PORT_MAX = 51891;
+const WIREGUARD_PORT_MAX = 51861;
+const SOCKS5_PORT_MIN = 51862;
+const SOCKS5_PORT_MAX = 51891;
 
-export type ObfuscatorPresetMode = 'WIREGUARD' | 'SOCKS5';
-
-export function obfuscatorPortRange(mode: ObfuscatorPresetMode) {
+export function obfuscatorPortRange(mode: ObfuscationMode) {
   return mode === 'SOCKS5'
     ? { min: SOCKS5_PORT_MIN, max: SOCKS5_PORT_MAX }
     : { min: WIREGUARD_PORT_MIN, max: WIREGUARD_PORT_MAX };
@@ -20,7 +25,7 @@ export function obfuscatorPortRange(mode: ObfuscatorPresetMode) {
 
 export function isPortInModeRange(
   port: number,
-  mode: ObfuscatorPresetMode
+  mode: ObfuscationMode
 ): boolean {
   const { min, max } = obfuscatorPortRange(mode);
   return port >= min && port <= max;
@@ -56,11 +61,11 @@ const key = z
   .max(255)
   .pipe(safeStringRefine);
 
-const mode = z.enum(['WIREGUARD', 'SOCKS5'], {
+const mode = z.enum(OBFUSCATION_MODES, {
   message: t('zod.obfuscatorPreset.mode'),
 });
 
-const masking = z.enum(['STUN', 'MEDIA', 'AUTO', 'NONE', 'TLS'], {
+const masking = z.enum(OBFUSCATION_MASKINGS, {
   message: t('zod.obfuscatorPreset.masking'),
 });
 
@@ -89,7 +94,7 @@ const dummy = z
   .min(0)
   .max(1024);
 
-const verbose = z.enum(['error', 'warn', 'info', 'debug', 'trace'], {
+const verbose = z.enum(OBFUSCATOR_VERBOSITY, {
   message: t('zod.obfuscatorPreset.verbose'),
 });
 
@@ -157,13 +162,16 @@ export const ObfuscatorPresetUpdateSchema = z
       path: ['obfuscateBytes'],
     }
   )
-  .refine((data) => !(data.mode === 'SOCKS5' && data.masking === 'AUTO'), {
-    message: t('zod.obfuscatorPreset.maskingAutoSocks5'),
-    path: ['masking'],
-  })
-  .refine((data) => !(data.mode === 'WIREGUARD' && data.masking === 'TLS'), {
-    message: t('zod.obfuscatorPreset.maskingTlsWireguard'),
-    path: ['masking'],
+  .superRefine((data, ctx) => {
+    if (isMaskingAllowed(data.mode, data.masking)) return;
+    ctx.addIssue({
+      code: 'custom',
+      path: ['masking'],
+      message:
+        data.mode === 'SOCKS5'
+          ? t('zod.obfuscatorPreset.maskingAutoSocks5')
+          : t('zod.obfuscatorPreset.maskingTlsWireguard'),
+    });
   });
 
 export type ObfuscatorPresetUpdateType = z.infer<

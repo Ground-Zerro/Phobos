@@ -9,8 +9,3 @@ export function isPeerConnected(client: { latestHandshakeAt: Date | null }) {
 }
 
 export const PEER_ONLINE_WINDOW_MS = 1000 * 60 * 3;
-
-export function setIntervalImmediately(func: () => void, interval: number) {
-  func();
-  return setInterval(func, interval);
-}

@@ -2,12 +2,11 @@ name: phoboswg
 
 volumes:
   phobos_etc_wireguard:
-  phobos_sqlite_data:
   phobos_certs_data:
 
 services:
   phobos:
-    image: ${WG_EASY_IMAGE:-ghcr.io/ground-zerro/phobos:latest}
+    image: ${PHOBOS_IMAGE:-ghcr.io/ground-zerro/phobos:latest}
     container_name: phobos
     environment:
       - WG_HOST=${WG_HOST:-}
@@ -21,7 +20,6 @@ services:
         ipv6_address: fdcc:ad94:bacf:61a3::2a
     volumes:
       - phobos_etc_wireguard:/etc/wireguard
-      - phobos_sqlite_data:/app/server/data
       - phobos_certs_data:/app/certs
       - /lib/modules:/lib/modules:ro
       - type: bind

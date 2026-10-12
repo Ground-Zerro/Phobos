@@ -1,21 +1,22 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs/promises';
-import debug from 'debug';
+import { isIPv4 } from 'is-ip';
+import { createLogger } from './logger';
 
 import { WARP_FWMARK } from './WarpInterface';
-import type { InterfaceType } from '#db/repositories/interface/types';
+import { SOCKS5_STATS_DIR, socks5StatsPath } from './RuntimeStats';
 import type { ObfuscatorPresetType } from '#db/repositories/obfuscatorPreset/types';
 import { WIREGUARD_PORT_MIN } from '#db/repositories/obfuscatorPreset/types';
 import {
+  PRESET_DEFAULTS,
   effectiveObfuscateBytes,
   effectiveSourceIf,
 } from '#shared/utils/obfuscation';
 
-const OBFUSCATOR_DEBUG = debug('Obfuscator');
+const OBFUSCATOR_DEBUG = createLogger('Obfuscator');
 
 const BINARY = '/usr/local/bin/wg-obfuscator';
-const STATS_DIR = '/run/wg-obfuscator';
 const PLACEHOLDER_KEY = 'changeme';
 const BINARY_DIR = BINARY.slice(0, BINARY.lastIndexOf('/') + 1);
 const BINARY_BASE = BINARY.slice(BINARY.lastIndexOf('/') + 1);
@@ -60,12 +61,52 @@ export function generateSocks5Credential(length = 5): string {
 
 type RunningPreset = { child: ChildProcess; fingerprint: string };
 
-export type Socks5ClientStats = {
-  upBytes: number;
-  downBytes: number;
-  conns: number;
-  idleMs: number;
-};
+type ServerOption = readonly [string, string | number];
+
+function serverOptions(
+  preset: ObfuscatorPresetType,
+  wgPort: number,
+  socks5Users: string
+): ServerOption[] {
+  const sourceIf = effectiveSourceIf(preset);
+  if (preset.mode === 'SOCKS5') {
+    const options: ServerOption[] = [
+      ['mode', 'socks5'],
+      ['role', 'server'],
+      ['source-lport', preset.extPort],
+      ['key', preset.key],
+      ['masking', preset.masking],
+      ['verbose', preset.verbose],
+      ['fwmark', WARP_FWMARK],
+      ['socks5-stats', socks5StatsPath(preset.id)],
+    ];
+    if (sourceIf) options.push(['source-if', sourceIf]);
+    if (preset.masking === 'MEDIA' && preset.mediaSsrc != null) {
+      options.push(['media-ssrc', preset.mediaSsrc]);
+    }
+    if (socks5Users) options.push(['socks5-users', socks5Users]);
+    return options;
+  }
+  return [
+    ['source-if', sourceIf],
+    ['source-lport', preset.extPort],
+    ['target', preset.target?.trim() || `127.0.0.1:${wgPort}`],
+    ['key', preset.key],
+    ['masking', preset.masking],
+    ['obfuscate-bytes', effectiveObfuscateBytes(preset)],
+    ['max-dummy', preset.dummy],
+    ['verbose', preset.verbose],
+  ];
+}
+
+function toArgs(options: readonly ServerOption[]): string[] {
+  return options.map(([name, value]) => `--${name}=${value}`);
+}
+
+async function defaultRouteDevice(): Promise<string | undefined> {
+  const route = await exec('ip route');
+  return route.match(/^default.+dev\s+(\S+)/m)?.[1];
+}
 
 class ObfuscatorService {
   #processes = new Map<number, RunningPreset>();
@@ -73,118 +114,9 @@ class ObfuscatorService {
   #reconcileTimer: ReturnType<typeof setTimeout> | null = null;
   #stopping = false;
 
-  serverTarget(preset: ObfuscatorPresetType, wgPort: number): string {
-    return preset.target?.trim() || `127.0.0.1:${wgPort}`;
-  }
-
-  #statsPath(presetId: number): string {
-    return `${STATS_DIR}/socks5-${presetId}.stats`;
-  }
-
-  async readSocks5Stats(): Promise<Map<string, Socks5ClientStats>> {
-    const stats = new Map<string, Socks5ClientStats>();
-    const files = await fs.readdir(STATS_DIR).catch(() => [] as string[]);
-    await Promise.all(
-      files
-        .filter((file) => file.endsWith('.stats'))
-        .map(async (file) => {
-          const content = await fs
-            .readFile(`${STATS_DIR}/${file}`, 'utf8')
-            .catch(() => '');
-          for (const line of content.split('\n')) {
-            const [login, up, down, conns, idle] = line.split(' ');
-            if (!login || idle === undefined) continue;
-            stats.set(login, {
-              upBytes: Number(up),
-              downBytes: Number(down),
-              conns: Number(conns),
-              idleMs: Number(idle),
-            });
-          }
-        })
-    );
-    return stats;
-  }
-
-  buildArgs(
-    preset: ObfuscatorPresetType,
-    wgPort: number,
-    socks5Users: string
-  ): string[] {
-    const sourceIf = effectiveSourceIf(preset);
-    if (preset.mode === 'SOCKS5') {
-      const args = [
-        '--mode=socks5',
-        '--role=server',
-        `--source-lport=${preset.extPort}`,
-        `--key=${preset.key}`,
-        `--masking=${preset.masking}`,
-        `--verbose=${preset.verbose}`,
-        `--fwmark=${WARP_FWMARK}`,
-        `--socks5-stats=${this.#statsPath(preset.id)}`,
-      ];
-      if (sourceIf) {
-        args.push(`--source-if=${sourceIf}`);
-      }
-      if (preset.masking === 'MEDIA' && preset.mediaSsrc != null) {
-        args.push(`--media-ssrc=${preset.mediaSsrc}`);
-      }
-      if (socks5Users) {
-        args.push(`--socks5-users=${socks5Users}`);
-      }
-      return args;
-    }
-    return [
-      `--source-if=${sourceIf}`,
-      `--source-lport=${preset.extPort}`,
-      `--target=${this.serverTarget(preset, wgPort)}`,
-      `--key=${preset.key}`,
-      `--masking=${preset.masking}`,
-      `--obfuscate-bytes=${effectiveObfuscateBytes(preset)}`,
-      `--max-dummy=${preset.dummy}`,
-      `--verbose=${preset.verbose}`,
-    ];
-  }
-
-  fingerprint(
-    preset: ObfuscatorPresetType,
-    wgPort: number,
-    socks5Users: string
-  ): string {
-    if (preset.mode === 'SOCKS5') {
-      return [
-        'SOCKS5',
-        effectiveSourceIf(preset),
-        preset.extPort,
-        preset.key,
-        preset.masking,
-        preset.verbose,
-        preset.mediaSsrc ?? '',
-        socks5Users,
-      ].join('|');
-    }
-    return [
-      preset.extPort,
-      effectiveSourceIf(preset),
-      this.serverTarget(preset, wgPort),
-      preset.key,
-      preset.masking,
-      effectiveObfuscateBytes(preset),
-      preset.dummy,
-      preset.verbose,
-      wgPort,
-    ].join('|');
-  }
-
-  spawnPreset(
-    preset: ObfuscatorPresetType,
-    wgPort: number,
-    socks5Users: string
-  ): void {
-    const args = this.buildArgs(preset, wgPort, socks5Users);
+  #spawnPreset(preset: ObfuscatorPresetType, args: string[]): void {
     const child = spawn(BINARY, args, { stdio: 'inherit' });
-    const fingerprint = this.fingerprint(preset, wgPort, socks5Users);
-    this.#processes.set(preset.id, { child, fingerprint });
+    this.#processes.set(preset.id, { child, fingerprint: args.join('\n') });
 
     OBFUSCATOR_DEBUG(
       `spawned preset ${preset.id} (${preset.name}) pid=${child.pid} port=${preset.extPort}`
@@ -202,17 +134,15 @@ class ObfuscatorService {
     });
 
     child.on('error', (err) => {
-      OBFUSCATOR_DEBUG(
-        `preset ${preset.id} spawn error: ${(err as Error).message}`
-      );
+      OBFUSCATOR_DEBUG(`preset ${preset.id} spawn error: ${err.message}`);
     });
   }
 
-  async killPreset(presetId: number): Promise<void> {
+  async #killPreset(presetId: number): Promise<void> {
     const entry = this.#processes.get(presetId);
     if (!entry) return;
     this.#processes.delete(presetId);
-    await fs.rm(this.#statsPath(presetId), { force: true }).catch(() => {});
+    await fs.rm(socks5StatsPath(presetId), { force: true }).catch(() => {});
 
     const { child } = entry;
     if (child.exitCode !== null || child.signalCode !== null) {
@@ -232,18 +162,10 @@ class ObfuscatorService {
 
       child.once('exit', finish);
 
-      const sigkillTimer = setTimeout(() => {
-        try {
-          child.kill('SIGKILL');
-        } catch {
-          // ignore
-        }
-      }, 2000);
+      const sigkillTimer = setTimeout(() => child.kill('SIGKILL'), 2000);
       const guardTimer = setTimeout(finish, 5000);
 
-      try {
-        child.kill('SIGTERM');
-      } catch {
+      if (!child.kill('SIGTERM')) {
         finish();
       }
     });
@@ -289,29 +211,28 @@ class ObfuscatorService {
     const iface = await Database.interfaces.get();
     const socks5Members = await Database.clients.getSocks5PresetMembers();
 
-    const usersByPreset = new Map<number, string>();
-    for (const preset of presets) {
-      if (preset.mode !== 'SOCKS5') continue;
-      const members = socks5Members
-        .filter((m) => m.presetId === preset.id)
-        .map((m) => `${m.socks5Login}:${m.socks5Password}`)
-        .sort();
-      usersByPreset.set(preset.id, members.join(','));
+    const membersByPreset = new Map<number, string[]>();
+    for (const m of socks5Members) {
+      const list = membersByPreset.get(m.presetId) ?? [];
+      list.push(`${m.socks5Login}:${m.socks5Password}`);
+      membersByPreset.set(m.presetId, list);
     }
 
-    const desired = new Map(presets.map((p) => [p.id, p]));
-
+    const desired = new Set(presets.map((p) => p.id));
     for (const id of [...this.#processes.keys()]) {
-      if (!desired.has(id)) await this.killPreset(id);
+      if (!desired.has(id)) await this.#killPreset(id);
     }
 
     for (const preset of presets) {
-      const socks5Users = usersByPreset.get(preset.id) ?? '';
+      const socks5Users =
+        preset.mode === 'SOCKS5'
+          ? (membersByPreset.get(preset.id) ?? []).sort().join(',')
+          : '';
+      const args = toArgs(serverOptions(preset, iface.port, socks5Users));
       const current = this.#processes.get(preset.id);
-      const want = this.fingerprint(preset, iface.port, socks5Users);
-      if (current && current.fingerprint === want) continue;
-      if (current) await this.killPreset(preset.id);
-      this.spawnPreset(preset, iface.port, socks5Users);
+      if (current && current.fingerprint === args.join('\n')) continue;
+      if (current) await this.#killPreset(preset.id);
+      this.#spawnPreset(preset, args);
     }
 
     OBFUSCATOR_DEBUG(
@@ -326,90 +247,40 @@ class ObfuscatorService {
       clearTimeout(this.#reconcileTimer);
       this.#reconcileTimer = null;
     }
-    for (const id of [...this.#processes.keys()]) await this.killPreset(id);
+    for (const id of [...this.#processes.keys()]) await this.#killPreset(id);
     await exec(`pkill -f '${PGREP_PATTERN}' || true`).catch(() => {});
   }
 
-  async detectPublicIpV4(): Promise<string> {
+  async #detectPublicIpV4(): Promise<string> {
     const envIp = process.env.WG_HOST;
-    if (envIp && /^\d+\.\d+\.\d+\.\d+$/.test(envIp)) return envIp;
+    if (envIp && isIPv4(envIp)) return envIp;
 
-    const route = await exec('ip route');
-    const iface = route.match(/^default.+dev\s+(\S+)/m)?.[1];
-    if (iface) {
-      const out = await exec(`ip -4 addr show dev ${iface} scope global`);
+    const device = await defaultRouteDevice();
+    if (device) {
+      const out = await exec(`ip -4 addr show dev ${device} scope global`);
       const ip = out.match(/inet\s+(\d+\.\d+\.\d+\.\d+)/)?.[1];
       if (ip && !isPrivateIp(ip)) return ip;
     }
 
-    const pub = await exec('curl -sf --max-time 5 https://api.ipify.org').catch(
-      () => ''
-    );
-    if (pub && /^\d+\.\d+\.\d+\.\d+$/.test(pub.trim())) return pub.trim();
+    const pub = (
+      await exec('curl -sf --max-time 5 https://api.ipify.org').catch(() => '')
+    ).trim();
+    if (isIPv4(pub)) return pub;
 
     throw new Error('Cannot detect public IPv4. Set WG_HOST env variable.');
   }
 
-  async detectPublicIpV6(): Promise<string | null> {
-    try {
-      const route = await exec('ip route');
-      const iface = route.match(/^default.+dev\s+(\S+)/m)?.[1];
-      if (!iface) return null;
-
-      const out = await exec(`ip -6 addr show dev ${iface} scope global`);
-      const ipv6 = out
+  async #detectPublicIpV6(): Promise<string | null> {
+    const device = await defaultRouteDevice().catch(() => undefined);
+    if (!device) return null;
+    const out = await exec(`ip -6 addr show dev ${device} scope global`).catch(
+      () => ''
+    );
+    return (
+      out
         .match(/inet6\s+([0-9a-f:]+)/gi)
         ?.map((l) => l.replace(/^inet6\s+/i, ''))
-        .find((addr) => !/^f[cd]/i.test(addr));
-      return ipv6 ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  buildClientObfConf(
-    preset: ObfuscatorPresetType,
-    iface: InterfaceType
-  ): string {
-    return [
-      '[instance]',
-      'source-if = 127.0.0.1',
-      `source-lport = ${preset.clientWgLocalPort}`,
-      `target = ${iface.serverPublicDomain || iface.serverPublicIpV4}:${preset.extPort}`,
-      `key = ${preset.key}`,
-      `masking = ${preset.masking}`,
-      `obfuscate-bytes = ${effectiveObfuscateBytes(preset)}`,
-      `max-dummy = ${preset.dummy}`,
-      `verbose = ${preset.verbose}`,
-      '',
-    ].join('\n');
-  }
-
-  buildSocks5ClientObfConf(
-    preset: ObfuscatorPresetType,
-    iface: InterfaceType
-  ): string {
-    const lines = [
-      '[instance]',
-      'mode = socks5',
-      'role = client',
-      'source-if = 127.0.0.1',
-      `source-lport = ${preset.clientLocalPort}`,
-      `target = ${iface.serverPublicDomain || iface.serverPublicIpV4}:${preset.extPort}`,
-      `key = ${preset.key}`,
-      `masking = ${preset.masking}`,
-      `verbose = ${preset.verbose}`,
-    ];
-    if (preset.masking === 'MEDIA' && preset.mediaSsrc != null) {
-      lines.push(`media-ssrc = ${preset.mediaSsrc}`);
-    }
-    lines.push('');
-    return lines.join('\n');
-  }
-
-  buildSocks5CredentialsSection(login: string, password: string): string {
-    return ['[socks5]', `login = ${login}`, `password = ${password}`, ''].join(
-      '\n'
+        .find((addr) => !/^f[cd]/i.test(addr)) ?? null
     );
   }
 
@@ -438,18 +309,20 @@ class ObfuscatorService {
     OBFUSCATOR_DEBUG('Starting Obfuscator...');
     this.#stopping = false;
 
-    await fs.mkdir(STATS_DIR, { recursive: true });
+    await fs.mkdir(SOCKS5_STATS_DIR, { recursive: true });
     for (const file of await fs
-      .readdir(STATS_DIR)
+      .readdir(SOCKS5_STATS_DIR)
       .catch(() => [] as string[])) {
-      await fs.rm(`${STATS_DIR}/${file}`, { force: true }).catch(() => {});
+      await fs
+        .rm(`${SOCKS5_STATS_DIR}/${file}`, { force: true })
+        .catch(() => {});
     }
 
     const iface = await Database.interfaces.get();
 
     if (!iface.serverPublicIpV4) {
-      const ipv4 = await this.detectPublicIpV4().catch(() => '');
-      const ipv6 = iface.serverPublicIpV6 ?? (await this.detectPublicIpV6());
+      const ipv4 = await this.#detectPublicIpV4().catch(() => '');
+      const ipv6 = iface.serverPublicIpV6 ?? (await this.#detectPublicIpV6());
       if (ipv4 || ipv6 !== iface.serverPublicIpV6) {
         await Database.interfaces.update({
           serverPublicIpV4: ipv4,
@@ -459,15 +332,12 @@ class ObfuscatorService {
     }
 
     await Database.obfuscatorPresets.ensureDefault({
+      ...PRESET_DEFAULTS,
+      masking: 'MEDIA',
       extPort: WIREGUARD_PORT_MIN,
       sourceIf: '',
       target: null,
       key: generateObfuscatorKey(),
-      masking: 'MEDIA',
-      obfuscateBytes: 0,
-      dummy: 40,
-      verbose: 'error',
-      clientWgLocalPort: 13255,
     });
 
     await this.#rotatePlaceholderKeys();
@@ -482,5 +352,3 @@ class ObfuscatorService {
 }
 
 export const Obfuscator = new ObfuscatorService();
-
-export default Obfuscator;

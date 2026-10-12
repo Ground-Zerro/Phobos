@@ -52,23 +52,11 @@
             <FormHeading :description="$t('client.presetDesc')">
               {{ $t('client.preset') }}
             </FormHeading>
-            <div class="flex flex-col gap-1">
-              <FormLabel for="presetId">{{ $t('client.preset') }}</FormLabel>
-              <select
-                id="presetId"
-                v-model="data.presetId"
-                class="rounded border-2 border-gray-100 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
-              >
-                <option :value="null">
-                  {{ $t('client.presetUseDefault') }}
-                </option>
-                <option v-for="p in presetList" :key="p.id" :value="p.id">
-                  {{ p.name }} ({{
-                    p.mode === 'SOCKS5' ? 'SOCKS5' : 'WireGuard'
-                  }})
-                </option>
-              </select>
-            </div>
+            <ClientsPresetSelect
+              id="presetId"
+              v-model="data.presetId"
+              :presets="selectable"
+            />
             <template
               v-if="
                 selectedPresetMode === 'SOCKS5' &&
@@ -95,7 +83,11 @@
             <FormHeading :description="$t('client.allowedIpsDesc')">
               {{ $t('general.allowedIps') }}
             </FormHeading>
-            <FormNullArrayField v-model="data.allowedIps" name="allowedIps" />
+            <FormArrayField
+              v-model="data.allowedIps"
+              nullable
+              name="allowedIps"
+            />
           </FormGroup>
           <FormGroup>
             <FormHeading :description="$t('client.serverAllowedIpsDesc')">
@@ -110,13 +102,17 @@
             <FormHeading :description="$t('client.firewallIpsDesc')">
               {{ $t('client.firewallIps') }}
             </FormHeading>
-            <FormNullArrayField v-model="data.firewallIps" name="firewallIps" />
+            <FormArrayField
+              v-model="data.firewallIps"
+              nullable
+              name="firewallIps"
+            />
           </FormGroup>
           <FormGroup>
             <FormHeading :description="$t('client.dnsDesc')">
               {{ $t('general.dns') }}
             </FormHeading>
-            <FormNullArrayField v-model="data.dns" name="dns" />
+            <FormArrayField v-model="data.dns" nullable name="dns" />
           </FormGroup>
           <FormGroup>
             <FormHeading>{{ $t('form.sectionAdvanced') }}</FormHeading>
@@ -208,32 +204,17 @@ const globalStore = useGlobalStore();
 const route = useRoute();
 const id = route.params.id as string;
 
-type PresetSummary = {
-  id: number;
-  name: string;
-  isDefault: boolean;
-  mode: 'WIREGUARD' | 'SOCKS5';
-};
-
-const { data: _data, refresh } = await useFetch(`/api/client/${id}`, {
-  method: 'get',
-});
-const data = toRef(_data.value);
-
-const { data: presets } = await useFetch<PresetSummary[]>(
-  '/api/admin/obfuscator-presets',
-  { method: 'get', default: () => [] }
+const { data, revert } = useEditable(
+  await useFetch(`/api/client/${id}`, { method: 'get' })
 );
-const presetList = computed(() =>
-  (presets.value ?? []).filter((p) => !p.isDefault)
-);
-const selectedPresetMode = computed(() => {
-  if (data.value?.presetId == null) return 'WIREGUARD';
-  return (
-    (presets.value ?? []).find((p) => p.id === data.value?.presetId)?.mode ??
+
+const { selectable, modeOf } = await usePresetSummaries();
+const selectedPresetMode = computed(
+  () =>
+    modeOf(data.value?.presetId ?? null) ??
+    data.value?.preset.mode ??
     'WIREGUARD'
-  );
-});
+);
 
 const _submit = useSubmit(
   `/api/client/${id}`,
@@ -253,11 +234,6 @@ const _submit = useSubmit(
 
 function submit() {
   return _submit(data.value);
-}
-
-async function revert() {
-  await refresh();
-  data.value = toRef(_data.value).value;
 }
 
 const _deleteClient = useSubmit(

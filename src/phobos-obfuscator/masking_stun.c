@@ -145,11 +145,11 @@ static void stun_send_logged(send_data_callback_t cb, uint8_t *buffer, int len,
                                 const char *what, const struct sockaddr_in *addr) {
     int sent = cb(buffer, len);
     if (sent < 0) {
-        serror("Can't send %s to %s:%d", what, inet_ntoa(addr->sin_addr), ntohs(addr->sin_port));
+        serror("Can't send %s to %s:%d", what, ipv4_text(addr->sin_addr).s, ntohs(addr->sin_port));
     } else if (sent != len) {
-        log(LL_WARN, "Partial send of %s to %s:%d (%d of %d bytes)", what, inet_ntoa(addr->sin_addr), ntohs(addr->sin_port), sent, len);
+        log(LL_WARN, "Partial send of %s to %s:%d (%d of %d bytes)", what, ipv4_text(addr->sin_addr).s, ntohs(addr->sin_port), sent, len);
     } else {
-        log(LL_TRACE, "Sent %s (%d bytes) to %s:%d", what, len, inet_ntoa(addr->sin_addr), ntohs(addr->sin_port));
+        log(LL_TRACE, "Sent %s (%d bytes) to %s:%d", what, len, ipv4_text(addr->sin_addr).s, ntohs(addr->sin_port));
     }
 }
 
@@ -185,7 +185,7 @@ int stun_on_data_unwrap(uint8_t *buffer, int length,
     switch (stun_type) {
     case STUN_BINDING_REQ: {
         // Received STUN Binding Request from client, send Binding Success Response
-        log(LL_TRACE, "Received STUN Binding Request from %s:%d", inet_ntoa(src_addr->sin_addr), ntohs(src_addr->sin_port));
+        log(LL_TRACE, "Received STUN Binding Request from %s:%d", ipv4_text(src_addr->sin_addr).s, ntohs(src_addr->sin_port));
         uint8_t txid[12];
         memcpy(txid, buffer + 8, 12);
         int resp_len = stun_build_binding_success(buffer, txid, src_addr);
@@ -197,19 +197,19 @@ int stun_on_data_unwrap(uint8_t *buffer, int length,
         return 0;
     }
     case STUN_BINDING_RESP:
-        log(LL_TRACE, "Received STUN Binding Success Response from %s:%d, ignoring", inet_ntoa(src_addr->sin_addr), ntohs(src_addr->sin_port));
+        log(LL_TRACE, "Received STUN Binding Success Response from %s:%d, ignoring", ipv4_text(src_addr->sin_addr).s, ntohs(src_addr->sin_port));
         return 0;
     case STUN_TYPE_DATA_IND:
         length = stun_unwrap(buffer, length);
         if (length < 0) {
-            log(LL_DEBUG, "Failed to unwrap STUN Data Indication from %s:%d", inet_ntoa(src_addr->sin_addr), ntohs(src_addr->sin_port));
+            log(LL_DEBUG, "Failed to unwrap STUN Data Indication from %s:%d", ipv4_text(src_addr->sin_addr).s, ntohs(src_addr->sin_port));
             return length;
         }
         *out_offset = STUN_DATA_IND_HEADER;
-        log(LL_TRACE, "Unwrapped STUN Data Indication from %s:%d (%d bytes)", inet_ntoa(src_addr->sin_addr), ntohs(src_addr->sin_port), length);
+        log(LL_TRACE, "Unwrapped STUN Data Indication from %s:%d (%d bytes)", ipv4_text(src_addr->sin_addr).s, ntohs(src_addr->sin_port), length);
         return length;
     default:
-        log(LL_DEBUG, "Received unknown STUN type %04X from %s:%d, ignoring", stun_type, inet_ntoa(src_addr->sin_addr), ntohs(src_addr->sin_port));
+        log(LL_DEBUG, "Received unknown STUN type %04X from %s:%d, ignoring", stun_type, ipv4_text(src_addr->sin_addr).s, ntohs(src_addr->sin_port));
         return 0;
     }
 }

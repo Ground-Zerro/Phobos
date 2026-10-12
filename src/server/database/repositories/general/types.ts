@@ -1,8 +1,4 @@
-import type { InferSelectModel } from 'drizzle-orm';
 import z from 'zod';
-import type { general } from './schema';
-
-export type GeneralType = InferSelectModel<typeof general>;
 
 const sessionTimeout = z.number({ message: t('zod.general.sessionTimeout') });
 

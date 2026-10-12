@@ -1,5 +1,7 @@
-import { sql, relations } from 'drizzle-orm';
+import { relations } from 'drizzle-orm';
 import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { timestamps } from '../../timestamps';
 
 import { client } from '../../schema';
 
@@ -12,13 +14,7 @@ export const installLink = sqliteTable('install_links_table', {
     }),
   token: text().notNull().unique(),
   expiresAt: text('expires_at').notNull(),
-  createdAt: text('created_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text('updated_at')
-    .notNull()
-    .default(sql`(CURRENT_TIMESTAMP)`)
-    .$onUpdate(() => sql`(CURRENT_TIMESTAMP)`),
+  ...timestamps(),
 });
 
 export const installLinksRelations = relations(installLink, ({ one }) => ({

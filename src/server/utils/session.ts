@@ -6,53 +6,29 @@ export type WGSession = Partial<{
   userId: ID;
 }>;
 
-const DEFAULT_SESSION_MAX_AGE = 24 * 60 * 60;
-
-function resolveSessionParams(allowInsecureHttpLogin: boolean) {
+async function sessionOptions() {
+  const config = await Database.general.getSessionConfig();
   const allowPlainHttp =
-    WG_ENV.INSECURE || allowInsecureHttpLogin || !hasActiveTlsCert();
+    WG_ENV.INSECURE || config.allowInsecureHttpLogin || !hasActiveTlsCert();
   return {
+    password: config.sessionPassword,
     name: allowPlainHttp ? 'phobos-h' : 'phobos-s',
-    secure: !allowPlainHttp,
+    cookie: {
+      maxAge: config.sessionTimeout,
+      secure: !allowPlainHttp,
+      sameSite: 'lax' as const,
+    },
   };
 }
 
-export async function useWGSession(event: H3Event, rememberMe = false) {
-  const sessionConfig = await Database.general.getSessionConfig();
-  const { name, secure } = resolveSessionParams(
-    sessionConfig.allowInsecureHttpLogin
-  );
-  return useSession<WGSession>(event, {
-    password: sessionConfig.sessionPassword,
-    name,
-    cookie: {
-      maxAge: rememberMe
-        ? sessionConfig.sessionTimeout
-        : DEFAULT_SESSION_MAX_AGE,
-      secure,
-      sameSite: 'lax',
-    },
-  });
+export async function useWGSession(event: H3Event) {
+  return useSession<WGSession>(event, await sessionOptions());
 }
 
 export async function getWGSession(event: H3Event) {
-  const sessionConfig = await Database.general.getSessionConfig();
-  const { name, secure } = resolveSessionParams(
-    sessionConfig.allowInsecureHttpLogin
-  );
-  return getSession<WGSession>(event, {
-    password: sessionConfig.sessionPassword,
-    name,
-    cookie: {
-      secure,
-      sameSite: 'lax',
-    },
-  });
+  return getSession<WGSession>(event, await sessionOptions());
 }
 
-/**
- * @throws
- */
 export async function getCurrentUser(event: H3Event) {
   const session = await getWGSession(event);
 
