@@ -23,7 +23,7 @@ else
 fi
 
 CONTAINER_NAMES=(phobos)
-VOLUME_KEYS_RE='etc_wireguard|sqlite_data|certs_data'
+VOLUME_KEYS_RE='etc_wireguard|certs_data'
 VOLUME_RE="(^|_)phobos_(${VOLUME_KEYS_RE})$"
 NETWORK_RE='^(phobos|phoboswg)_(wg|default)$'
 IMAGE_RE='^(ghcr\.io/)?ground-zerro/phobos(:|@)'
@@ -49,7 +49,8 @@ printf '│  Other Docker workloads remain untouched.   │\n'
 printf '└─────────────────────────────────────────────┘\n'
 printf '\e[0m'
 printf '\nType YES to continue: '
-read -r CONFIRM
+{ read -r CONFIRM < /dev/tty; } 2>/dev/null \
+    || fail "No terminal to confirm from. Run it in an interactive shell."
 [ "$CONFIRM" = "YES" ] || { warn "Aborted."; exit 0; }
 
 cd /
